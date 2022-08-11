@@ -2,7 +2,7 @@
 
 #include <cuda_runtime_api.h>
 
-namespace whole_memory {
+namespace whole_graph {
 
 typedef struct WholeChunkedMemory* WholeChunkedMemory_t;
 

@@ -1,9 +1,9 @@
-# Chunked API for WholeMemory
+# Chunked API for WholeGraph
 
-If you are using WholeMemory for host memory or just in single process mode, just ignore Chunked API, it it not needed.
+If you are using WholeGraph for host memory or just in single process mode, just ignore Chunked API, it it not needed.
 
 Chunked API is used as a temporary workaround fix of CUDA Driver API's performance issue.
-When using WholeMemory in multi-process multi-GPU mode, memory handles need to be exported by file descriptors to other processes.
+When using WholeGraph in multi-process multi-GPU mode, memory handles need to be exported by file descriptors to other processes.
 Unfortunately, for now, exporting memory handle by FD wile lead to low performance when the memory footprint is large.
 It is not a problem if only single process multi-GPU mode is used.
 Instead of CUDA Driver API, Chunked API use CUDA Runtime API, as a result, it is not able to use virtual memory management APIs.
@@ -21,11 +21,11 @@ The APIs for WholeChunkedMemory starts with `Wcmmp` which stands for WholeChunke
 We define `WholeChunkedMemory_t` as the type for WholeChunkedMemory.
 As there is no performance problem for host memory or in single process mode, 
 there should be only multi-process device memory API.
-So the APIs are `WcmmpMalloc` and `WcmmpFree`, different form WholeMemory's C++ API, the memory is represented by `WholeChunkedMemory_t`.
+So the APIs are `WcmmpMalloc` and `WcmmpFree`, different form WholeGraph's C++ API, the memory is represented by `WholeChunkedMemory_t`.
 And `min_granularity` can be specified to set the minimum granularity of a single chunk.
 More explanations can be found in file `include/whole_chunked_memory.h`.
 
-Different from WholeMemory represented by pointer which is unique for different devices, `WholeChunkedMemory` use `WholeChunkedMemoryHandle` to access the memory, which is different in different devices.
+Different from WholeGraph represented by pointer which is unique for different devices, `WholeChunkedMemory` use `WholeChunkedMemoryHandle` to access the memory, which is different in different devices.
 `GetDeviceChunkedHandle` API can be called to get the `WholeChunkedMemoryHandle` for a specific device.
 
 ### PyTorch API

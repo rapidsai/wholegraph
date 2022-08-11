@@ -2,7 +2,7 @@
 
 #include "whole_chunked_memory.h"
 
-namespace whole_memory {
+namespace whole_graph {
 
 template <typename HandleType, typename DataType>
 class PtrGen {

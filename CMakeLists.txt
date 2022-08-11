@@ -1,21 +1,30 @@
 cmake_minimum_required(VERSION 3.14)
 
-project(wholememory CXX CUDA)
+include(./fetch_rapids.cmake)
+include(rapids-cmake)
+include(rapids-cpm)
+include(rapids-cuda)
+include(rapids-export)
+include(rapids-find)
+
+rapids_cuda_init_architectures(WHOLEGRAPH)
+
+project(wholegraph CXX CUDA)
 set(CMAKE_CXX_STANDARD 14)
 
 # PyTorch Option
-set(_WHOLEMEMORY_BUILD_PYTORCH ON)
-if (NOT DEFINED WHOLEMEMORY_BUILD_PYTORCH)
-    set(WHOLEMEMORY_BUILD_PYTORCH ${_WHOLEMEMORY_BUILD_PYTORCH} CACHE BOOL "Build PyTorch support")
+set(_WHOLEGRAPH_BUILD_PYTORCH ON)
+if (NOT DEFINED WHOLEGRAPH_BUILD_PYTORCH)
+    set(WHOLEGRAPH_BUILD_PYTORCH ${_WHOLEGRAPH_BUILD_PYTORCH} CACHE BOOL "Build PyTorch support")
 endif()
 
-set(WHOLEMEMORY_NEED_PYTHON ${WHOLEMEMORY_BUILD_PYTORCH})
+set(WHOLEGRAPH_NEED_PYTHON ${WHOLEGRAPH_BUILD_PYTORCH})
 
 # Test Option
-set(_WHOLEMEMORY_ENABLE_TESTS ON)
-if (NOT DEFINED WHOLEMEMORY_ENABLE_TESTS)
-    set(WHOLEMEMORY_ENABLE_TESTS ${_WHOLEMEMORY_ENABLE_TESTS} CACHE BOOL "Enable Tests")
-    message(STATUS "Setting WHOLEMEMORY_ENABLE_TESTS to  ${_WHOLEMEMORY_ENABLE_TESTS}")
+set(_WHOLEGRAPH_ENABLE_TESTS ON)
+if (NOT DEFINED WHOLEGRAPH_ENABLE_TESTS)
+    set(WHOLEGRAPH_ENABLE_TESTS ${_WHOLEGRAPH_ENABLE_TESTS} CACHE BOOL "Enable Tests")
+    message(STATUS "Setting WHOLEGRAPH_ENABLE_TESTS to  ${_WHOLEGRAPH_ENABLE_TESTS}")
 endif()
 
 # Configure path to modules (for find_package)
@@ -24,7 +33,7 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PROJECT_SOURCE_DIR}/cmake/modules/
 # Add default project CXX flags
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread -fPIC -Wall -O3 -g -D_FILE_OFFSET_BITS=64")
 include_directories(${PROJECT_SOURCE_DIR}/include)
-include_directories(${PROJECT_SOURCE_DIR}/wholememory)
+include_directories(${PROJECT_SOURCE_DIR}/wholegraph)
 
 # CUDA
 find_package(CUDA REQUIRED 11.0)
@@ -34,7 +43,7 @@ list(APPEND LINKER_LIBS ${CUDA_LIBRARIES})
 message(STATUS "CUDA_LIBRARIES ${CUDA_LIBRARIES}")
 list(APPEND LINKER_LIBS cuda)
 
-if (WHOLEMEMORY_NEED_PYTHON)
+if (WHOLEGRAPH_NEED_PYTHON)
     # PYTHON
     find_package(Python 3.6 COMPONENTS Interpreter REQUIRED)
     set(PY_EXE ${Python_EXECUTABLE})
@@ -51,28 +60,28 @@ if (WHOLEMEMORY_NEED_PYTHON)
     execute_process(COMMAND ${PY_EXE} -c "import sysconfig; print(next(x for x in [sysconfig.get_config_var('EXT_SUFFIX'), sysconfig.get_config_var('SO'), '.so'] if x))"
             OUTPUT_VARIABLE Python_SUFFIX OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_QUIET)
 
-endif(WHOLEMEMORY_NEED_PYTHON)
+endif(WHOLEGRAPH_NEED_PYTHON)
 
-add_library(whole_memory STATIC
-        ${PROJECT_SOURCE_DIR}/wholememory/whole_memory.cc
-        ${PROJECT_SOURCE_DIR}/wholememory/cuda_env_fns.cc
-        ${PROJECT_SOURCE_DIR}/wholememory/file_utils.cc
-        ${PROJECT_SOURCE_DIR}/wholememory/parallel_utils.cc
-        ${PROJECT_SOURCE_DIR}/wholememory/whole_memory_embedding.cu
-        ${PROJECT_SOURCE_DIR}/wholememory/whole_memory_memcpy.cu
-        ${PROJECT_SOURCE_DIR}/wholememory/whole_memory_graph.cu
-        ${PROJECT_SOURCE_DIR}/wholememory/whole_memory_graph_sampler.cu
-        ${PROJECT_SOURCE_DIR}/wholememory/gnn_ops.cu
-        ${PROJECT_SOURCE_DIR}/wholememory/domain_socket_communicator.cc)
-set_property(TARGET whole_memory PROPERTY POSITION_INDEPENDENT_CODE ON)
-target_link_libraries(whole_memory ${LINKER_LIBS} cuda)
+add_library(whole_graph STATIC
+        ${PROJECT_SOURCE_DIR}/wholegraph/whole_graph.cc
+        ${PROJECT_SOURCE_DIR}/wholegraph/cuda_env_fns.cc
+        ${PROJECT_SOURCE_DIR}/wholegraph/file_utils.cc
+        ${PROJECT_SOURCE_DIR}/wholegraph/parallel_utils.cc
+        ${PROJECT_SOURCE_DIR}/wholegraph/whole_graph_embedding.cu
+        ${PROJECT_SOURCE_DIR}/wholegraph/whole_graph_memcpy.cu
+        ${PROJECT_SOURCE_DIR}/wholegraph/whole_graph_graph.cu
+        ${PROJECT_SOURCE_DIR}/wholegraph/whole_graph_graph_sampler.cu
+        ${PROJECT_SOURCE_DIR}/wholegraph/gnn_ops.cu
+        ${PROJECT_SOURCE_DIR}/wholegraph/domain_socket_communicator.cc)
+set_property(TARGET whole_graph PROPERTY POSITION_INDEPENDENT_CODE ON)
+target_link_libraries(whole_graph ${LINKER_LIBS} cuda)
 
-if (WHOLEMEMORY_BUILD_PYTORCH)
+if (WHOLEGRAPH_BUILD_PYTORCH)
     message(STATUS "Building PyTorch support library")
-    add_subdirectory(wholememory/torch)
+    add_subdirectory(wholegraph/torch)
 endif()
 
-if (WHOLEMEMORY_ENABLE_TESTS)
+if (WHOLEGRAPH_ENABLE_TESTS)
     message(STATUS "Test enabled")
     add_subdirectory(test)
 endif ()

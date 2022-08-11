@@ -1,13 +1,13 @@
 <link rel="stylesheet" type="text/css" href="auto-number-title.css" />
 
-# PyTorch API for WholeMemory
+# PyTorch API for WholeGraph
 
 ## Initialization and Finalization
 
-To use PyTorch APIs, it is needed to import WholeMemory module first by:
+To use PyTorch APIs, it is needed to import WholeGraph module first by:
 
 ```python
-from wholememory.torch import wholememory_pytorch as wm
+from wholegraph.torch import wholegraph_pytorch as wm
 ```
 
 As C++ API, to use PyTorch API, the library need to be initialized first, by:
@@ -16,21 +16,21 @@ wm.init_lib()
 ```
 before any CUDA call, for example `torch.cuda.set_device`
 
-And after the use of WholeMemory, `finalize_lib` should be called.
+And after the use of WholeGraph, `finalize_lib` should be called.
 
 For PyTorch API, only multi-process multi-GPU mode is support as it is the most common use case.
 
 It is not supported to use single process multi-GPU mode using Python APIs.
 The consideration here is that Python has GIL which limits the performance gain of multi-threading, it seems not needed to use this mode, so it is not provided.
 
-After library initialize, you should get rank and size of the WholeMemory group. Then initialize multi-process multi-GPU mode by
+After library initialize, you should get rank and size of the WholeGraph group. Then initialize multi-process multi-GPU mode by
 ```python
 wm.mp_init(rank, size)
 ```
 
 ## Tensor Creation
 
-After all this, WholeMemory can be used to create PyTorch Tensors, by `wm.create_tensor`.
+After all this, WholeGraph can be used to create PyTorch Tensors, by `wm.create_tensor`.
 Please be noted that this is a collective operation, all process should call it together with the same parameters.
 The first argument is the shape of the tensor, in an array.
 The second argument is the stride of the tensor, also in an array, or left it empty to automaticly compute that.
@@ -68,7 +68,7 @@ This makes it possible to use large Tensors.
 
 ## Tensor view
 
-As Tensors created by WholeMemory are across many GPUs, they are also usable in all these GPUs.
+As Tensors created by WholeGraph are across many GPUs, they are also usable in all these GPUs.
 By default, Tensor is on the device it was created, e.g. the device torch.cuda.set_device specified.
 To get the view of the Tensor from one of the device, `get_tensor_view` can be used to do this.
 For example, the following statement will get the view of Tensor `a` from GPU1.

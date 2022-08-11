@@ -1,5 +1,5 @@
 import torch
-from wholememory.torch import wholememory_pytorch as wm
+from wholegraph.torch import wholegraph_pytorch as wm
 from wm_torch import graph_ops as graph_ops
 from wm_torch import comm as comm
 import torch.nn.functional as F
@@ -300,7 +300,7 @@ def main():
         test(test_data, model)
 
     wm.finalize_lib()
-    print('Rank=%d, wholememory shutdown.' % (comma.Get_rank(), ))
+    print('Rank=%d, wholegraph shutdown.' % (comma.Get_rank(), ))
 
 
 if __name__ == "__main__":

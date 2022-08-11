@@ -1,4 +1,4 @@
-# WholeMemory Performance Benchmark
+# WholeGraph Performance Benchmark
 
 ## Benchmark Environment
 
@@ -13,7 +13,7 @@ CUDA 11.4
 
 ## Benchmark Setup
 
-In order to benchmark the memory bandwidth WholeMemory can provide when the memory footprint is large, we set the memory footprint to 400 GB.
+In order to benchmark the memory bandwidth WholeGraph can provide when the memory footprint is large, we set the memory footprint to 400 GB.
 Then we use a GPU kernel to random read may segment of data from the large memory, and write to local device memory.
 All the 8 GPU do this read in a concurrent manner.
 The segment size varies from 4 bytes to 16K bytes and are naturally aligned.
@@ -23,7 +23,7 @@ And read, write and atomicAdd performance are tested, for atomicAdd, only 4 byte
 
 ## Benchmark Source Code
 
-The source code for the benchmark is available at `test/whole_memory_perf_scan.cu`
+The source code for the benchmark is available at `test/whole_graph_perf_scan.cu`
 
 ## Benchmark Result
 
@@ -38,20 +38,20 @@ For data size per thread, there is a little performance degradation for 4 bytes,
 As we know, the NVLink bandwidth for each GPU on DGX-A100 is 300 GB/s unidirection, and for 8 GPU case, about 7 eighth of data has to go from NVLink, assume local device bandwidth is large enough, the Speed of Light (SOL) is 343 GB/s.
 That means 76% of NVLink's bandwidth can be achieved with 128 bytes small segments.
 
-As this bandwid is per GPU, for the whole system, the aggregated bandwidth of the WholeMemory (hundreds of GBs) is about 2.1 TB/s.
+As this bandwid is per GPU, for the whole system, the aggregated bandwidth of the WholeGraph (hundreds of GBs) is about 2.1 TB/s.
 
-That means WholeMemory can provide hundreds of GBs of direct accessible memory capacity with random read access bandwidth of up to 2.1 TB/s!
+That means WholeGraph can provide hundreds of GBs of direct accessible memory capacity with random read access bandwidth of up to 2.1 TB/s!
 
-![Random Read Performance Result](imgs/whole_memory_read_perf.png)
+<img src="imgs/whole_graph_read_perf.png" width="500">
 
 ### Random Write Performance
 
 Similar performance curve to random read, byt a slightly decrease in peak performance, at about 253 GB/s.
 
-![Random Write Performance Result](imgs/whole_memory_write_perf.png)
+<img src="imgs/whole_graph_write_perf.png" width="500">
 
 ### Random AtomicAdd Performance
 
 Very similar to random write.
 
-![Random AtomicAdd Performance Result](imgs/whole_memory_atomic_perf.png)
+<img src="imgs/whole_graph_atomic_perf.png" width="500">
