@@ -10,7 +10,7 @@
 #include <unordered_map>
 #include <vector>
 
-namespace whole_memory {
+namespace whole_graph {
 
 typedef enum : int8_t {
   WMT_Uint8 = 0,
@@ -88,17 +88,17 @@ struct ThreeWMTHash : public std::unary_function<std::tuple<WMType, WMType, WMTy
 
 }
 
-#define VEC_SINT3264 std::vector<whole_memory::WMType>({WMT_Int32, WMT_Int64})
-#define VEC_SINT std::vector<whole_memory::WMType>({WMT_Int8, WMT_Int16, WMT_Int32, WMT_Int64})
-#define VEC_UINT3264 std::vector<whole_memory::WMType>({WMT_Uint32, WMT_Uint64})
-#define VEC_UINT std::vector<whole_memory::WMType>({WMT_Uint8, WMT_Uint16, WMT_Uint32, WMT_Uint64})
-#define VEC_ALLINT3264 std::vector<whole_memory::WMType>({WMT_Int32, WMT_Int64, WMT_Uint32, WMT_Uint64})
-#define VEC_ALLINT std::vector<whole_memory::WMType>({WMT_Int8, WMT_Int16, WMT_Int32, WMT_Int64, WMT_Uint8, WMT_Uint16, WMT_Uint32, WMT_Uint64})
-#define VEC_FLOAT_DOUBLE std::vector<whole_memory::WMType>({WMT_Float, WMT_Double})
-#define VEC_HALF_FLOAT std::vector<whole_memory::WMType>({WMT_Half, WMT_Float})
-#define VEC_BF16_HALF_FLOAT std::vector<whole_memory::WMType>({WMT_Bfloat16, WMT_Half, WMT_Float})
-#define VEC_HALF_FLOAT_DOUBLE std::vector<whole_memory::WMType>({WMT_Half, WMT_Half, WMT_Float})
-#define VEC_ALLFLOAT std::vector<whole_memory::WMType>({WMT_Bfloat16, WMT_Half, WMT_Half, WMT_Float})
+#define VEC_SINT3264 std::vector<whole_graph::WMType>({WMT_Int32, WMT_Int64})
+#define VEC_SINT std::vector<whole_graph::WMType>({WMT_Int8, WMT_Int16, WMT_Int32, WMT_Int64})
+#define VEC_UINT3264 std::vector<whole_graph::WMType>({WMT_Uint32, WMT_Uint64})
+#define VEC_UINT std::vector<whole_graph::WMType>({WMT_Uint8, WMT_Uint16, WMT_Uint32, WMT_Uint64})
+#define VEC_ALLINT3264 std::vector<whole_graph::WMType>({WMT_Int32, WMT_Int64, WMT_Uint32, WMT_Uint64})
+#define VEC_ALLINT std::vector<whole_graph::WMType>({WMT_Int8, WMT_Int16, WMT_Int32, WMT_Int64, WMT_Uint8, WMT_Uint16, WMT_Uint32, WMT_Uint64})
+#define VEC_FLOAT_DOUBLE std::vector<whole_graph::WMType>({WMT_Float, WMT_Double})
+#define VEC_HALF_FLOAT std::vector<whole_graph::WMType>({WMT_Half, WMT_Float})
+#define VEC_BF16_HALF_FLOAT std::vector<whole_graph::WMType>({WMT_Bfloat16, WMT_Half, WMT_Float})
+#define VEC_HALF_FLOAT_DOUBLE std::vector<whole_graph::WMType>({WMT_Half, WMT_Half, WMT_Float})
+#define VEC_ALLFLOAT std::vector<whole_graph::WMType>({WMT_Bfloat16, WMT_Half, WMT_Half, WMT_Float})
 
 #define CASES_SINT3264(TEMPFUNC_NAME, ...) \
 case WMT_Int32: {TEMPFUNC_NAME<int32_t, ##__VA_ARGS__>(); break; } \
@@ -147,14 +147,14 @@ case WMT_Bfloat16: {TEMPFUNC_NAME<__nv_bfloat16, ##__VA_ARGS__>(); break; } \
 CASES_HALF_FLOAT_DOUBLE(TEMPFUNC_NAME, ##__VA_ARGS__)
 
 #define REGISTER_DISPATCH_ONE_TYPE(NAME, TEMPFUNC_NAME, ARG0_SET) \
-static std::unordered_map<WMType, decltype(&TEMPFUNC_NAME<int>), whole_memory::OneWMTHash>* NAME ## _dispatch1_map = nullptr; \
+static std::unordered_map<WMType, decltype(&TEMPFUNC_NAME<int>), whole_graph::OneWMTHash>* NAME ## _dispatch1_map = nullptr; \
 template <typename T0> \
 void Register ## NAME ## Map1FuncHelper0() { \
     auto key = GetWMType<T0>(); \
     NAME ## _dispatch1_map->emplace(key, TEMPFUNC_NAME<T0>); \
 } \
 __attribute__((constructor)) static void Register ## NAME ## Map1Func() { \
-  NAME ## _dispatch1_map = new std::unordered_map<WMType, decltype(&TEMPFUNC_NAME<int>), whole_memory::OneWMTHash>(); \
+  NAME ## _dispatch1_map = new std::unordered_map<WMType, decltype(&TEMPFUNC_NAME<int>), whole_graph::OneWMTHash>(); \
   auto arg0_types = VEC_ ## ARG0_SET; \
   for (auto arg0_type : arg0_types) { \
       switch (arg0_type) { \
@@ -173,7 +173,7 @@ do { \
 } while (0)
 
 #define REGISTER_DISPATCH_TWO_TYPES(NAME, TEMPFUNC_NAME, ARG0_SET, ARG1_SET) \
-static std::unordered_map<std::tuple<WMType, WMType>, decltype(&TEMPFUNC_NAME<int, int>), whole_memory::TwoWMTHash>* NAME ## _dispatch2_map = nullptr; \
+static std::unordered_map<std::tuple<WMType, WMType>, decltype(&TEMPFUNC_NAME<int, int>), whole_graph::TwoWMTHash>* NAME ## _dispatch2_map = nullptr; \
 template <typename T0, typename T1> \
 void Register ## NAME ## Map2FuncHelper0() { \
     auto key = std::make_tuple(GetWMType<T0>(), GetWMType<T1>()); \
@@ -190,7 +190,7 @@ void Register ## NAME ## Map2FuncHelper1() { \
   }\
 } \
 __attribute__((constructor)) static void Register ## NAME ## Map2Func() { \
-  NAME ## _dispatch2_map = new std::unordered_map<std::tuple<WMType, WMType>, decltype(&TEMPFUNC_NAME<int, int>), whole_memory::TwoWMTHash>(); \
+  NAME ## _dispatch2_map = new std::unordered_map<std::tuple<WMType, WMType>, decltype(&TEMPFUNC_NAME<int, int>), whole_graph::TwoWMTHash>(); \
   auto arg1_types = VEC_ ## ARG1_SET; \
   for (auto arg1_type : arg1_types) { \
       switch (arg1_type) { \
@@ -209,7 +209,7 @@ do { \
 } while (0)
 
 #define REGISTER_DISPATCH_THREE_TYPES(NAME, TEMPFUNC_NAME, ARG0_SET, ARG1_SET, ARG2_SET) \
-static std::unordered_map<std::tuple<WMType, WMType, WMType>, decltype(&TEMPFUNC_NAME<int, int, int>), whole_memory::ThreeWMTHash>* NAME ## _dispatch3_map = nullptr; \
+static std::unordered_map<std::tuple<WMType, WMType, WMType>, decltype(&TEMPFUNC_NAME<int, int, int>), whole_graph::ThreeWMTHash>* NAME ## _dispatch3_map = nullptr; \
 template <typename T0, typename T1, typename T2> \
 void Register ## NAME ## Map3FuncHelper0() { \
     auto key = std::make_tuple(GetWMType<T0>(), GetWMType<T1>(), GetWMType<T2>()); \
@@ -236,7 +236,7 @@ void Register ## NAME ## Map3FuncHelper2() { \
   }\
 } \
 __attribute__((constructor)) static void Register ## NAME ## Map3Func() { \
-  NAME ## _dispatch3_map = new std::unordered_map<std::tuple<WMType, WMType, WMType>, decltype(&TEMPFUNC_NAME<int, int, int>), whole_memory::ThreeWMTHash>(); \
+  NAME ## _dispatch3_map = new std::unordered_map<std::tuple<WMType, WMType, WMType>, decltype(&TEMPFUNC_NAME<int, int, int>), whole_graph::ThreeWMTHash>(); \
   auto arg2_types = VEC_ ## ARG2_SET; \
   for (auto arg2_type : arg2_types) { \
       switch (arg2_type) { \

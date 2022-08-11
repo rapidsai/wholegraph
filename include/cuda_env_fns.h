@@ -5,7 +5,7 @@
 #include <functional>
 #include <map>
 
-namespace whole_memory {
+namespace whole_graph {
 
 typedef struct {
   // pointer of this temporary memory
