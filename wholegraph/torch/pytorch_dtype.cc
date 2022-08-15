@@ -1,3 +1,18 @@
+/*
+ * Copyright (c) 2019-2022, NVIDIA CORPORATION.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 #include "pytorch_dtype.h"
 
 namespace whole_graph {
@@ -15,7 +30,8 @@ whole_graph::WMType C10ScalarToWMType(c10::ScalarType st) {
     case c10::ScalarType::Float: return whole_graph::WMT_Float;
     case c10::ScalarType::Double: return whole_graph::WMT_Double;
     case c10::ScalarType::BFloat16: return whole_graph::WMT_Bfloat16;
-    default: std::cerr << "Scalar type " << st << " not supported.\n";
+    default:
+      std::cerr << "Scalar type " << st << " not supported.\n";
       abort();
       return whole_graph::WMT_Count;
   }
@@ -32,12 +48,13 @@ c10::ScalarType WMTypeToC10Scalar(whole_graph::WMType wmt) {
     case whole_graph::WMT_Float: return c10::ScalarType::Float;
     case whole_graph::WMT_Double: return c10::ScalarType::Double;
     case whole_graph::WMT_Bfloat16: return c10::ScalarType::BFloat16;
-    default: std::cerr << "Scalar type " << wmt << " not supported.\n";
+    default:
+      std::cerr << "Scalar type " << wmt << " not supported.\n";
       abort();
       return c10::ScalarType::Undefined;
   }
 }
 
-}
+}// namespace pytorch
 
-}
+}// namespace whole_graph

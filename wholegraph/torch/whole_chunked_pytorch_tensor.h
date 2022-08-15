@@ -1,55 +1,72 @@
+/*
+ * Copyright (c) 2019-2022, NVIDIA CORPORATION.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 #pragma once
 
 #include <pybind11/pybind11.h>
 #include <torch/script.h>
 
-#include "whole_chunked_memory.h"
 #include "data_type.h"
 #include "pytorch_dtype.h"
+#include "whole_chunked_memory.h"
 
 namespace whole_graph {
 
 namespace pytorch {
 
-struct C10_API StorageImpl final : public c10::intrusive_ptr_target {
+struct C10_API ChunkedStorageImpl final : public c10::intrusive_ptr_target {
  public:
-  explicit StorageImpl(size_t size_bytes, size_t min_granularity, const std::vector<int>& ranks);
-  ~StorageImpl() override;
+  explicit ChunkedStorageImpl(size_t size_bytes, size_t min_granularity, whole_graph::BootstrapCommunicator *bc_ptr);
+  ~ChunkedStorageImpl() override;
   size_t nbytes() const {
     return size_bytes_;
   }
   whole_graph::WholeChunkedMemory_t GetChunkedMemory() const {
     return wcmt_;
   }
+
  private:
   size_t size_bytes_ = 0;
   whole_graph::WholeChunkedMemory_t wcmt_ = nullptr;
 };
 
-struct C10_API Storage {
+struct C10_API ChunkedStorage {
  public:
-  Storage() = default;
-  explicit Storage(c10::intrusive_ptr<StorageImpl> ptr)
+  ChunkedStorage() = default;
+  explicit ChunkedStorage(c10::intrusive_ptr<ChunkedStorageImpl> ptr)
       : storage_impl_(std::move(ptr)) {}
-  StorageImpl* unsafeGetStorageImpl() const noexcept {
+  ChunkedStorageImpl *unsafeGetChunkedStorageImpl() const noexcept {
     return storage_impl_.get();
   }
   whole_graph::WholeChunkedMemory_t GetChunkedMemory() const {
     return storage_impl_->GetChunkedMemory();
   }
+
  protected:
-  c10::intrusive_ptr<StorageImpl> storage_impl_;
+  c10::intrusive_ptr<ChunkedStorageImpl> storage_impl_;
 };
 
 struct ChunkedTensorImpl : public c10::intrusive_ptr_target {
  public:
-  ChunkedTensorImpl(Storage&& storage, const caffe2::TypeMeta data_type)
+  ChunkedTensorImpl(ChunkedStorage &&storage, const caffe2::TypeMeta data_type)
       : storage_(storage), data_type_(data_type) {
   }
-  ChunkedTensorImpl(const ChunkedTensorImpl&) = delete;
-  ChunkedTensorImpl& operator=(const ChunkedTensorImpl&) = delete;
-  ChunkedTensorImpl(ChunkedTensorImpl&&) = delete;
-  ChunkedTensorImpl& operator=(ChunkedTensorImpl&&) = delete;
+  ChunkedTensorImpl(const ChunkedTensorImpl &) = delete;
+  ChunkedTensorImpl &operator=(const ChunkedTensorImpl &) = delete;
+  ChunkedTensorImpl(ChunkedTensorImpl &&) = delete;
+  ChunkedTensorImpl &operator=(ChunkedTensorImpl &&) = delete;
   void set_sizes_and_strides(torch::IntArrayRef new_size, torch::IntArrayRef new_stride);
   int64_t dim() const {
     return sizes_and_strides_.size();
@@ -85,17 +102,19 @@ struct ChunkedTensorImpl : public c10::intrusive_ptr_target {
   int64_t storage_offset() const {
     return storage_offset_;
   }
-  const Storage& storage() const {
+  const ChunkedStorage &storage() const {
     return storage_;
   }
   whole_graph::WholeChunkedMemory_t GetChunkedMemory() const {
     return storage_.GetChunkedMemory();
   }
+
  protected:
   ChunkedTensorImpl() = default;
   void refresh_numel() {
     numel_ = compute_numel();
   }
+
  private:
   int64_t compute_numel() const {
     int64_t n = 1;
@@ -105,7 +124,7 @@ struct ChunkedTensorImpl : public c10::intrusive_ptr_target {
     return n;
   }
   c10::impl::SizesAndStrides sizes_and_strides_;
-  Storage storage_;
+  ChunkedStorage storage_;
   int64_t storage_offset_ = 0;
   int64_t numel_ = 1;
   caffe2::TypeMeta data_type_;
@@ -119,9 +138,9 @@ class ChunkedTensor {
       throw std::runtime_error("TensorImpl with nullptr is not supported");
     }
   }
-  ChunkedTensor(const ChunkedTensor&) = default;
-  ChunkedTensor(ChunkedTensor&&) = default;
-  const c10::intrusive_ptr<ChunkedTensorImpl>& getIntrusivePtr() const {
+  ChunkedTensor(const ChunkedTensor &) = default;
+  ChunkedTensor(ChunkedTensor &&) = default;
+  const c10::intrusive_ptr<ChunkedTensorImpl> &getIntrusivePtr() const {
     return impl_;
   }
   caffe2::TypeMeta dtype() const noexcept {
@@ -145,14 +164,14 @@ class ChunkedTensor {
   int64_t numel() const {
     return impl_->numel();
   }
-  const Storage& storage() const {
+  const ChunkedStorage &storage() const {
     return impl_->storage();
   }
   int64_t storage_offset() const {
     return impl_->storage_offset();
   }
   int64_t get_ptr() {
-    return (int64_t)this;
+    return (int64_t) this;
   }
   static ChunkedTensor wrap_tensor_impl(
       c10::intrusive_ptr<ChunkedTensorImpl> tensor_impl) {
@@ -162,10 +181,11 @@ class ChunkedTensor {
   whole_graph::WholeChunkedMemory_t GetChunkedMemory() const {
     return impl_->GetChunkedMemory();
   }
+
  private:
   c10::intrusive_ptr<ChunkedTensorImpl> impl_;
 };
 
-}
+}// namespace pytorch
 
-}
+}// namespace whole_graph

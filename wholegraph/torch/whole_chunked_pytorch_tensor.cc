@@ -1,15 +1,30 @@
+/*
+ * Copyright (c) 2019-2022, NVIDIA CORPORATION.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 #include "whole_chunked_pytorch_tensor.h"
 
 namespace whole_graph {
 
 namespace pytorch {
 
-StorageImpl::StorageImpl(size_t size_bytes, size_t min_granularity, const std::vector<int>& ranks)
+ChunkedStorageImpl::ChunkedStorageImpl(size_t size_bytes, size_t min_granularity, whole_graph::BootstrapCommunicator *bc_ptr)
     : size_bytes_(size_bytes) {
-  whole_graph::WcmmpMalloc(&wcmt_, size_bytes, min_granularity, ranks.data(), ranks.size());
+  whole_graph::WcmmpMalloc(&wcmt_, size_bytes, bc_ptr, min_granularity);
 }
 
-StorageImpl::~StorageImpl() {
+ChunkedStorageImpl::~ChunkedStorageImpl() {
   whole_graph::WcmmpFree(wcmt_);
 }
 
@@ -47,8 +62,8 @@ void ChunkedTensorImpl::set_sizes_and_strides(torch::IntArrayRef new_size, torch
           // Keep stride monotonically increasing to match NumPy.
           sizes_and_strides_.stride_at_unchecked(dim) =
               std::max<int64_t>(
-                  sizes_and_strides_.size_at_unchecked(dim + 1), 1) *
-                  sizes_and_strides_.stride_at_unchecked(dim + 1);
+                  sizes_and_strides_.size_at_unchecked(dim + 1), 1)
+              * sizes_and_strides_.stride_at_unchecked(dim + 1);
         }
       }
       if (dim == 0)
@@ -58,6 +73,6 @@ void ChunkedTensorImpl::set_sizes_and_strides(torch::IntArrayRef new_size, torch
   refresh_numel();
 }
 
-}
+}// namespace pytorch
 
-}
+}// namespace whole_graph

@@ -1,10 +1,24 @@
-#include <assert.h>
-#include <stdio.h>
-#include <stdint.h>
+/*
+ * Copyright (c) 2019-2022, NVIDIA CORPORATION.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+#include <c10/cuda/CUDAStream.h>
 #include <cuda_fp16.h>
 #include <cuda_runtime_api.h>
+#include <stdint.h>
+#include <stdio.h>
 #include <torch/script.h>
-#include <c10/cuda/CUDAStream.h>
 
 #include "../gnn_ops.h"
 #include "pytorch_dtype.h"
@@ -29,24 +43,24 @@ torch::Tensor spmm_csr_noweight_forward(const torch::Tensor &csr_row_ptr,
   torch::TensorOptions options;
 
   options = options.dtype(x.dtype())
-      .device(x.device())
-      .requires_grad(x.requires_grad());
+                .device(x.device())
+                .requires_grad(x.requires_grad());
   std::vector<int64_t> size{target_vec_count, embedding_dim};
   torch::Tensor output = torch::empty(size, options);
 
   whole_graph::SpmmCsrNoWeightForward(whole_graph::pytorch::C10ScalarToWMType(x.dtype().toScalarType()),
-                                       csr_row_ptr.data_ptr<int>(),
-                                       target_vec_count,
-                                       csr_col_ind.data_ptr<int>(),
-                                       csr_col_ind.sizes()[0],
-                                       x.data_ptr(),
-                                       embedding_dim,  // embedding dim
-                                       x.stride(0),
-                                       x.sizes()[0],  // total column count
-                                       output.data_ptr(),
-                                       embedding_dim,
-                                       aggregator,
-                                       stream);
+                                      csr_row_ptr.data_ptr<int>(),
+                                      target_vec_count,
+                                      csr_col_ind.data_ptr<int>(),
+                                      csr_col_ind.sizes()[0],
+                                      x.data_ptr(),
+                                      embedding_dim,// embedding dim
+                                      x.stride(0),
+                                      x.sizes()[0],// total column count
+                                      output.data_ptr(),
+                                      embedding_dim,
+                                      aggregator,
+                                      stream);
 
   return output;
 }
@@ -79,7 +93,7 @@ torch::Tensor spmm_csr_noweight_backward(const torch::Tensor &csr_row_ptr,
   torch::TensorOptions options;
 
   options = options.dtype(grad_output.dtype())
-      .device(grad_output.device());
+                .device(grad_output.device());
   std::vector<int64_t> size{input_count, embedding_dim};
   torch::Tensor grad_x = torch::empty(size, options);
 
@@ -91,9 +105,9 @@ torch::Tensor spmm_csr_noweight_backward(const torch::Tensor &csr_row_ptr,
                           embedding_stride,
                           grad_x.data_ptr(),
                           embedding_dim,
-                          target_vec_count, // total row count,
+                          target_vec_count,// total row count,
                           neighboors_count,
-                          input_count,  // total column count
+                          input_count,// total column count
                           embedding_dim,
                           aggregator,
                           stream);
@@ -141,8 +155,8 @@ torch::Tensor gspmm_csr_weighted_forward(const torch::Tensor &csr_row_ptr,
   torch::TensorOptions options;
 
   options = options.dtype(x.dtype())
-      .device(x.device())
-      .requires_grad(x.requires_grad() || edge_weight.requires_grad());
+                .device(x.device())
+                .requires_grad(x.requires_grad() || edge_weight.requires_grad());
 
   torch::Tensor output = torch::empty(size, options);
 
@@ -150,16 +164,16 @@ torch::Tensor gspmm_csr_weighted_forward(const torch::Tensor &csr_row_ptr,
   gSpmmCsrWeightedForward(
       whole_graph::pytorch::C10ScalarToWMType(x.dtype().toScalarType()),
       csr_row_ptr.data_ptr<int>(),
-      target_vec_count,  // total row count
+      target_vec_count,// total row count
       csr_col_ind.data_ptr<int>(),
       csr_col_ind.size(0),
       edge_weight.data_ptr(),
       num_head,
       x.data_ptr(),
-      embedding_dim,  // embedding dim
+      embedding_dim,// embedding dim
       x.stride(1),
       x.stride(0),
-      x.size(0),  // total column count
+      x.size(0),// total column count
       output.data_ptr(),
       output.stride(1),
       output.stride(0),
@@ -185,7 +199,8 @@ variable_list gspmm_csr_weighted_backward(const torch::Tensor &csr_row_ptr,
 
   TORCH_CHECK(grad_output.dtype() == x.dtype(), "grad_output and x should have same type.");
   TORCH_CHECK(grad_output.dim() == 3 && grad_output.size(0) == size[0] && grad_output.size(1) == size[1]
-                  && grad_output.size(2) == size[2], "grad_output not same as output size.");
+                  && grad_output.size(2) == size[2],
+              "grad_output not same as output size.");
   TORCH_CHECK(sample_dup_count.dim() == 1, "sample_dup_count should be 1-D tensor.");
   TORCH_CHECK(sample_dup_count.dtype() == torch::ScalarType::Int, "sample_dup_count should be Int tensor.");
   int64_t input_count = x.size(0);
@@ -214,7 +229,7 @@ variable_list gspmm_csr_weighted_backward(const torch::Tensor &csr_row_ptr,
       whole_graph::pytorch::C10ScalarToWMType(grad_output.dtype().toScalarType()),
       x.requires_grad(), edge_weight.requires_grad(),
       csr_row_ptr.data_ptr<int>(),
-      target_vec_count,  // total row count
+      target_vec_count,// total row count
       csr_col_ind.data_ptr<int>(),
       csr_col_ind.size(0),
       edge_weight.data_ptr(),
@@ -267,8 +282,8 @@ torch::Tensor spadd_gat_csr_forward(const torch::Tensor &csr_row_ptr,
   cudaStream_t stream = at::cuda::getCurrentCUDAStream();
   torch::TensorOptions options;
   options = options.dtype(edge_weight_left.dtype())
-      .device(edge_weight_left.device())
-      .requires_grad(grad_required);
+                .device(edge_weight_left.device())
+                .requires_grad(grad_required);
   std::vector<int64_t> output_size{csr_col_ind.sizes()[0], num_head};
   torch::Tensor output = torch::empty(output_size, options);
 
@@ -301,7 +316,7 @@ torch::autograd::variable_list spadd_gat_csr_backward(const torch::Tensor &csr_r
   cudaStream_t stream = at::cuda::getCurrentCUDAStream();
   torch::TensorOptions options;
   options = options.dtype(grad_y.dtype())
-      .device(grad_y.device());
+                .device(grad_y.device());
   std::vector<int64_t> output_weight_left_size{target_vec_count, num_head};
   std::vector<int64_t> output_weight_right_size{neighbor_count, num_head};
   torch::Tensor grad_weight_left = torch::empty(output_weight_left_size, options);
@@ -320,7 +335,6 @@ torch::autograd::variable_list spadd_gat_csr_backward(const torch::Tensor &csr_r
                         grad_weight_left.data_ptr(),
                         grad_weight_right.data_ptr(),
                         stream);
-
   }
 
   return {grad_weight_left, grad_weight_right};
@@ -341,8 +355,8 @@ torch::Tensor edge_weight_softmax_forward(const torch::Tensor &csr_row_ptr,
   cudaStream_t stream = at::cuda::getCurrentCUDAStream();
   torch::TensorOptions options;
   options = options.dtype(edge_weight.dtype())
-      .device(edge_weight.device())
-      .requires_grad(grad_required);
+                .device(edge_weight.device())
+                .requires_grad(grad_required);
 
   std::vector<int64_t> output_size{edge_weight.sizes()[0], edge_weight.sizes()[1]};
   torch::Tensor output = torch::empty(output_size, options);
@@ -375,7 +389,7 @@ torch::Tensor edge_weight_softmax_backward(const torch::Tensor &csr_row_ptr,
   cudaStream_t stream = at::cuda::getCurrentCUDAStream();
   torch::TensorOptions options;
   options = options.dtype(grad_y.dtype())
-      .device(grad_y.device());
+                .device(grad_y.device());
 
   std::vector<int64_t> output_size{edge_weight_softmax.sizes()[0], edge_weight_softmax.sizes()[1]};
   torch::Tensor output = torch::empty(output_size, options);
@@ -392,9 +406,9 @@ torch::Tensor edge_weight_softmax_backward(const torch::Tensor &csr_row_ptr,
   return output;
 }
 
-variable_list csr_add_self_loop(const torch::Tensor& csr_row_ptr,
-                                const torch::Tensor& csr_col_ind,
-                                const torch::Tensor& sample_dup_count) {
+variable_list csr_add_self_loop(const torch::Tensor &csr_row_ptr,
+                                const torch::Tensor &csr_col_ind,
+                                const torch::Tensor &sample_dup_count) {
   TORCH_CHECK(csr_row_ptr.dtype() == torch::ScalarType::Int, "CSR row_ptr should be Int tensor.");
   TORCH_CHECK(csr_col_ind.dtype() == torch::ScalarType::Int, "CSR col_ind should be Int tensor.");
   TORCH_CHECK(sample_dup_count.dtype() == torch::ScalarType::Int, "CSR sample_dup_count should be Int tensor.");
@@ -411,16 +425,123 @@ variable_list csr_add_self_loop(const torch::Tensor& csr_row_ptr,
   torch::Tensor sample_dup_count_looped = torch::empty(sample_dup_count.sizes(), options);
   cudaStream_t stream = at::cuda::getCurrentCUDAStream();
   whole_graph::CSRAddSelfLoop(csr_row_ptr.data_ptr<int>(),
-                               csr_col_ind.data_ptr<int>(),
-                               sample_dup_count.data_ptr<int>(),
-                               total_target_count,
-                               sample_dup_count.size(0),
-                               csr_row_ptr_looped.data_ptr<int>(),
-                               csr_col_ind_looped.data_ptr<int>(),
-                               sample_dup_count_looped.data_ptr<int>(),
-                               stream);
+                              csr_col_ind.data_ptr<int>(),
+                              sample_dup_count.data_ptr<int>(),
+                              total_target_count,
+                              sample_dup_count.size(0),
+                              csr_row_ptr_looped.data_ptr<int>(),
+                              csr_col_ind_looped.data_ptr<int>(),
+                              sample_dup_count_looped.data_ptr<int>(),
+                              stream);
 
   return {csr_row_ptr_looped, csr_col_ind_looped, sample_dup_count_looped};
+}
+
+torch::Tensor spmm_csr_relational_noweight_forward(const torch::Tensor &csr_row_ptr,
+                                                   const torch::Tensor &csr_col_ind,
+                                                   const torch::Tensor &edge_type,
+                                                   const torch::Tensor &x,
+                                                   int64_t num_relation,
+                                                   int64_t aggregator) {
+  TORCH_CHECK(num_relation > 0, "num_relation should be > 0");
+  TORCH_CHECK(csr_row_ptr.dtype() == torch::ScalarType::Int, "CSR row_ptr should be Int tensor.");
+  TORCH_CHECK(csr_col_ind.dtype() == torch::ScalarType::Int, "CSR col_ind should be Int tensor.");
+  TORCH_CHECK(edge_type.dtype() == torch::ScalarType::Char, "edge_type should be Char tensor.");
+  TORCH_CHECK(x.dtype() == torch::ScalarType::Float || x.dtype() == torch::ScalarType::Half,
+              "x should be half or float.");
+  TORCH_CHECK(csr_row_ptr.dim() == 1, "CSR row_ptr should be 1-D tensor.");
+  TORCH_CHECK(csr_col_ind.dim() == 1, "CSR col_ind should be 1-D tensor.");
+  TORCH_CHECK(x.dim() == 2, "x should be 2-D tensor.");
+  TORCH_CHECK(csr_row_ptr.sizes()[0] >= 1, "CSR row_ptr size should be larger than 0 tensor.");
+  TORCH_CHECK(csr_col_ind.sizes()[0] == edge_type.sizes()[0], "CSR col_ind should be same size as edge_type");
+  TORCH_CHECK(aggregator >= 0 && aggregator < 2, "aggregator should be 0, 1");
+  int64_t target_vec_count = csr_row_ptr.sizes()[0] - 1;
+  int64_t embedding_dim = x.sizes()[1];
+  cudaStream_t stream = at::cuda::getCurrentCUDAStream();
+
+  torch::TensorOptions options;
+
+  options = options.dtype(x.dtype())
+                .device(x.device())
+                .requires_grad(x.requires_grad());
+  std::vector<int64_t> size{target_vec_count, num_relation * embedding_dim};
+  torch::Tensor output = torch::empty(size, options);
+
+  whole_graph::SpmmCsrRelationalNoWeightForward(whole_graph::pytorch::C10ScalarToWMType(x.dtype().toScalarType()),
+                                                csr_row_ptr.data_ptr<int>(),
+                                                target_vec_count,
+                                                csr_col_ind.data_ptr<int>(),
+                                                csr_col_ind.sizes()[0],
+                                                edge_type.data_ptr<int8_t>(),
+                                                x.data_ptr(),
+                                                embedding_dim,// embedding dim
+                                                x.stride(0),
+                                                x.sizes()[0],// total column count
+                                                output.data_ptr(),
+                                                embedding_dim * num_relation,
+                                                num_relation,
+                                                aggregator,
+                                                stream);
+
+  return output;
+}
+
+torch::Tensor spmm_csr_relational_noweight_backward(const torch::Tensor &csr_row_ptr,
+                                                    const torch::Tensor &csr_col_ind,
+                                                    const torch::Tensor &edge_type,
+                                                    const torch::Tensor &sample_dup_count,
+                                                    const torch::Tensor &grad_output,
+                                                    int64_t num_relation,
+                                                    int64_t aggregator) {
+  TORCH_CHECK(num_relation > 0, "num_relation should be > 0");
+  TORCH_CHECK(csr_row_ptr.dtype() == torch::ScalarType::Int, "CSR row_ptr should be Int tensor.");
+  TORCH_CHECK(csr_col_ind.dtype() == torch::ScalarType::Int, "CSR col_ind should be Int tensor.");
+  TORCH_CHECK(edge_type.dtype() == torch::ScalarType::Char, "edge_type should be Char tensor.");
+  TORCH_CHECK(sample_dup_count.dtype() == torch::ScalarType::Int, "sample_dup_count should be Int tensor.");
+  TORCH_CHECK(grad_output.dtype() == torch::ScalarType::Float || grad_output.dtype() == torch::ScalarType::Half,
+              "grad_output should be half or float.");
+  TORCH_CHECK(csr_row_ptr.dim() == 1, "CSR row_ptr should be 1-D tensor.");
+  TORCH_CHECK(csr_col_ind.dim() == 1, "CSR col_ind should be 1-D tensor.");
+  TORCH_CHECK(grad_output.dim() == 2, "x should be 2-D tensor.");
+  TORCH_CHECK(sample_dup_count.dim() == 1, "sample_dup_count should be 1-D tensor.");
+  TORCH_CHECK(csr_row_ptr.sizes()[0] >= 1, "CSR row_ptr size should be larger than 0.");
+  TORCH_CHECK(csr_col_ind.sizes()[0] == edge_type.sizes()[0], "CSR col_ind should be same size as edge_type");
+  TORCH_CHECK(aggregator >= 0 && aggregator < 2, "aggregator should be 0, 1");
+
+  int64_t target_vec_count = csr_row_ptr.sizes()[0] - 1;
+  int64_t neighboors_count = csr_col_ind.sizes()[0];
+  int64_t input_count = sample_dup_count.sizes()[0];
+
+  TORCH_CHECK(grad_output.size(1) % num_relation == 0, "grad_output last not divided by num_relation");
+  int64_t embedding_dim = grad_output.size(1) / num_relation;
+  int64_t embedding_stride = grad_output.stride(0);
+  cudaStream_t stream = at::cuda::getCurrentCUDAStream();
+
+  torch::TensorOptions x_options;
+
+  x_options = x_options.dtype(grad_output.dtype())
+                  .device(grad_output.device());
+  std::vector<int64_t> size{input_count, embedding_dim};
+  torch::Tensor grad_x = torch::empty(size, x_options);
+
+  SpmmCsrRelationalNoWeightBackward(whole_graph::pytorch::C10ScalarToWMType(grad_output.dtype().toScalarType()),
+                                    csr_row_ptr.data_ptr<int>(),
+                                    csr_col_ind.data_ptr<int>(),
+                                    edge_type.data_ptr<int8_t>(),
+                                    sample_dup_count.data_ptr<int>(),
+                                    grad_output.data_ptr(),
+                                    embedding_stride,
+                                    grad_x.data_ptr(),
+                                    embedding_dim,
+                                    target_vec_count,// total row count,
+                                    neighboors_count,
+                                    input_count,// total column count
+                                    embedding_dim,
+                                    num_relation,
+                                    aggregator,
+                                    stream);
+
+  return grad_x;
 }
 
 static auto registry =
@@ -433,6 +554,6 @@ static auto registry =
         .op("wholegraph::spadd_gat_csr_backward", &spadd_gat_csr_backward)
         .op("wholegraph::edge_weight_softmax_forward", &edge_weight_softmax_forward)
         .op("wholegraph::edge_weight_softmax_backward", &edge_weight_softmax_backward)
-        .op("wholegraph::csr_add_self_loop", &csr_add_self_loop);
-
-
+        .op("wholegraph::csr_add_self_loop", &csr_add_self_loop)
+        .op("wholegraph::spmm_csr_relational_noweight_forward", &spmm_csr_relational_noweight_forward)
+        .op("wholegraph::spmm_csr_relational_noweight_backward", &spmm_csr_relational_noweight_backward);

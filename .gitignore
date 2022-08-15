@@ -36,18 +36,16 @@ wheels/
 _skbuild/
 cufile.log
 
-	
 ## Patching
 *.diff
 *.orig
 *.rej
-	
+
 ## C++ build directories & artifacts
 CMakeFiles/
 Debug
 build/
 
-	
 ## Eclipse IDE
 .project
 .cproject
@@ -61,6 +59,10 @@ build/
 *.iws
 .pydevproject
 
+## CLion
+.idea/
+cmake-build-debug/
+
 # Jupyter Notebooks
 .ipynb_checkpoints
 
@@ -71,3 +73,10 @@ cpp/doxygen/html
 # Sphinx docs & build artifacts
 docs/wholegraph/source/api_docs/api/*
 
+# others
+local_scripts/
+build
+*pyc
+compile_commands.json
+docker_run.bash
+.devcontainer
