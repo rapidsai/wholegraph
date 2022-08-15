@@ -26,7 +26,7 @@ It is recommended to use our [Dockerfile](Dockerfile)
 
 ### Compile
 
-To compile WholeMemory, from source directory:
+To compile WholeGraph, from source directory:
 
 ```shell script
 mkdir build
