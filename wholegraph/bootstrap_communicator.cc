@@ -356,9 +356,6 @@ void BootstrapCommunicatorImpl::InitRank(int size, WmmpUniqueId unique_id, int r
   WM_CUDA_CHECK(cudaStreamCreate(&nccl_stream_));
   WM_CUDA_CHECK(cudaEventCreate(&event_));
 
-  // Make sure the CUDA runtime is initialized.
-  WM_CUDA_CHECK(cudaFree(nullptr));
-
   if (size < 1 || rank < 0 || rank >= size) {
     fprintf(stderr, "Invalid rank requested : %d/%d", rank, size);
     abort();
@@ -382,21 +379,6 @@ void BootstrapCommunicatorImpl::Synchronize() {
     WM_CHECK(nccl_error == ncclSuccess);
   }
 }
-
-#if 0
-static int GetCudaCompCap() {
-  int cudaDev;
-  if (cudaGetDevice(&cudaDev) != cudaSuccess) return 0;
-  int ccMajor, ccMinor;
-  if (cudaDeviceGetAttribute(&ccMajor, cudaDevAttrComputeCapabilityMajor, cudaDev) != cudaSuccess) return 0;
-  if (cudaDeviceGetAttribute(&ccMinor, cudaDevAttrComputeCapabilityMinor, cudaDev) != cudaSuccess) return 0;
-  return ccMajor * 10 + ccMinor;
-}
-
-static void int64ToBusId(int64_t id, char *busId) {
-  sprintf(busId, "%04lx:%02lx:%02lx.%01lx", (id) >> 20, (id & 0xff000) >> 12, (id & 0xff0) >> 4, (id & 0xf));
-}
-#endif
 
 static void busIdToInt64(const char *busId, int64_t *id) {
   const int size = strlen(busId);
