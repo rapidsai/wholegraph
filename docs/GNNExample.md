@@ -105,7 +105,7 @@ The final script is [gnn_example_link_pred.py](../examples/gnn/gnn_example_link_
 We train 1 epoch of all 60M edges(double of original 30M citation edges as it is converted to undirected graph).
 All test run on DGX-A100 640G. For dgl as the script support only 1 GPU. So only 1 GPU is tested.
 For WholeGraph, we run 1 GPU and 8 GPU tests.
-The performance and accuracy are show below. From this we see that WholeGraph has both higher performance and higher accuracy.
+The performance and accuracy are shown below. From this we see that WholeGraph has both higher performance and higher accuracy.
 
 | FrameWork | Epoch time (s) | DGL Valid MRR| DGL Test MRR | OGB Valid MRR | OGB Test MRR |
 |:---------:| :------------: | :----------: | :----------: | :-----------: | :----------: |
