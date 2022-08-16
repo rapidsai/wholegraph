@@ -11,7 +11,7 @@ Typical applicable scenarios are applications needs access of large GPU memory t
 Including but not limited to large graph storage or large embedding storage related applications.
 For example: classic graph computing tasks with large graphs, large graph neural networks, or large knowledge graph tasks.
 
-## WholeMemory Memory memory types
+## WholeMemory memory types
 
 When memory footprint is larger than one GPU's device memory, to make the work run, several approach may be adopted.
 
