@@ -37,7 +37,7 @@ After all this, Tensor object can be created using `create_wm_tensor` wrapped in
 Please be noted that this is a collective operation, all process should call it together with the same parameters.
 - The first argument is the communicator.
 - The second argument is the shape of the tensor, in an array.
-- The third argument is the stride of the tensor, also in an array, or left it empty to automaticly compute that.
+- The third argument is the stride of the tensor, also in an array, or left it empty to automatically compute that.
 - The forth argument is the datatype of the tensor.
 - The fifth argument is the type to allocate, valid values are WmTensorType.HOST, WmTensorType.DEVICE, WmTensorType.CHUNKED and WmTensorType.NCCL.
 
