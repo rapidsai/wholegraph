@@ -39,7 +39,7 @@ Or just call `WholeMemoryFinalize` if WholeMemory is not needed which will autom
 
 ### WholeMemory type API
 
-All the multi-process multi-GPU APIs start with `Wmmp` which stants for WholeMemory Multi-Process.
+All the multi-process multi-GPU APIs start with `Wmmp` which stands for WholeMemory Multi-Process.
 
 Same as single process multi-GPU mode, the basic APIs for multi-process multi-GPU mode WholeMemory APIs are `WmmpMalloc`, `WmmpMallocHost` and `WmmpFree`.
 
