@@ -164,7 +164,7 @@ The final script is [gnn_example_rgnn.py](../examples/gnn/gnn_example_rgnn.py).
 We train 10 epoch of DGL with single GPU as DGL's multi-GPU script seems don't work well.
 All test run on DGX-A100 640G.
 For WholeGraph, we use 8 GPUs.
-The performance and accuracy are show below. From this we see that WholeGraph has higher performance and same accuracy.
+The performance and accuracy are shown below. From this we see that WholeGraph has higher performance and same accuracy.
 
 | FrameWork | Epoch train time (s) | Valid Time (s) | Valid Accuracy @5th epoch | Valid Accuracy @40th epoch |
 |:---------:| :------------: | :----------: | :----------: | :----------: |
