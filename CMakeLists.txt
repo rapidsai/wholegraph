@@ -11,7 +11,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-cmake_minimum_required(VERSION 3.14)
+cmake_minimum_required(VERSION 3.20.1)
 
 include(./fetch_rapids.cmake)
 include(rapids-cmake)
@@ -20,8 +20,7 @@ include(rapids-cuda)
 include(rapids-export)
 include(rapids-find)
 
-rapids_cuda_init_architectures(WHOLEGRAPH)
-
+set(CMAKE_CUDA_ARCHITECTURES 70-real 75-real 80-real 86)
 project(wholegraph CXX CUDA)
 set(CMAKE_CXX_STANDARD 14)
 
@@ -39,18 +38,35 @@ if (NOT DEFINED WHOLEGRAPH_ENABLE_TESTS)
     message(STATUS "Setting WHOLEGRAPH_ENABLE_TESTS to  ${_WHOLEGRAPH_ENABLE_TESTS}")
 endif ()
 
-# Add default project CXX flags
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread -fPIC -Wall -O3 -g -D_FILE_OFFSET_BITS=64")
+set(default_build_type "RelWithDebInfo")
+if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+    message(STATUS "Setting build type to '${default_build_type}' as none was specified.")
+    set(CMAKE_BUILD_TYPE "${default_build_type}" CACHE
+            STRING "Choose the type of build." FORCE)
+    # Set the possible values of build type for cmake-gui
+    set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS
+            "Debug" "Release" "MinSizeRel" "RelWithDebInfo")
+endif()
+
+# enable assert in RelWithDebInfo build type
+set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O3 -g")
+message(STATUS "CMAKE_BUILD_TYPE is ${CMAKE_BUILD_TYPE}")
+message(STATUS "CMAKE_CXX_FLAGS_RELWITHDEBINFO= ${CMAKE_CXX_FLAGS_RELWITHDEBINFO}")
+message(STATUS "CMAKE_CXX_FLAGS_RELEASE= ${CMAKE_CXX_FLAGS_RELEASE}")
+
 include_directories(${PROJECT_SOURCE_DIR}/include)
 include_directories(${PROJECT_SOURCE_DIR}/wholegraph)
 
+# Thread library
+find_package(Threads)
+
 # CUDA
-find_package(CUDA REQUIRED 11.0)
-set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -O3 -g -gencode arch=compute_70,code=sm_70 -gencode arch=compute_80,code=sm_80 -gencode arch=compute_86,code=sm_86 -gencode arch=compute_70,code=compute_70")
-include_directories(SYSTEM ${CUDA_INCLUDE_DIRS})
-list(APPEND LINKER_LIBS ${CUDA_LIBRARIES})
-message(STATUS "CUDA_LIBRARIES ${CUDA_LIBRARIES}")
-list(APPEND LINKER_LIBS cuda)
+find_package(CUDAToolkit REQUIRED 11.0)
+
+# NCCL
+include(${PROJECT_SOURCE_DIR}/cmake/thirdparty/get_nccl.cmake)
+
+set(USE_CXX11_ABI TRUE)
 
 if (WHOLEGRAPH_NEED_PYTHON)
     # PYTHON
@@ -97,18 +113,14 @@ if (WHOLEGRAPH_NEED_PYTHON)
                 OUTPUT_VARIABLE Torch_CXX11 OUTPUT_STRIP_TRAILING_WHITESPACE)
         string(TOUPPER ${Torch_CXX11} Torch_CXX11)
         message(STATUS "Torch_CXX11: ${Torch_CXX11}")
-        if (${Torch_CXX11})
-            message(STATUS "Setting Torch CXX ABI = 1")
-            add_definitions(-D_GLIBCXX_USE_CXX11_ABI=1)
-        else()
-            message(STATUS "Setting Torch CXX ABI = 0")
-            add_definitions(-D_GLIBCXX_USE_CXX11_ABI=0)
-        endif()
+        set(USE_CXX11_ABI ${Torch_CXX11})
      endif()
 
 endif (WHOLEGRAPH_NEED_PYTHON)
 
-list(APPEND WHOLEGRAPH_SOURCES ${PROJECT_SOURCE_DIR}/wholegraph/whole_memory.cc
+add_library(whole_graph STATIC "")
+target_sources(whole_graph PRIVATE
+        ${PROJECT_SOURCE_DIR}/wholegraph/whole_memory.cc
         ${PROJECT_SOURCE_DIR}/wholegraph/cuda_env_fns.cc
         ${PROJECT_SOURCE_DIR}/wholegraph/file_utils.cc
         ${PROJECT_SOURCE_DIR}/wholegraph/parallel_utils.cc
@@ -121,36 +133,20 @@ list(APPEND WHOLEGRAPH_SOURCES ${PROJECT_SOURCE_DIR}/wholegraph/whole_memory.cc
         ${PROJECT_SOURCE_DIR}/wholegraph/whole_graph_subgraph_extractor.cu
         ${PROJECT_SOURCE_DIR}/wholegraph/whole_graph_negative_sampler.cu
         ${PROJECT_SOURCE_DIR}/wholegraph/gnn_ops.cu
-        ${PROJECT_SOURCE_DIR}/wholegraph/bootstrap_communicator.cc)
-
-list(APPEND WHOLEGRAPH_LINK_LIBRARIES cuda)
-
-set(NCCL_INCLUDE_DIR $ENV{NCCL_INCLUDE_DIR} CACHE PATH "Folder contains NVIDIA NCCL headers")
-set(NCCL_LIB_DIR $ENV{NCCL_LIB_DIR} CACHE PATH "Folder contains NVIDIA NCCL libraries")
-list(APPEND NCCL_ROOT ${CUDA_TOOLKIT_ROOT_DIR})
-list(APPEND CMAKE_PREFIX_PATH ${NCCL_ROOT})
-find_path(NCCL_INCLUDE_DIRS NAMES nccl.h HINTS ${NCCL_INCLUDE_DIR})
-find_library(NCCL_LIBRARIES NAMES nccl HINTS ${NCCL_LIB_DIR})
-include(FindPackageHandleStandardArgs)
-find_package_handle_standard_args(NCCL DEFAULT_MSG NCCL_INCLUDE_DIRS NCCL_LIBRARIES)
-
-if (NCCL_FOUND)
-    message(STATUS "NCCL_INCLUDE_DIRS: ${NCCL_INCLUDE_DIRS}")
-    message(STATUS "NCCL_LIBRARIES: ${NCCL_LIBRARIES}")
-    include_directories(${NCCL_INCLUDE_DIRS})
-else()
-    message(FATAL_ERROR, "NCCL not found.")
-    return()
-endif()
-
-list(APPEND WHOLEGRAPH_LINK_LIBRARIES ${NCCL_LIBRARIES})
-
-add_library(whole_graph STATIC
-        ${WHOLEGRAPH_SOURCES})
-set_property(TARGET whole_graph PROPERTY CUDA_ARCHITECTURES 70-real 80-real 86-real 70-virtual)
+        ${PROJECT_SOURCE_DIR}/wholegraph/bootstrap_communicator.cc
+        )
 
 set_property(TARGET whole_graph PROPERTY POSITION_INDEPENDENT_CODE ON)
-target_link_libraries(whole_graph ${LINKER_LIBS} ${WHOLEGRAPH_LINK_LIBRARIES})
+target_compile_definitions(whole_graph PUBLIC -D_FILE_OFFSET_BITS=64)
+if (${USE_CXX11_ABI})
+    message(STATUS "Using CXX ABI = 1")
+    target_compile_definitions(whole_graph PUBLIC -D_GLIBCXX_USE_CXX11_ABI=1)
+else()
+    message(STATUS "Using CXX ABI = 0")
+    target_compile_definitions(whole_graph PUBLIC -D_GLIBCXX_USE_CXX11_ABI=0)
+endif()
+
+target_link_libraries(whole_graph CUDA::cuda_driver CUDA::cudart NCCL::NCCL)
 
 if (WHOLEGRAPH_BUILD_PYTORCH)
     message(STATUS "Building PyTorch support library")

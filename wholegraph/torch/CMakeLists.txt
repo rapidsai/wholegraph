@@ -11,10 +11,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-include_directories(SYSTEM ${TORCH_INCLUDE_DIRS})
-list(APPEND TORCH_LINKER_LIBS ${TORCH_LIBRARIES})
-include_directories(${PYTHON_INCLUDE_DIRS})
-
 pybind11_add_module(wholegraph_pytorch
         ${PROJECT_SOURCE_DIR}/wholegraph/torch/pytorch_cuda_env_fns.cc
         ${PROJECT_SOURCE_DIR}/wholegraph/torch/pytorch_dtype.cc
@@ -24,6 +20,16 @@ pybind11_add_module(wholegraph_pytorch
         ${PROJECT_SOURCE_DIR}/wholegraph/torch/graph_sampler_gpu.cc
         ${PROJECT_SOURCE_DIR}/wholegraph/torch/gnn_ops_gpu.cc
         ${PROJECT_SOURCE_DIR}/wholegraph/torch/whole_graph_pytorch_wrapper.cc)
-target_link_libraries(wholegraph_pytorch PUBLIC pybind11::module ${LINKER_LIBS} ${TORCH_LINKER_LIBS} ${PYTHON_LIBRARIES} whole_graph)
-set_property(TARGET wholegraph_pytorch PROPERTY CUDA_ARCHITECTURES 70-real 80-real 86-real 70-virtual)
+message(STATUS "TORCH_INCLUDE_DIRS=${TORCH_INCLUDE_DIRS}")
+target_include_directories(wholegraph_pytorch SYSTEM PRIVATE ${TORCH_INCLUDE_DIRS})
+target_include_directories(wholegraph_pytorch PRIVATE ${PYTHON_INCLUDE_DIRS})
+target_link_libraries(wholegraph_pytorch PRIVATE
+        pybind11::module
+        CUDA::cuda_driver
+        CUDA::cudart
+        NCCL::NCCL
+        ${TORCH_LINKER_LIBS}
+        ${TORCH_LIBRARIES}
+        ${PYTHON_LIBRARIES}
+        whole_graph)
 
