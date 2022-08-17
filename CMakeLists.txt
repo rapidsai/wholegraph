@@ -116,7 +116,7 @@ if (WHOLEGRAPH_NEED_PYTHON)
         set(USE_CXX11_ABI ${Torch_CXX11})
      endif()
 
-endif (WHOLEGRAPH_NEED_PYTHON)
+endif ()
 
 add_library(whole_graph STATIC "")
 target_sources(whole_graph PRIVATE
