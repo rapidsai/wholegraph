@@ -12,15 +12,15 @@
 # limitations under the License.
 
 add_executable(whole_memory_mp_test whole_memory_mp_test.cu)
-target_link_libraries(whole_memory_mp_test whole_graph)
+target_link_libraries(whole_memory_mp_test PRIVATE whole_graph)
 
 add_executable(whole_memory_sp_test whole_memory_sp_test.cu)
-target_link_libraries(whole_memory_sp_test whole_graph)
+target_link_libraries(whole_memory_sp_test PRIVATE whole_graph)
 
 add_executable(whole_memory_perf_scan whole_memory_perf_scan.cu)
-target_link_libraries(whole_memory_perf_scan whole_graph)
+target_link_libraries(whole_memory_perf_scan PRIVATE whole_graph)
 
 add_executable(bootstrap_test bootstrap_test.cu)
-target_link_libraries(bootstrap_test whole_graph)
+target_link_libraries(bootstrap_test PRIVATE whole_graph)
 
 add_executable(block_topk_test block_topk_test.cu)

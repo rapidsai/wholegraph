@@ -20,7 +20,6 @@ pybind11_add_module(wholegraph_pytorch
         ${PROJECT_SOURCE_DIR}/wholegraph/torch/graph_sampler_gpu.cc
         ${PROJECT_SOURCE_DIR}/wholegraph/torch/gnn_ops_gpu.cc
         ${PROJECT_SOURCE_DIR}/wholegraph/torch/whole_graph_pytorch_wrapper.cc)
-message(STATUS "TORCH_INCLUDE_DIRS=${TORCH_INCLUDE_DIRS}")
 target_include_directories(wholegraph_pytorch SYSTEM PRIVATE ${TORCH_INCLUDE_DIRS})
 target_include_directories(wholegraph_pytorch PRIVATE ${PYTHON_INCLUDE_DIRS})
 target_link_libraries(wholegraph_pytorch PRIVATE

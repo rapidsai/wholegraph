@@ -20,8 +20,9 @@ include(rapids-cuda)
 include(rapids-export)
 include(rapids-find)
 
-set(CMAKE_CUDA_ARCHITECTURES 70-real 75-real 80-real 86)
+rapids_cuda_init_architectures(WHOLEGRAPH)
 project(wholegraph CXX CUDA)
+set(CMAKE_CUDA_ARCHITECTURES 70-real 75-real 80-real 86)
 set(CMAKE_CXX_STANDARD 14)
 
 # PyTorch Option
@@ -38,24 +39,11 @@ if (NOT DEFINED WHOLEGRAPH_ENABLE_TESTS)
     message(STATUS "Setting WHOLEGRAPH_ENABLE_TESTS to  ${_WHOLEGRAPH_ENABLE_TESTS}")
 endif ()
 
-set(default_build_type "RelWithDebInfo")
-if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
-    message(STATUS "Setting build type to '${default_build_type}' as none was specified.")
-    set(CMAKE_BUILD_TYPE "${default_build_type}" CACHE
-            STRING "Choose the type of build." FORCE)
-    # Set the possible values of build type for cmake-gui
-    set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS
-            "Debug" "Release" "MinSizeRel" "RelWithDebInfo")
-endif()
+rapids_cmake_build_type(RelWithDebInfo)
 
 # enable assert in RelWithDebInfo build type
 set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O3 -g")
 message(STATUS "CMAKE_BUILD_TYPE is ${CMAKE_BUILD_TYPE}")
-message(STATUS "CMAKE_CXX_FLAGS_RELWITHDEBINFO= ${CMAKE_CXX_FLAGS_RELWITHDEBINFO}")
-message(STATUS "CMAKE_CXX_FLAGS_RELEASE= ${CMAKE_CXX_FLAGS_RELEASE}")
-
-include_directories(${PROJECT_SOURCE_DIR}/include)
-include_directories(${PROJECT_SOURCE_DIR}/wholegraph)
 
 # Thread library
 find_package(Threads)
@@ -136,6 +124,7 @@ target_sources(whole_graph PRIVATE
         ${PROJECT_SOURCE_DIR}/wholegraph/bootstrap_communicator.cc
         )
 
+target_include_directories(whole_graph PUBLIC ${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/wholegraph)
 set_property(TARGET whole_graph PROPERTY POSITION_INDEPENDENT_CODE ON)
 target_compile_definitions(whole_graph PUBLIC -D_FILE_OFFSET_BITS=64)
 if (${USE_CXX11_ABI})
@@ -146,7 +135,8 @@ else()
     target_compile_definitions(whole_graph PUBLIC -D_GLIBCXX_USE_CXX11_ABI=0)
 endif()
 
-target_link_libraries(whole_graph CUDA::cuda_driver CUDA::cudart NCCL::NCCL)
+target_link_libraries(whole_graph PRIVATE CUDA::cuda_driver NCCL::NCCL)
+target_link_libraries(whole_graph PUBLIC CUDA::cudart)
 
 if (WHOLEGRAPH_BUILD_PYTORCH)
     message(STATUS "Building PyTorch support library")
