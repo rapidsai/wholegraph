@@ -109,10 +109,6 @@ parser.add_option(
     help="whether use nccl for embeddings, default False",
 )
 
-"""
-parser.add_option("--local_rank", type=int, dest="local_rank", default=os.getenv('OMPI_COMM_WORLD_LOCAL_RANK', 0))
-parser.add_option("--world_size", type=int, dest="world_size", default=int(os.environ["WORLD_SIZE"]) if "WORLD_SIZE" in os.environ else 1)
-"""
 (options, args) = parser.parse_args()
 
 
@@ -547,15 +543,6 @@ def train(train_data, valid_data, model, optimizer):
                 )
             )
     valid(valid_dataloader, model)
-
-
-"""
-Performance: (epoch time in seconds)
-Baseline(embedding not trainable): 6.0
-+ SPMM Backward: 8.15
-+ Embedding Backward to gradients: 10.24
-+ Adam optimizer: 13.7
-"""
 
 
 def main():

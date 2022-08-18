@@ -221,13 +221,7 @@ def download_and_convert_papers100m(save_dir, ogb_root_dir="dataset"):
     node_feat_dim = node_feat.shape[1]
     node_feat_name_prefix = "papers100m_node_feat_paper"
     edge_index_name_prefix = "papers100m_edge_index_paper_cites_paper"
-    """
-    edge_feat_dim = 0
-    if edge_feat is not None:
-        if not isinstance(edge_feat, np.ndarray) or len(edge_feat.shape) != 2 or edge_feat.shape[0] != num_edges:
-            raise ValueError('edge_feat is not numpy.ndarray of shape (num_edges, x)')
-        edge_feat_dim = edge_feat.shape[1]
-    """
+
     nodes = [
         {
             "name": "paper",
@@ -321,13 +315,7 @@ def download_and_convert_citation2(save_dir, ogb_root_dir="dataset"):
     node_feat_dim = node_feat.shape[1]
     node_feat_name_prefix = "citation2_node_feat_paper"
     edge_index_name_prefix = "citation2_edge_index_paper_cites_paper"
-    """
-    edge_feat_dim = 0
-    if edge_feat is not None:
-        if not isinstance(edge_feat, np.ndarray) or len(edge_feat.shape) != 2 or edge_feat.shape[0] != num_edges:
-            raise ValueError('edge_feat is not numpy.ndarray of shape (num_edges, x)')
-        edge_feat_dim = edge_feat.shape[1]
-    """
+
     nodes = [
         {
             "name": "paper",
@@ -600,38 +588,7 @@ class HomoGraph(object):
                 assert feat_dtype == src_dtype
             self.feat_dtype = feat_dtype
             node_emb_file_prefix = os.path.join(save_dir, nodes[0]["emb_file_prefix"])
-            """
-            self.node_feat = create_wm_tensor(
-                self.wm_comm,
-                [self.node_count, embedding_dim],
-                [],
-                torch.float32,
-                use_chunked,
-                use_host_memory,
-            )
-            if use_host_memory:
-                self.node_feat = wg.get_tensor_view(
-                    self.node_feat, torch.device("cuda", torch.cuda.current_device())
-                )
-            if use_chunked:
-                wg.load_embedding_to_chunked_tensor_from_file_prefix(
-                    self.node_feat,
-                    src_dtype,
-                    feat_dtype,
-                    self.node_count,
-                    embedding_dim,
-                    node_emb_file_prefix,
-                )
-            else:
-                wg.load_embedding_to_tensor_from_file_prefix(
-                    self.node_feat,
-                    src_dtype,
-                    feat_dtype,
-                    self.node_count,
-                    embedding_dim,
-                    node_emb_file_prefix,
-                )
-            """
+
             if self.wm_nccl_embedding_comm is None:
                 self.node_feat = create_wm_tensor_from_file(
                     [self.node_count, embedding_dim],

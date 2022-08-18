@@ -942,22 +942,6 @@ class WGRGCN(torch.nn.Module):
         return self.mlp(x)
 
 
-"""
-def bucket_mixed_ids(mixed_ids: torch.Tensor, mixed_ids_to_typed_table: torch.Tensor, node_type_count: int,
-                     guarantee_ntype: Union[int, None] = None):
-    if guarantee_ntype is not None:
-        # don't change order if guaranteed same node count
-        bucket_csr_array = [0 if i <= guarantee_ntype else mixed_ids.shape[0] for i in range(node_type_count + 1)]
-        return mixed_ids, torch.IntTensor(bucket_csr_array, device='cpu'), None
-    typed_ids = embedding_ops.embedding_lookup_nograd_common(mixed_ids_to_typed_table, mixed_ids)
-    sorted_typed_ids, raw_indice = torch.sort(typed_ids)
-    bucketed_mixed_ids = mixed_ids[raw_indice]
-    bucket_csr_tensor = torch.ops.wholegraph.get_bucketed_csr_from_sorted_typed_ids(sorted_typed_ids,
-                                                                                     node_type_count).cpu()
-    return bucketed_mixed_ids, bucket_csr_tensor, raw_indice
-"""
-
-
 def build_wg_subgraph(idx: torch.Tensor, graph: MAG240HomoGraph, max_neighbors):
     paper_ids = idx.cuda()
     mixed_paper_ids = embedding_ops.embedding_lookup_nograd_common(

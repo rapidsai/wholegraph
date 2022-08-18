@@ -296,25 +296,6 @@ void WmmpLoadLocalEmbeddingFromFile(WMType emb_type,
   }
 }
 
-#if 0
-template <typename OutputT, typename ParamT, typename IdxT, typename ParamHandleT = ParamT>
-__global__ void WholeMemoryGatherKernelOld(OutputT *__restrict__ output,
-                                        const ParamHandleT *__restrict__ parameter,
-                                        const IdxT *__restrict__ indice,
-                                        size_t storage_offset,
-                                        int64_t embedding_dim,
-                                        int64_t embedding_stride,
-                                        int64_t output_stride) {
-  IdxT idx = indice[blockIdx.x];
-  whole_graph::PtrGen<const ParamHandleT, ParamT> ptr_gen(parameter, storage_offset);
-  const ParamT *param_ptr = ptr_gen.At((size_t) idx * embedding_stride);
-  OutputT *output_ptr = output + (size_t) blockIdx.x * output_stride;
-  for (int i = threadIdx.x; i < embedding_dim; i += blockDim.x) {
-    output_ptr[i] = (OutputT)param_ptr[i];
-  }
-}
-#endif
-
 template<typename T>
 __device__ __forceinline__ void MovTypedData(T *to, const T *from) {
   *to = *from;

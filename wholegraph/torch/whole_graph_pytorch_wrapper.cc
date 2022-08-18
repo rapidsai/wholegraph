@@ -823,15 +823,14 @@ static PyObject *ScaleTypeToDtype(c10::ScalarType st) {
   PyObject *po = THPDtype_New(st, name);
   return po;
 }
-#if 0
-static whole_graph::WMType PytorchDtypeToWMType(py::object pdtype) {
+
+whole_graph::WMType PytorchDtypeToWMType(py::object pdtype) {
   torch::ScalarType torch_scalar_type = torch::python::detail::py_object_to_dtype(std::move(pdtype));
   c10::ScalarType scalar_type;
   scalar_type = torch_scalar_type;
   whole_graph::WMType wmtype = whole_graph::pytorch::C10ScalarToWMType(scalar_type);
   return wmtype;
 }
-#endif
 
 void PyTorchWholeMemoryChunked2DSubTensorAssign(const torch::Tensor &t,
                                                 const whole_graph::pytorch::ChunkedTensor &ct,

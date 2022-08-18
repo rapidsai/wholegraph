@@ -83,13 +83,7 @@ def download_and_convert_node_classification(
     edge_index_name_prefix = "_".join(
         [normalized_graph_name, "edge_index", node_name, relation_name, node_name]
     )
-    """
-    edge_feat_dim = 0
-    if edge_feat is not None:
-        if not isinstance(edge_feat, np.ndarray) or len(edge_feat.shape) != 2 or edge_feat.shape[0] != num_edges:
-            raise ValueError('edge_feat is not numpy.ndarray of shape (num_edges, x)')
-        edge_feat_dim = edge_feat.shape[1]
-    """
+
     nodes = [
         {
             "name": node_name,
@@ -195,13 +189,7 @@ def download_and_convert_link_prediction(
     edge_index_name_prefix = "_".join(
         [normalized_graph_name, "edge_index", node_name, relation_name, node_name]
     )
-    """
-    edge_feat_dim = 0
-    if edge_feat is not None:
-        if not isinstance(edge_feat, np.ndarray) or len(edge_feat.shape) != 2 or edge_feat.shape[0] != num_edges:
-            raise ValueError('edge_feat is not numpy.ndarray of shape (num_edges, x)')
-        edge_feat_dim = edge_feat.shape[1]
-    """
+
     nodes = [
         {
             "name": node_name,

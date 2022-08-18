@@ -187,50 +187,6 @@ def create_wm_tensor(
         raise ValueError("Invalid wm_tensor_type")
 
 
-"""
-def create_wm_tensor(
-    wm_comm,
-    sizes,
-    strides=[],
-    tensor_dtype=torch.float32,
-    chunked=True,
-    use_host_memory=False,
-):
-    if chunked:
-        return wg.create_chunked_tensor(sizes, strides, tensor_dtype, wm_comm)
-    else:
-        if use_host_memory:
-            return wg.get_tensor_view(
-                wg.create_tensor(
-                    sizes, strides, tensor_dtype, use_host_memory, wm_comm
-                ),
-                torch.device("cuda", torch.cuda.current_device()),
-            )
-        else:
-            return wg.create_tensor(
-                sizes, strides, tensor_dtype, use_host_memory, wm_comm
-            )
-
-
-def create_wm_tensor_from_file(
-    shape, dtype, wm_comm, filename, use_chunked: bool, use_host_memory: bool, part_count: int = 0
-):
-    file_elt_count = wg.stat_filelist_element_count(filename, dtype)
-    if len(shape) != 0:
-        shape_count = 1
-        for shape_dimsize in shape:
-            shape_count *= shape_dimsize
-        assert shape_count == file_elt_count
-    else:
-        shape = (file_elt_count,)
-    wmt = create_wm_tensor(wm_comm, shape, [], dtype, use_chunked, use_host_memory)
-    lt = get_local_tensor(wmt)
-    lt_2d = lt.reshape((lt.numel(), 1))
-    wg.load_local_tensor_from_embedding_file(lt_2d, filename, part_count, wm_comm)
-    return wmt
-"""
-
-
 def create_wm_tensor_from_file(
     shape,
     dtype,

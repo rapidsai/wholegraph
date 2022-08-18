@@ -94,10 +94,7 @@ parser.add_option(
     default=False,
     help="whether use nccl for embeddings, default False",
 )
-"""
-parser.add_option("--local_rank", type=int, dest="local_rank", default=os.getenv('OMPI_COMM_WORLD_LOCAL_RANK', 0))
-parser.add_option("--world_size", type=int, dest="world_size", default=int(os.environ["WORLD_SIZE"]) if "WORLD_SIZE" in os.environ else 1)
-"""
+
 (options, args) = parser.parse_args()
 
 use_chunked = True
