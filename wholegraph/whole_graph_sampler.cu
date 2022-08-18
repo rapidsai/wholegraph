@@ -885,6 +885,9 @@ __device__ __host__ __forceinline__ T AcquireLoadGlobal(const T *ptr) {
 
 template<>
 __device__ __host__ __forceinline__ int AcquireLoadGlobal(const int *ptr) {
+#if defined(__CUDA_ARCH__) && (__CUDA_ARCH__ < 700)
+  #error "Current only architectures >= 700 supported."
+#endif
   int value;
   asm volatile("ld.acquire.gpu.global.u32 %0, [ %1 ];"
                : "=r"(value)
@@ -895,6 +898,9 @@ __device__ __host__ __forceinline__ int AcquireLoadGlobal(const int *ptr) {
 
 template<>
 __device__ __host__ __forceinline__ int64_t AcquireLoadGlobal(const int64_t *ptr) {
+#if defined(__CUDA_ARCH__) && (__CUDA_ARCH__ < 700)
+#error "Current only architectures >= 700 supported."
+#endif
   int64_t value;
   asm volatile("ld.acquire.gpu.global.u64 %0, [ %1 ];"
                : "=l"(value)
@@ -911,6 +917,9 @@ __device__ __host__ __forceinline__ void ReleaseStoreGlobal(T *ptr, T value) {
 
 template<>
 __device__ __host__ __forceinline__ void ReleaseStoreGlobal(int *ptr, int value) {
+#if defined(__CUDA_ARCH__) && (__CUDA_ARCH__ < 700)
+#error "Current only architectures >= 700 supported."
+#endif
   asm volatile("st.release.gpu.global.s32 [%0], %1;"
                :
                : "l"(ptr), "r"(value)
@@ -919,6 +928,9 @@ __device__ __host__ __forceinline__ void ReleaseStoreGlobal(int *ptr, int value)
 
 template<>
 __device__ __host__ __forceinline__ void ReleaseStoreGlobal(int64_t *ptr, int64_t value) {
+#if defined(__CUDA_ARCH__) && (__CUDA_ARCH__ < 700)
+#error "Current only architectures >= 700 supported."
+#endif
   asm volatile("st.release.gpu.global.s32 [%0], %1;"
                :
                : "l"(ptr), "l"(value)
@@ -1023,7 +1035,11 @@ class EdgeHashSet {
     EdgeIDType old_key = AcquireLoadGlobal(key_ptr);
     EdgeIDType old_value = AcquireLoadGlobal(value_ptr);
     if (old_key == key) {
-      while ((old_value = AcquireLoadGlobal(value_ptr)) == kInvalidValueID) __nanosleep(50);
+      while ((old_value = AcquireLoadGlobal(value_ptr)) == kInvalidValueID) {
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 700
+        __nanosleep(50);
+#endif
+      }
     }
     group.sync();
     unsigned int match_key_value = group.ballot(old_key == key && old_value == value);
@@ -1048,7 +1064,11 @@ class EdgeHashSet {
         return leader;
       } else if (old == key) {
         if (group.thread_rank() == leader) {
-          while ((old_value = AcquireLoadGlobal(value_ptr)) == kInvalidValueID) __nanosleep(50);
+          while ((old_value = AcquireLoadGlobal(value_ptr)) == kInvalidValueID) {
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 700
+            __nanosleep(50);
+#endif
+          }
         }
         group.sync();
         old_value = group.shfl(old_value, leader);

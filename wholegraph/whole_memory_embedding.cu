@@ -636,7 +636,11 @@ __global__ void WholeMemoryNCCLNodeCountForRanksKernel(const IdxT *indices,
     IdxT node_idx = indices[idx];
     int rank = node_idx / rank_interval_width;
     assert(rank >= 0 && rank < comm_size);
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 700
     atomicAdd_block(&rank_count_shared[rank], 1);
+#else
+    atomicAdd(&rank_count_shared[rank], 1);
+#endif
   }
   __syncthreads();
   for (int idx = threadIdx.x; idx < comm_size; idx += blockDim.x) {
