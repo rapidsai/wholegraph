@@ -263,7 +263,6 @@ void PerNodeUniformNegativeSampleComm(const std::function<void *(size_t)> &sampl
   thread_local std::mt19937 gen(rd());
   thread_local std::uniform_int_distribution<unsigned long long> distrib;
   unsigned long long random_seed = distrib(gen);
-  WM_CUDA_CHECK(cudaStreamSynchronize(stream));
   int count = input_node_count * negative_sample_count;
   auto *sample_output = (IdType *) sample_output_allocator(count);
   PerNodeUniformNegativeSampleSmallNodeOptKernel<IdType, WMIdType, WMOffsetType><<<input_node_count, 32, 0, stream>>>(
@@ -276,7 +275,6 @@ void PerNodeUniformNegativeSampleComm(const std::function<void *(size_t)> &sampl
       (WMIdType *) wm_csr_col_ptr,
       random_seed);
   WM_CUDA_CHECK(cudaGetLastError());
-  WM_CUDA_CHECK(cudaStreamSynchronize(stream));
 }
 
 template<typename IdType>
