@@ -1,18 +1,34 @@
+/*
+ * Copyright (c) 2019-2022, NVIDIA CORPORATION.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 #pragma once
 
 #include "data_type.h"
+#include "whole_chunked_memory.h"
 
 namespace whole_graph {
 
 void SpmmCsrNoWeightForward(WMType data_type,
                             const int *csr_row_ptr,
-                            int m,  // total row count
+                            int m,// total row count
                             const int *csr_col_ind,
                             int total_nz_element,
                             const void *input,
-                            int n,  // embedding dim
+                            int n,// embedding dim
                             int ldb,
-                            int k,  // total column count
+                            int k,// total column count
                             void *output,
                             int ldc,
                             int aggregator,
@@ -26,25 +42,25 @@ void SpmmCsrNoWeightBackword(WMType data_type,
                              int grad_out_stride,
                              void *grad_x,
                              int grad_x_stride,
-                             int m, // total row count,
+                             int m,// total row count,
                              int total_nz_element,
-                             int k,  // total column count
+                             int k,// total column count
                              int embedding_dim,
                              int aggregator,
                              cudaStream_t stream);
 
 void gSpmmCsrWeightedForward(WMType data_type,
                              const int *csr_row_ptr,
-                             int m,  // total row count
+                             int m,// total row count
                              const int *csr_col_ind,
                              int total_nz_element,
                              const void *weight,
                              int num_head,
                              const void *input,
-                             int n,  // embedding dim
+                             int n,// embedding dim
                              int ldb,
                              int ldb_head,
-                             int k,  // total column count
+                             int k,// total column count
                              void *output,
                              int ldc,
                              int ldc_head,
@@ -112,4 +128,66 @@ void CSRAddSelfLoop(const int *csr_row_ptr,
                     int *csr_col_ind_looped,
                     int *sample_dup_count_looped,
                     cudaStream_t stream);
-}
+
+void MixedGraphSGC(WMType param_type,
+                   WMType id_type,
+                   void *param,
+                   const int64_t *csr_row_ptr,
+                   const void *csr_col_idx,
+                   const int64_t *to_typed,
+                   int target_type,
+                   int neighbor_type,
+                   int64_t storage_offset,
+                   int64_t embedding_dim,
+                   int64_t embedding_stride,
+                   int64_t node_count,
+                   cudaStream_t stream);
+
+void MixedGraphSGCChunked(WMType param_type,
+                          WMType id_type,
+                          WholeChunkedMemory_t param,
+                          WholeChunkedMemory_t csr_row_ptr,
+                          WholeChunkedMemory_t csr_col_idx,
+                          WholeChunkedMemory_t to_typed,
+                          int target_type,
+                          int neighbor_type,
+                          int64_t storage_offset,
+                          int64_t embedding_dim,
+                          int64_t embedding_stride,
+                          int64_t node_count,
+                          cudaStream_t stream);
+
+void SpmmCsrRelationalNoWeightForward(WMType data_type,
+                                      const int *csr_row_ptr,
+                                      int m,// total row count
+                                      const int *csr_col_ind,
+                                      int total_nz_element,
+                                      const int8_t *edge_type,
+                                      const void *input,
+                                      int n,// embedding dim
+                                      int ldb,
+                                      int k,// total column count
+                                      void *output,
+                                      int ldc,
+                                      int num_relations,
+                                      int aggregator,
+                                      cudaStream_t stream);
+
+void SpmmCsrRelationalNoWeightBackward(WMType data_type,
+                                       const int *csr_row_ptr,
+                                       const int *csr_col_ind,
+                                       const int8_t *edge_type,
+                                       const int *sample_dup_count,
+                                       const void *grad_output,
+                                       int grad_out_stride,
+                                       void *grad_x,
+                                       int grad_x_stride,
+                                       int m,// total row count,
+                                       int total_nz_element,
+                                       int k,// total column count
+                                       int embedding_dim,
+                                       int num_relations,
+                                       int aggregator,
+                                       cudaStream_t stream);
+
+}// namespace whole_graph
