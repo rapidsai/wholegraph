@@ -27,3 +27,4 @@ RUN cd dgl && \
 ENV USE_TORCH_ALLOC 1
 
 RUN pip3 install torchmetrics
+RUN conda install -y 'cmake>=3.23.1'
