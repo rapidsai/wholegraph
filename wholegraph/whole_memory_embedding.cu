@@ -17,6 +17,9 @@
 
 #include <cuda_runtime_api.h>
 #include <thrust/execution_policy.h>
+#include <thrust/sequence.h>
+#include <thrust/unique.h>
+#include <thrust/sort.h>
 #include <thrust/scan.h>
 
 #include <functional>
