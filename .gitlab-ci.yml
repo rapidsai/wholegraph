@@ -1,0 +1,103 @@
+# This file is a template, and might need editing before it works on your project.
+# This is a sample GitLab CI/CD configuration file that should run without any modifications.
+# It demonstrates a basic 3 stage CI/CD pipeline. Instead of real tests or scripts,
+# it uses echo commands to simulate the pipeline execution.
+#
+# A pipeline is composed of independent jobs that run scripts, grouped into stages.
+# Stages run in sequential order, but jobs within stages run in parallel.
+#
+# For more information, see: https://docs.gitlab.com/ee/ci/yaml/index.html#stages
+#
+# You can copy and paste this template into a new `.gitlab-ci.yml` file.
+# You should not add this template to an existing `.gitlab-ci.yml` file by using the `include:` keyword.
+#
+# To contribute improvements to CI/CD templates, please follow the Development guide at:
+# https://docs.gitlab.com/ee/development/cicd/templates.html
+# This specific template is located at:
+# https://gitlab.com/gitlab-org/gitlab/-/blob/master/lib/gitlab/ci/templates/Getting-Started.gitlab-ci.yml
+
+stages:          # List of stages for jobs, and their order of execution
+  - build
+
+build-job:       # This job runs in the build stage, which runs first.
+  tags:
+    - dongxuy
+  image: nvcr.io/nvidian/sae/manylinux2014_manytorch:cuda11.5
+  stage: build
+  script:
+    - echo "Compiling cpp code..."
+    - cd cpp
+    - mkdir -p build
+    - cd build
+    - cmake -DCMAKE_INSTALL_PREFIX=`pwd`/install ../
+    - make -j
+    - echo "Compile cpp complete."
+    - echo "Testing cpp code."
+    - make test
+    - echo "Test cpp code done."
+    - echo "Installing cpp library"
+    - make install
+    - echo "Install cpp library done."
+    - cd ../..
+    - echo "Start building Python and PyTorch..."
+    - export LIBWHOLEGRAPH_DIR=`pwd`/cpp/build/install
+    - cd pylibwholegraph
+    - mkdir all_build
+    - cd all_build
+    - echo "Building for Python 3.6m"
+    - mkdir build_cp36m
+    - cd build_cp36m
+    - export WG_PYTHON_BIN=/opt/python/cp36-cp36m/bin/python3
+    - cmake -DBUILD_PYTHON_EXE=${WG_PYTHON_BIN}  ../../
+    - make -j
+    - ln -s `pwd`/pylibwholegraph/binding/wholememory_binding.cpython* ../../pylibwholegraph/binding/
+    - ls -l ../../pylibwholegraph/binding/
+    - PYTHONPATH=../../:$PYTHONPATH ${WG_PYTHON_BIN} -m pytest -v --forked ../../tests/
+    - cd ..
+    - echo "Building for Python 3.7m"
+    - mkdir build_cp37m
+    - cd build_cp37m
+    - export WG_PYTHON_BIN=/opt/python/cp37-cp37m/bin/python3
+    - cmake -DBUILD_PYTHON_EXE=${WG_PYTHON_BIN}  ../../
+    - make -j
+    - ln -s `pwd`/pylibwholegraph/binding/wholememory_binding.cpython* ../../pylibwholegraph/binding/
+    - PYTHONPATH=../../:$PYTHONPATH ${WG_PYTHON_BIN} -m pytest -v --forked ../../tests/
+    - cd ..
+    - echo "Building for Python 3.8"
+    - mkdir build_cp38
+    - cd build_cp38
+    - export WG_PYTHON_BIN=/opt/python/cp38-cp38/bin/python3
+    - cmake -DBUILD_PYTHON_EXE=${WG_PYTHON_BIN}  ../../
+    - make -j
+    - ln -s `pwd`/pylibwholegraph/binding/wholememory_binding.cpython* ../../pylibwholegraph/binding/
+    - PYTHONPATH=../../:$PYTHONPATH ${WG_PYTHON_BIN} -m pytest -v --forked ../../tests/
+    - cd ..
+    - echo "Building for Python 3.9"
+    - mkdir build_cp39
+    - cd build_cp39
+    - export WG_PYTHON_BIN=/opt/python/cp39-cp39/bin/python3
+    - cmake -DBUILD_PYTHON_EXE=${WG_PYTHON_BIN}  ../../
+    - make -j
+    - ln -s `pwd`/pylibwholegraph/binding/wholememory_binding.cpython* ../../pylibwholegraph/binding/
+    - PYTHONPATH=../../:$PYTHONPATH ${WG_PYTHON_BIN} -m pytest -v --forked ../../tests/
+    - cd ..
+    - echo "Building for Python 3.10"
+    - mkdir build_cp310
+    - cd build_cp310
+    - export WG_PYTHON_BIN=/opt/python/cp310-cp310/bin/python3
+    - cmake -DBUILD_PYTHON_EXE=${WG_PYTHON_BIN}  ../../
+    - make -j
+    - ln -s `pwd`/pylibwholegraph/binding/wholememory_binding.cpython* ../../pylibwholegraph/binding/
+    - PYTHONPATH=../../:$PYTHONPATH ${WG_PYTHON_BIN} -m pytest -v --forked ../../tests/
+    - cd ..
+    - echo "Building for Python 3.11"
+    - mkdir build_cp311
+    - cd build_cp311
+    - export WG_PYTHON_BIN=/opt/python/cp311-cp311/bin/python3
+    - cmake -DBUILD_PYTHON_EXE=${WG_PYTHON_BIN}  ../../
+    - make -j
+    - ln -s `pwd`/pylibwholegraph/binding/wholememory_binding.cpython* ../../pylibwholegraph/binding/
+    - PYTHONPATH=../../:$PYTHONPATH ${WG_PYTHON_BIN} -m pytest -v --forked ../../tests/
+    - cd ..
+    - echo "Done build for all Python version"
+    - cd ../..

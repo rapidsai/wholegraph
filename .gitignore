@@ -1,82 +1,16 @@
-## Common
-__pycache__
+build*/
+__pycache__/
+.pytest_cache/
 *.pyc
-*.a
-*.o
 *.so
-*.dylib
-.cache
-.coverage
-.vscode
-.lock
-*.swp
-*.pytest_cache
-*~
-DartConfiguration.tcl
-.DS_Store
-
-# Unit test / coverage reports
-htmlcov/
-.tox/
-.coverage
-.coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*.cover
-.hypothesis/
-test-results
-
-## Python build directories & artifacts
-htmlcov
-wholegraph.egg-info/
-python/build
-python/wholegraph/bindings/*.cpp
-wheels/
+.cache/
+.conda/
+.conda-bld/
+.ipynb_checkpoints/
+test-results/
 _skbuild/
-cufile.log
 
-## Patching
-*.diff
-*.orig
-*.rej
-
-## C++ build directories & artifacts
-CMakeFiles/
-Debug
-build/
-
-## Eclipse IDE
-.project
-.cproject
-.settings
-
-## IntelliJ IDE
-.idea/
-.idea_modules/
-*.iml
-*.ipr
-*.iws
-.pydevproject
-
-## CLion
-.idea/
-cmake-build-debug/
-
-# Jupyter Notebooks
-.ipynb_checkpoints
-
-## Doxygen
-cpp/doxygen/html
-
-
-# Sphinx docs & build artifacts
-docs/wholegraph/source/api_docs/api/*
-
-# others
-local_scripts/
-build
-*pyc
-compile_commands.json
-docker_run.bash
-.devcontainer
+cpp/.idea/
+cpp/cmake-build-debug/
+pylibwholegraph/.idea/
+pylibwholegraph/cmake-build-debug/

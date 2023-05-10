@@ -1,0 +1,412 @@
+---
+# Refer to the following link for the explanation of each parameter:
+# https://releases.llvm.org/11.0.0/tools/clang/tools/extra/docs/clang-tidy/checks/list.html
+#
+# Checks we don't consider because they are irrelevant to this project:
+# abseil-*, android-*, boost-*, clang-analyzer-*, darwin-*, fuchsia-*, hicpp-*,
+# linuxkernel-*, mpi-*, objc-*, openmp-*, zircon-*
+#
+# Add all bugprone checks, except:
+# bugprone-easily-swappable-parameters:
+#   this seems unavailable in clang-tidy 11 but in any case, we have many
+#   internal and external APIs that rely on order of arguments,
+#   so we remove this by default.
+# bugprone-misplaced-widening-cast:
+#   there are too many instances where we want to shorten things like
+#   int64_t(int32_t * int32_t) for performance if we know that int32_t * int32_t
+#   is small enough through asserts.
+#   It may be possible to introduce this rule at a later time.
+# bugprone-narrowing-conversions:
+#   there is no way to ignore this for blockIdx/threadIdx which should be
+#   converted to int for optimization purposes by default.
+#   If at some point, we can specify special variables to ignore (such as
+#   blockIdx/threadIdx), or we can run it only on host code, we can add it back.
+# bugprone-unhandled-self-assignment:
+#   removed as alias of cert-oop54-cpp (which is included and slightly more
+#   restrictive since WarnOnlyIfThisHasSuspiciousField=0)
+#
+# Add all cert checks, except:
+# cert-dcl03-c:
+#   removed as alias of misc-static-assert (which is included)
+# cert-dcl16-c:
+#   removed as alias of readability-uppercase-literal-suffix (which is included
+#   and more restrictive since it checks for more suffixes)
+# cert-dcl37-c:
+#   removed as alias of bugprone-reserved-identifier (which is included)
+# cert-dcl51-cpp:
+#   removed as alias of bugprone-reserved-identifier (which is included)
+# cert-dcl54-cpp:
+#   removed as alias of misc-new-delete-overloads (which is included)
+# cert-dcl59-cpp:
+#   removed as alias of google-build-namespaces (which is included)
+# cert-err09-cpp & cert-err61-cpp:
+#   removed as alias of misc-throw-by-value-catch-by-reference (which is included)
+# cert-fio38-c:
+#   removed as alias of misc-non-copyable-objects (which is included)
+# cert-msc32-c:
+#   removed as alias of cert-msc51-cpp (which is included)
+# cert-oop11-cpp:
+#   removed as alias of performance-move-constructor-init (which is included)
+# cert-str34-c:
+#   removed as alias of bugprone-signed-char-misuse (which is included and
+#   slightly more restrictive since DiagnoseSignedUnsignedCharComparisons=1)
+#
+# Add all cppcoreguidelines checks, except:
+# cppcoreguidelines-avoid-c-arrays:
+#   in general, I'd discourage use of C-style arrays, but there are simply too
+#   many reasonable uses in device code, for registers/shared memory, and we
+#   cannot easily parameterize this rule / only run it for host code.
+# cppcoreguidelines-avoid-magic-numbers:
+#   removed as alias of readability-magic-numbers (which is included)
+# cppcoreguidelines-narrowing-conversions:
+#   removed as alias of bugprone-narrowing-conversions (which is excluded)
+# cppcoreguidelines-init-variables:
+#   in device code, I think the default should be not to initialize variables
+#   when it makes sense, since this can enable compiler optimizations relying
+#   on undefined behavior (similar to using signed int vs unsigned int).
+#   For now, this should be excluded.
+# cppcoreguidelines-non-private-member-variables-in-classes:
+#   this warns about all protected members, which I do think have reasonable
+#   uses, so this is excluded
+# cppcoreguidelines-pro-bounds-array-to-pointer-decay:
+#   this would only make sense if on host only, C-style arrays and pointer
+#   arithmetic make device code more readable IMO
+# cppcoreguidelines-pro-bounds-constant-array-index:
+#   excluded for same reason as cppcoreguidelines-pro-bounds-array-to-pointer-decay
+# cppcoreguidelines-pro-bounds-pointer-arithmetic:
+#   excluded for same reason as cppcoreguidelines-pro-bounds-array-to-pointer-decay
+# cppcoreguidelines-pro-type-reinterpret-cast:
+#   there are many reasonable uses of reinterpret cast, as long as it's explicit
+# cppcoreguidelines-pro-type-vararg:
+#   this may be included once we eliminate all macors using vararg, but for now
+#   we exclude it
+#
+# Add all google checks, except:
+# google-readability-braces-around-statements:
+#   this is handled by clang-format, leave it to clang-format
+# google-runtime-references:
+#   this is obsolete as it has been removed from Google's style guide in 2020
+#
+# Add all llvm checks, except:
+# llvm-else-after-return:
+#   removed as alias of readability-else-after-return (which is included)
+# llvm-header-guard:
+#   we use #pragma once instead
+# llvm-qualified-auto:
+#   removed as alias of readability-qualified-auto (which is included)
+# llvm-namespace-comment:
+#   removed as alias of google-readability-namespace-comments (which is included)
+#
+# Add all misc checks, except:
+# misc-non-private-member-variables-in-classes:
+#   removed as alias of cppcoreguidelines-non-private-member-variables-in-classes
+#   (which is excluded)
+#
+# Add all modernize checks, except:
+# modernize-avoid-c-arrays:
+#   removed as alias of cppcoreguidelines-avoid-c-arrays (which is excluded)
+# modernize-use-trailing-return-type:
+#   IMO, this only adds characters, and it doesn't make code look better.
+#   It also isn't part of Google's style guide, so we exclude this and
+#   encourage the C-style declaration of functions.
+#
+# Add all performance checks
+#
+# Add all readability checks, except:
+# readability-braces-around-statements:
+#   removed as alias of google-readability-braces-around-statements (which is excluded)
+# readability-function-cognitive-complexity:
+#   readability-function-size already does something similar
+# readability-identifier-length:
+#   this should be up to programmers, IMO
+# readability-isolate-declaration:
+#   this should be up to programmers, IMO
+# readability-static-accessed-through-instance:
+#   incompatible with CUDA, since blockIdx/threadIdx are static and we cannot
+#   easily parameterize this rule / only run it for host code
+#
+# The following list checks are removed because they don't seem relevant
+# to this particular project and only delay CI and development in general:
+#   bugprone-bad-signal-to-kill-thread
+#   bugprone-dynamic-static-initializers
+#   bugprone-no-escape
+#   bugprone-posix-return
+#   bugprone-spuriously-wake-up-functions
+#   cert-env33-c
+#   cert-err52-cpp
+#   cppcoreguidelines-owning-memory
+#   google-objc-*
+#   TODO(mjoux) re-enable the next 2 if we move to gtest
+#   google-readability-avoid-underscore-in-googletest-name
+#   google-upgrade-googletest-case
+#   llvm-prefer-isa-or-dyn-cast-in-conditionals
+#   llvm-prefer-register-over-unsigned
+#   llvm-twine-local
+#   modernize-avoid-bind
+#   modernize-deprecated-ios-base-aliases
+#   modernize-replace-disallow-copy-and-assign-macro
+#   performance-inefficient-algorithm
+#
+# Because we add whole check groups, future clang versions may use more
+# checks. For now, only supported clang version is 11, however, it's likely
+# that more recent versions work fine.
+Checks: >-
+  -*,
+  altera-struct-pack-align,
+  bugprone-*,
+    -bugprone-easily-swappable-parameters,
+    -bugprone-misplaced-widening-cast,
+    -bugprone-narrowing-conversions,
+    -bugprone-unhandled-self-assignment,
+  cert-*,
+    -cert-dcl03-c,
+    -cert-dcl16-c,
+    -cert-dcl37-c,
+    -cert-dcl51-cpp,
+    -cert-dcl54-cpp,
+    -cert-dcl59-cpp,
+    -cert-err09-cpp,
+    -cert-err61-cpp,
+    -cert-fio38-c,
+    -cert-msc32-c,
+    -cert-oop11-cpp,
+    -cert-str34-c
+  cppcoreguidelines-*,
+    -cppcoreguidelines-avoid-c-arrays,
+    -cppcoreguidelines-avoid-magic-numbers,
+    -cppcoreguidelines-narrowing-conversions,
+    -cppcoreguidelines-init-variables,
+    -cppcoreguidelines-non-private-member-variables-in-classes,
+    -cppcoreguidelines-pro-bounds-array-to-pointer-decay,
+    -cppcoreguidelines-pro-bounds-constant-array-index,
+    -cppcoreguidelines-pro-bounds-pointer-arithmetic,
+    -cppcoreguidelines-pro-type-reinterpret-cast,
+    -cppcoreguidelines-pro-type-vararg,
+  google-*,
+    -google-readability-braces-around-statements,
+    -google-runtime-references,
+  llvm-*,
+    -llvm-else-after-return,
+    -llvm-header-guard,
+    -llvm-namespace-comment,
+    -llvm-qualified-auto,
+  misc-*,
+    -misc-non-private-member-variables-in-classes,
+  modernize-*,
+    -modernize-avoid-c-arrays,
+    -modernize-use-trailing-return-type,
+  performance-*,
+  readability-*,
+    -readability-braces-around-statements,
+    -readability-function-cognitive-complexity,
+    -readability-identifier-length,
+    -readability-isolate-declaration,
+    -readability-static-accessed-through-instance,
+  -bugprone-bad-signal-to-kill-thread,
+  -bugprone-dynamic-static-initializers,
+  -bugprone-no-escape,
+  -bugprone-posix-return,
+  -bugprone-spuriously-wake-up-functions,
+  -cert-env33-c,
+  -cert-err52-cpp,
+  -cppcoreguidelines-owning-memory,
+  -google-objc-*,
+  -google-readability-avoid-underscore-in-googletest-name,
+  -google-upgrade-googletest-case,
+  -llvm-prefer-isa-or-dyn-cast-in-conditionals,
+  -llvm-prefer-register-over-unsigned,
+  -llvm-twine-local,
+  -modernize-avoid-bind,
+  -modernize-deprecated-ios-base-aliases,
+  -modernize-replace-disallow-copy-and-assign-macro,
+  -performance-inefficient-algorithm,
+
+WarningsAsErrors: ''
+HeaderFilterRegex: ''
+AnalyzeTemporaryDtors: false
+FormatStyle:     none
+User:            wholegraph
+CheckOptions:
+  - key:             cppcoreguidelines-macro-usage.AllowedRegexp
+    value:           WHOLEMEMORY*|WHOLEGRAPH*|ASSERT|SET_ERROR_MSG|THROW|RAFT_*
+  - key:             cppcoreguidelines-special-member-functions.AllowMissingMoveFunctions
+    value:           true
+  - key:             cppcoreguidelines-special-member-functions.AllowSoleDefaultDtor
+    value:           true
+# in case we re-include this rule, we definitely ignore classes with public-only members (structs)
+  - key:             misc-non-private-member-variables-in-classes.IgnoreClassesWithAllMemberVariablesBeingPublic
+    value:           true
+# many preceding numbers of powers of 2 added here as they are useful for bit-wise ops
+# powers of 10 are typically used in tests
+  - key:             readability-magic-numbers.IgnoredIntegerValues
+    value:           1;2;3;4;5;6;7;8;9;24;31;63;2147483647;4294967295;10;100;1000;10000;100000;1000000
+# any powers of 2 are typically useful for number of threads, warps, etc.
+  - key:             readability-magic-numbers.IgnorePowersOf2IntegerValues
+    value:           true
+# useful for simple constants (sqrt(2), etc.)
+  - key:             readability-magic-numbers.IgnoredFloatingPointValues
+    value:           1.0;2.0;3.0;4.0;5.0;6.0;7.0;8.0;9.0;10.0;0.5;0.25
+# only force-replace very long names with auto
+  - key:             modernize-use-auto.MinTypeNameLength
+    value:           9
+  - key:             readability-identifier-naming.AbstractClassCase
+    value:           lower_case
+  - key:             readability-identifier-naming.AbstractClassPrefix
+    value:           ''
+  - key:             readability-identifier-naming.AbstractClassSuffix
+    value:           ''
+  - key:             readability-identifier-naming.ClassCase
+    value:           lower_case
+  - key:             readability-identifier-naming.ClassPrefix
+    value:           ''
+  - key:             readability-identifier-naming.ClassSuffix
+    value:           ''
+  - key:             readability-identifier-naming.ClassConstantCase
+    value:           CamelCase
+  - key:             readability-identifier-naming.ClassConstantPrefix
+    value:           'k'
+  - key:             readability-identifier-naming.ClassConstantSuffix
+    value:           ''
+  - key:             readability-identifier-naming.ClassMemberCase
+    value:           lower_case
+  - key:             readability-identifier-naming.ClassMemberPrefix
+    value:           ''
+  - key:             readability-identifier-naming.ClassMemberSuffix
+    value:           ''
+  - key:             readability-identifier-naming.ClassMethodCase
+    value:           lower_case
+  - key:             readability-identifier-naming.ClassMethodPrefix
+    value:           ''
+  - key:             readability-identifier-naming.ClassMethodSuffix
+    value:           ''
+  - key:             readability-identifier-naming.ConstexprFunctionCase
+    value:           lower_case
+  - key:             readability-identifier-naming.ConstexprFunctionPrefix
+    value:           ''
+  - key:             readability-identifier-naming.ConstexprFunctionSuffix
+    value:           ''
+  - key:             readability-identifier-naming.ConstexprMethodCase
+    value:           lower_case
+  - key:             readability-identifier-naming.ConstexprMethodPrefix
+    value:           ''
+  - key:             readability-identifier-naming.ConstexprMethodSuffix
+    value:           ''
+  - key:             readability-identifier-naming.ConstexprVariableCase
+    value:           UPPER_CASE
+  - key:             readability-identifier-naming.ConstexprVariablePrefix
+    value:           ''
+  - key:             readability-identifier-naming.ConstexprVariableSuffix
+    value:           ''
+  - key:             readability-identifier-naming.EnumCase
+    value:           CamelCase
+  - key:             readability-identifier-naming.EnumPrefix
+    value:           ''
+  - key:             readability-identifier-naming.EnumSuffix
+    value:           ''
+  - key:             readability-identifier-naming.EnumConstantCase
+    value:           CamelCase
+  - key:             readability-identifier-naming.EnumConstantPrefix
+    value:           'k'
+  - key:             readability-identifier-naming.EnumConstantSuffix
+    value:           ''
+  - key:             readability-identifier-naming.FunctionCase
+    value:           lower_case
+  - key:             readability-identifier-naming.FunctionPrefix
+    value:           ''
+  - key:             readability-identifier-naming.FunctionSuffix
+    value:           ''
+  - key:             readability-identifier-naming.GlobalConstantCase
+    value:           UPPER_CASE
+  - key:             readability-identifier-naming.GlobalConstantPrefix
+    value:           ''
+  - key:             readability-identifier-naming.GlobalConstantSuffix
+    value:           ''
+  - key:             readability-identifier-naming.LocalVariableCase
+    value:           'lower_case'
+  - key:             readability-identifier-naming.LocalVariablePrefix
+    value:           ''
+  - key:             readability-identifier-naming.LocalVariableSuffix
+    value:           ''
+  - key:             readability-identifier-naming.MemberCase
+    value:           lower_case
+  - key:             readability-identifier-naming.MemberPrefix
+    value:           ''
+  - key:             readability-identifier-naming.MemberSuffix
+    value:           ''
+  - key:             readability-identifier-naming.NamespaceCase
+    value:           lower_case
+  - key:             readability-identifier-naming.NamespacePrefix
+    value:           ''
+  - key:             readability-identifier-naming.NamespaceSuffix
+    value:           ''
+  - key:             readability-identifier-naming.PrivateMemberCase
+    value:           lower_case
+  - key:             readability-identifier-naming.PrivateMemberPrefix
+    value:           ''
+  - key:             readability-identifier-naming.PrivateMemberSuffix
+    value:           '_'
+  - key:             readability-identifier-naming.ProtectedMemberCase
+    value:           lower_case
+  - key:             readability-identifier-naming.ProtectedMemberPrefix
+    value:           ''
+  - key:             readability-identifier-naming.ProtectedMemberSuffix
+    value:           '_'
+  - key:             readability-identifier-naming.StaticConstantCase
+    value:           CamelCase
+  - key:             readability-identifier-naming.StaticConstantPrefix
+    value:           'k'
+  - key:             readability-identifier-naming.StaticConstantSuffix
+    value:           ''
+  - key:             readability-identifier-naming.StructCase
+    value:           lower_case
+  - key:             readability-identifier-naming.StructPrefix
+    value:           ''
+  - key:             readability-identifier-naming.StructSuffix
+    value:           ''
+  - key:             readability-identifier-naming.TemplateParameterCase
+    value:           UPPER_CASE
+  - key:             readability-identifier-naming.TemplateParameterPrefix
+    value:           ''
+  - key:             readability-identifier-naming.TemplateParameterSuffix
+    value:           ''
+  - key:             readability-identifier-naming.TypeAliasCase
+    value:           lower_case
+  - key:             readability-identifier-naming.TypeAliasPrefix
+    value:           ''
+  - key:             readability-identifier-naming.TypeAliasSuffix
+    value:           '_t'
+  - key:             readability-identifier-naming.TypeTemplateParameterCase
+    value:           CamelCase
+  - key:             readability-identifier-naming.TypeTemplateParameterPrefix
+    value:           ''
+  - key:             readability-identifier-naming.TypeTemplateParameterSuffix
+    value:           'T'
+  - key:             readability-identifier-naming.TemplateTemplateParameterCase
+    value:           CamelCase
+  - key:             readability-identifier-naming.TemplateTemplateParameterPrefix
+    value:           ''
+  - key:             readability-identifier-naming.TemplateTemplateParameterSuffix
+    value:           'T'
+  - key:             readability-identifier-naming.TypedefCase
+    value:           lower_case
+  - key:             readability-identifier-naming.TypedefPrefix
+    value:           ''
+  - key:             readability-identifier-naming.TypedefSuffix
+    value:           '_t'
+  - key:             readability-identifier-naming.VariableCase
+    value:           lower_case
+  - key:             readability-identifier-naming.VariablePrefix
+    value:           ''
+  - key:             readability-identifier-naming.VariableSuffix
+    value:           ''
+  - key:             bugprone-suspicious-include.HeaderFileExtensions
+    value:           ';h;hh;hpp;hxx;cuh'
+  - key:             bugprone-suspicious-include.ImplementationFileExtensions
+    value:           'c;cc;cpp;cxx;cu'
+  - key:             google-build-namespaces.HeaderFileExtensions
+    value:           ';h;hh;hpp;hxx;cuh'
+  - key:             google-global-names-in-headers.HeaderFileExtensions
+    value:           ';h;hh;hpp;hxx;cuh'
+  - key:             misc-definitions-in-headers.HeaderFileExtensions
+    value:           ';h;hh;hpp;hxx;cuh'
+...
