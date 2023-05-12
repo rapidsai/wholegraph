@@ -16,6 +16,7 @@ from .graph_structure import GraphStructure
 from .embedding import WholeMemoryEmbedding, WholeMemoryEmbeddingModule
 from .common_options import parse_max_neighbors
 import torch.nn.functional as F
+from .graph_ops import add_csr_self_loop
 
 
 framework_name = None
@@ -39,6 +40,7 @@ def set_framework(framework: str):
         from wg_torch.gnn.GATConv import GATConv
     elif framework_name == "cugraph":
         from .cugraphops.sage_conv import CuGraphSAGEConv as SAGEConv
+        from .cugraphops.gat_conv import CuGraphGATConv as GATConv
 
 
 def create_gnn_layers(
@@ -100,14 +102,27 @@ def create_gnn_layers(
                     SAGEConv(layer_input_dim, layer_output_dim, aggregator="gcn")
                 )
         elif framework_name == "cugraph":
-            assert model_type == "sage"
+            assert model_type == "sage" or model_type == "gat"
             if model_type == "sage":
                 gnn_layers.append(SAGEConv(layer_input_dim, layer_output_dim))
+            elif model_type == "gat":
+                concat = not mean_output
+                gnn_layers.append(
+                    GATConv(
+                        layer_input_dim, layer_output_dim, heads=num_head, concat=concat
+                    )
+                )
     return gnn_layers
 
 
 def create_sub_graph(
-    target_gid, target_gid_1, edge_data, csr_row_ptr, csr_col_ind, add_self_loop: bool
+    target_gid,
+    target_gid_1,
+    edge_data,
+    csr_row_ptr,
+    csr_col_ind,
+    max_num_neighbors: int,
+    add_self_loop: bool,
 ):
     global framework_name
     if framework_name == "pyg":
@@ -157,22 +172,24 @@ def create_sub_graph(
             )
         return block
     elif framework_name == "cugraph":
-        assert not add_self_loop
-        return [csr_row_ptr, csr_col_ind]
+        if add_self_loop:
+            csr_row_ptr, csr_col_ind = add_csr_self_loop(csr_row_ptr, csr_col_ind)
+            max_num_neighbors = max_num_neighbors + 1
+        return [csr_row_ptr, csr_col_ind, max_num_neighbors]
     else:
         assert framework_name == "wg"
         return [csr_row_ptr, csr_col_ind]
     return None
 
 
-def layer_forward(layer, x_feat, x_target_feat, sub_graph, max_num_neighbors):
+def layer_forward(layer, x_feat, x_target_feat, sub_graph):
     global framework_name
     if framework_name == "pyg":
         x_feat = layer((x_feat, x_target_feat), sub_graph)
     elif framework_name == "dgl":
         x_feat = layer(sub_graph, (x_feat, x_target_feat))
     elif framework_name == "cugraph":
-        x_feat = layer(x_feat, sub_graph[0], sub_graph[1], max_num_neighbors)
+        x_feat = layer(x_feat, sub_graph[0], sub_graph[1], sub_graph[2])
     elif framework_name == "wg":
         x_feat = layer(sub_graph[0], sub_graph[1], x_feat, x_target_feat)
     return x_feat
@@ -228,6 +245,7 @@ class HomoGNNModel(torch.nn.Module):
                 edge_indice[i],
                 csr_row_ptrs[i],
                 csr_col_inds[i],
+                self.max_neighbors[i],
                 self.add_self_loop,
             )
             x_feat = layer_forward(
@@ -235,7 +253,6 @@ class HomoGNNModel(torch.nn.Module):
                 x_feat,
                 x_target_feat,
                 sub_graph,
-                self.max_neighbors[i],
             )
             if i != self.num_layer - 1:
                 if framework_name == "dgl":

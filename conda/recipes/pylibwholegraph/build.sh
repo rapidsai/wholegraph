@@ -3,4 +3,4 @@
 
 CMAKE_EXTRA_ARGS="--cmake-args=\"-DBUILD_OPS_WITH_TORCH_C10_API=OFF\""
 
-./build_component.sh pylibwholegraph -v ${CMAKE_EXTRA_ARGS}
+./build.sh pylibwholegraph -v ${CMAKE_EXTRA_ARGS}
