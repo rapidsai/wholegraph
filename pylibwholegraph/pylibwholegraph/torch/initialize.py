@@ -28,8 +28,16 @@ def init_torch_env(world_rank: int, world_size: int, local_rank: int, local_size
     """
     os.environ["RANK"] = str(world_rank)
     os.environ["WORLD_SIZE"] = str(world_size)
-    os.environ["MASTER_ADDR"] = "localhost"
-    os.environ["MASTER_PORT"] = str(12343)
+
+    if "MASTER_ADDR" not in os.environ:
+        if world_rank == 0:
+            print('[WARNING] MASTER_ADDR not set, resetting to localhost')
+        os.environ["MASTER_ADDR"] = "localhost"
+
+    if "MASTER_PORT" not in os.environ:
+        if world_rank == 0:
+            print('[WARNING] MASTER_PORT not set, resetting to 12335')
+        os.environ["MASTER_PORT"] = "12335"
 
     wmb.init(0)
     torch.set_num_threads(1)

@@ -61,6 +61,10 @@ class WholeMemoryTensor(object):
         return WholeMemoryTensor(self.wmb_tensor.get_sub_tensor(starts, ends))
 
     def get_local_tensor(self, host_view: bool = False):
+        """Get local tensor of WholeMemory Tensor
+        :param host_view: Get host view or not, if True, return host tensor, else return device tensor
+        :return: Tuple of DLPack Tensor and element offset.
+        """
         if host_view:
             return self.wmb_tensor.get_local_tensor(
                 torch_import_from_dlpack, WholeMemoryMemoryLocation.MlHost, -1
@@ -73,6 +77,10 @@ class WholeMemoryTensor(object):
             )
 
     def get_global_tensor(self, host_view: bool = False):
+        """Get global tensor of WholeMemory Tensor
+        :param host_view: Get host view or not, if True, return host tensor, else return device tensor
+        :return: Tuple of DLPack Tensor and element offset (0 for global tensor).
+        """
         if host_view:
             return self.wmb_tensor.get_global_tensor(
                 torch_import_from_dlpack, WholeMemoryMemoryLocation.MlHost, -1
@@ -85,6 +93,10 @@ class WholeMemoryTensor(object):
             )
 
     def get_all_chunked_tensor(self, host_view: bool = False):
+        """Get all chunked tensor of WholeMemory Tensor
+        :param host_view: Get host view or not, if True, return host tensor, else return device tensor
+        :return: Tuple of DLPack Tensors and element offsets.
+        """
         if host_view:
             return self.wmb_tensor.get_global_tensorget_all_chunked_tensor(
                 torch_import_from_dlpack, WholeMemoryMemoryLocation.MlHost, -1

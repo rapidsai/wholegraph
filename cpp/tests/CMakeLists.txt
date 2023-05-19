@@ -118,34 +118,8 @@ ConfigureTest(WHOLEGRAPH_EMBEDDING_TEST wholememory_ops/wholememory_embedding_te
 #wholegraph embedding gradient apply tests
 ConfigureTest(WHOLEGRAPH_EMBEDDING_GRADIENT_APPLY_TEST wholememory_ops/wholememory_embedding_gradient_apply_tests.cu wholememory_ops/embedding_test_utils.cu)
 
-#graph spmm forward op tests
-ConfigureTest(GRAPH_SPMM_NO_WEIGHT_FORWARD_TEST graph_ops/spmm_csr_no_weight_forward_tests.cu graph_ops/spmm_csr_no_weight_utils.cu wholegraph_ops/graph_sampling_test_utils.cu)
-
-#graph spmm backward op tests
-ConfigureTest(GRAPH_SPMM_NO_WEIGHT_BACKWARD_TEST graph_ops/spmm_csr_no_weight_backward_tests.cu graph_ops/spmm_csr_no_weight_utils.cu wholegraph_ops/graph_sampling_test_utils.cu)
-
 #graph append unique op tests
 ConfigureTest(GRAPH_APPEND_UNIQUE_TEST graph_ops/append_unique_tests.cu graph_ops/append_unique_test_utils.cu wholegraph_ops/graph_sampling_test_utils.cu)
 
-#graph spadd csr no weight forward op tests
-ConfigureTest(GRAPH_SPADD_GAT_CSR_FORWARD_TEST graph_ops/spadd_gat_csr_forward_tests.cu graph_ops/spadd_gat_csr_utils.cu graph_ops/spmm_csr_no_weight_utils.cu wholegraph_ops/graph_sampling_test_utils.cu)
-
-#graph spadd csr no weight backward op tests
-ConfigureTest(GRAPH_SPADD_GAT_CSR_BACKWARD_TEST graph_ops/spadd_gat_csr_backward_tests.cu graph_ops/spadd_gat_csr_utils.cu graph_ops/spmm_csr_no_weight_utils.cu wholegraph_ops/graph_sampling_test_utils.cu)
-
-#graph edge weight softmax forward op tests
-ConfigureTest(GRAPH_EDGE_WEIGHT_SOFTMAX_FORWARD_TEST graph_ops/edge_weight_softmax_forward_tests.cu graph_ops/edge_weight_softmax_test_utils.cu graph_ops/spmm_csr_no_weight_utils.cu wholegraph_ops/graph_sampling_test_utils.cu)
-
-#graph edge weight softmax forward op tests
-ConfigureTest(GRAPH_EDGE_WEIGHT_SOFTMAX_BACKWARD_TEST graph_ops/edge_weight_softmax_backward_tests.cu graph_ops/edge_weight_softmax_test_utils.cu graph_ops/spmm_csr_no_weight_utils.cu wholegraph_ops/graph_sampling_test_utils.cu)
-
-
 #graph csr add self loop op tests
-ConfigureTest(GRAPH_CSR_ADD_SELF_LOOP_TEST graph_ops/csr_add_self_loop_tests.cu graph_ops/csr_add_self_loop_utils.cu graph_ops/spmm_csr_no_weight_utils.cu wholegraph_ops/graph_sampling_test_utils.cu)
-
-#graph gspmm csr weighted forward op tests
-ConfigureTest(GRAPH_GSPMM_CSR_WEIGHTED_FORWARD_TEST graph_ops/gspmm_csr_weighted_forward_tests.cu graph_ops/gspmm_csr_weighted_test_utils.cu graph_ops/spmm_csr_no_weight_utils.cu wholegraph_ops/graph_sampling_test_utils.cu)
-
-
-#graph gspmm csr weighted backward op tests
-ConfigureTest(GRAPH_GSPMM_CSR_WEIGHTED_BACKWARD_TEST graph_ops/gspmm_csr_weighted_backward_tests.cu graph_ops/gspmm_csr_weighted_test_utils.cu graph_ops/spmm_csr_no_weight_utils.cu wholegraph_ops/graph_sampling_test_utils.cu)
+ConfigureTest(GRAPH_CSR_ADD_SELF_LOOP_TEST graph_ops/csr_add_self_loop_tests.cu graph_ops/csr_add_self_loop_utils.cu wholegraph_ops/graph_sampling_test_utils.cu)

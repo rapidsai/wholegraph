@@ -1854,64 +1854,12 @@ cdef extern from "wholememory/graph_op.h":
                                                       wholememory_env_func_t * p_env_fns,
                                                       void * stream)
 
-    cdef wholememory_error_code_t spmm_csr_no_weight_forward(wholememory_tensor_t csr_row_ptr_tensor,
-                                                             wholememory_tensor_t csr_col_ptr_tensor,
-                                                             wholememory_tensor_t feature_tensor,
-                                                             int64_t aggregator,
-                                                             wholememory_tensor_t output_feature_tensor,
-                                                             void* stream)
 
-    cdef wholememory_error_code_t spmm_csr_no_weight_backward(wholememory_tensor_t csr_row_ptr_tensor,
-                                                              wholememory_tensor_t csr_col_ptr_tensor,
-                                                              wholememory_tensor_t input_grad_tensor,
-                                                              int64_t aggregator,
-                                                              wholememory_tensor_t output_grad_feature_tensor,
-                                                              void* stream)
-
-    cdef wholememory_error_code_t spadd_gat_csr_foward(wholememory_tensor_t csr_row_ptr_tensor,
-                                                       wholememory_tensor_t csr_col_ptr_tensor,
-                                                       wholememory_tensor_t edge_weight_left_tensor,
-                                                       wholememory_tensor_t edge_weight_right_tensor,
-                                                       wholememory_tensor_t output_score_tensor,
-                                                       void* stream)
-
-    cdef wholememory_error_code_t spadd_gat_csr_backward(wholememory_tensor_t csr_row_ptr_tensor,
-                                                         wholememory_tensor_t csr_col_ptr_tensor,
-                                                         wholememory_tensor_t grad_score_tensor,
-                                                         wholememory_tensor_t output_grad_edge_weight_left_tensor,
-                                                         wholememory_tensor_t output_grad_edge_weight_right_tensor,
-                                                         void* stream)
-
-    cdef wholememory_error_code_t edge_weight_softmax_csr_forward(wholememory_tensor_t csr_row_ptr_tensor,
-                                                                  wholememory_tensor_t edge_weight_tensor,
-                                                                  wholememory_tensor_t output_edge_weight_softmax_tensor,
-                                                                  void* stream)
-    cdef wholememory_error_code_t edge_weight_softmax_csr_backward(wholememory_tensor_t csr_row_ptr_tensor,
-                                                                   wholememory_tensor_t edge_weight_tensor,
-                                                                   wholememory_tensor_t grad_edge_weight_softmax_tensor,
-                                                                   wholememory_tensor_t output_edge_weight_tensor,
-                                                                   void* stream)
     cdef wholememory_error_code_t csr_add_self_loop(wholememory_tensor_t csr_row_ptr_tensor,
                                                     wholememory_tensor_t csr_col_ptr_tensor,
                                                     wholememory_tensor_t output_csr_row_ptr_tensor,
                                                     wholememory_tensor_t output_csr_col_ptr_tensor,
                                                     void* stream)
-
-    cdef wholememory_error_code_t gspmm_csr_weighted_forward(wholememory_tensor_t csr_row_ptr_tensor,
-                                                             wholememory_tensor_t csr_col_ptr_tensor,
-                                                             wholememory_tensor_t edge_weight_tensor,
-                                                             wholememory_tensor_t feature_tensor,
-                                                             wholememory_tensor_t output_feature_tensor,
-                                                             void* stream)
-
-    cdef wholememory_error_code_t gspmm_csr_weighted_backward(wholememory_tensor_t csr_row_ptr_tensor,
-                                                              wholememory_tensor_t csr_col_ptr_tensor,
-                                                              wholememory_tensor_t edge_weight_tensor,
-                                                              wholememory_tensor_t feature_tensor,
-                                                              wholememory_tensor_t input_grad_feature_tensor,
-                                                              wholememory_tensor_t output_grad_edge_weight_tensor,
-                                                              wholememory_tensor_t output_grad_feature_tensor,
-                                                              void* stream)
 
 
 cpdef void append_unique(
@@ -1930,92 +1878,6 @@ cpdef void append_unique(
         <void *> stream_int
     ))
 
-cpdef void spmm_no_weight_forward(
-        WrappedLocalTensor csr_row_ptr_tensor,
-        WrappedLocalTensor csr_col_ptr_tensor,
-        WrappedLocalTensor feature_tensor,
-        int64_t aggregator,
-        WrappedLocalTensor output_feature_tensor,
-        int64_t stream_int):
-    check_wholememory_error_code(
-        spmm_csr_no_weight_forward(
-          <wholememory_tensor_t> <int64_t> csr_row_ptr_tensor.get_c_handle(),
-          <wholememory_tensor_t> <int64_t> csr_col_ptr_tensor.get_c_handle(),
-          <wholememory_tensor_t> <int64_t> feature_tensor.get_c_handle(),
-          <int64_t> aggregator,
-          <wholememory_tensor_t> <int64_t> output_feature_tensor.get_c_handle(),
-          <void*> stream_int))
-
-cpdef void spmm_no_weight_backward(
-    WrappedLocalTensor csr_row_ptr_tensor,
-    WrappedLocalTensor csr_col_ptr_tensor,
-    WrappedLocalTensor input_grad_tensor,
-    int64_t aggregator,
-    WrappedLocalTensor output_grad_feature_tensor,
-    int64_t stream_int):
-    check_wholememory_error_code(spmm_csr_no_weight_backward(
-       <wholememory_tensor_t> <int64_t> csr_row_ptr_tensor.get_c_handle(),
-       <wholememory_tensor_t> <int64_t> csr_col_ptr_tensor.get_c_handle(),
-       <wholememory_tensor_t> <int64_t> input_grad_tensor.get_c_handle(),
-       <int64_t> aggregator,
-       <wholememory_tensor_t> <int64_t> output_grad_feature_tensor.get_c_handle(),
-       <void*> stream_int))
-
-cpdef void spadd_gat_forward(
-    WrappedLocalTensor csr_row_ptr_tensor,
-    WrappedLocalTensor csr_col_ptr_tensor,
-    WrappedLocalTensor edge_weight_left_tensor,
-    WrappedLocalTensor edge_weight_right_tensor,
-    WrappedLocalTensor output_score_tensor,
-    int64_t stream_int):
-
-    check_wholememory_error_code(spadd_gat_csr_foward(
-        <wholememory_tensor_t> <int64_t> csr_row_ptr_tensor.get_c_handle(),
-        <wholememory_tensor_t> <int64_t> csr_col_ptr_tensor.get_c_handle(),
-        <wholememory_tensor_t> <int64_t> edge_weight_left_tensor.get_c_handle(),
-        <wholememory_tensor_t> <int64_t> edge_weight_right_tensor.get_c_handle(),
-        <wholememory_tensor_t> <int64_t> output_score_tensor.get_c_handle(),
-        <void*> stream_int))
-
-cpdef void spadd_gat_backward(
-    WrappedLocalTensor csr_row_ptr_tensor,
-    WrappedLocalTensor csr_col_ptr_tensor,
-    WrappedLocalTensor grad_score_tensor,
-    WrappedLocalTensor output_grad_edge_weight_left_tensor,
-    WrappedLocalTensor output_grad_edge_weight_right_tensor,
-    int64_t stream_int):
-
-    check_wholememory_error_code(spadd_gat_csr_backward(
-        <wholememory_tensor_t> <int64_t> csr_row_ptr_tensor.get_c_handle(),
-        <wholememory_tensor_t> <int64_t> csr_col_ptr_tensor.get_c_handle(),
-        <wholememory_tensor_t> <int64_t> grad_score_tensor.get_c_handle(),
-        <wholememory_tensor_t> <int64_t> output_grad_edge_weight_left_tensor.get_c_handle(),
-        <wholememory_tensor_t> <int64_t> output_grad_edge_weight_right_tensor.get_c_handle(),
-        <void*> stream_int))
-
-cpdef void edge_weight_softmax_forward(
-    WrappedLocalTensor csr_row_ptr_tensor,
-    WrappedLocalTensor edge_weight_tensor,
-    WrappedLocalTensor output_edge_weight_softmax_tensor,
-    int64_t stream_int):
-    check_wholememory_error_code(edge_weight_softmax_csr_forward(
-          <wholememory_tensor_t> <int64_t> csr_row_ptr_tensor.get_c_handle(),
-          <wholememory_tensor_t> <int64_t> edge_weight_tensor.get_c_handle(),
-          <wholememory_tensor_t> <int64_t> output_edge_weight_softmax_tensor.get_c_handle(),
-          <void*> stream_int))
-
-cpdef void edge_weight_softmax_backward(
-    WrappedLocalTensor csr_row_ptr_tensor,
-    WrappedLocalTensor edge_weight_tensor,
-    WrappedLocalTensor grad_edge_weight_softmax_tensor,
-    WrappedLocalTensor output_grad_edge_weight_tensor,
-    int64_t stream_int):
-    check_wholememory_error_code(edge_weight_softmax_csr_backward(
-        <wholememory_tensor_t> <int64_t> csr_row_ptr_tensor.get_c_handle(),
-        <wholememory_tensor_t> <int64_t> edge_weight_tensor.get_c_handle(),
-        <wholememory_tensor_t> <int64_t> grad_edge_weight_softmax_tensor.get_c_handle(),
-        <wholememory_tensor_t> <int64_t> output_grad_edge_weight_tensor.get_c_handle(),
-        <void*> stream_int))
 
 cpdef void add_csr_self_loop(
     WrappedLocalTensor csr_row_ptr_tensor,
@@ -2028,38 +1890,4 @@ cpdef void add_csr_self_loop(
         <wholememory_tensor_t> <int64_t> csr_col_ptr_tensor.get_c_handle(),
         <wholememory_tensor_t> <int64_t> csr_row_ptr_self_tensor.get_c_handle(),
         <wholememory_tensor_t> <int64_t> csr_col_ptr_self_tensor.get_c_handle(),
-        <void*> stream_int))
-
-cpdef void gspmm_weighted_forward(
-    WrappedLocalTensor csr_row_ptr_tensor,
-    WrappedLocalTensor csr_col_ptr_tensor,
-    WrappedLocalTensor edge_weight_tensor,
-    WrappedLocalTensor feature_tensor,
-    WrappedLocalTensor output_feature_tensor,
-    int64_t stream_int):
-    check_wholememory_error_code(gspmm_csr_weighted_forward(
-        <wholememory_tensor_t> <int64_t> csr_row_ptr_tensor.get_c_handle(),
-        <wholememory_tensor_t> <int64_t> csr_col_ptr_tensor.get_c_handle(),
-        <wholememory_tensor_t> <int64_t> edge_weight_tensor.get_c_handle(),
-        <wholememory_tensor_t> <int64_t> feature_tensor.get_c_handle(),
-        <wholememory_tensor_t> <int64_t> output_feature_tensor.get_c_handle(),
-        <void*> stream_int))
-
-cpdef void gspmm_weighted_backward(
-    WrappedLocalTensor csr_row_ptr_tensor,
-    WrappedLocalTensor csr_col_ptr_tensor,
-    WrappedLocalTensor edge_weight_tensor,
-    WrappedLocalTensor feature_tensor,
-    WrappedLocalTensor input_grad_feature_tensor,
-    WrappedLocalTensor output_grad_edge_weight_tensor,
-    WrappedLocalTensor output_grad_feature_tensor,
-    int64_t stream_int):
-    check_wholememory_error_code(gspmm_csr_weighted_backward(
-        <wholememory_tensor_t> <int64_t> csr_row_ptr_tensor.get_c_handle(),
-        <wholememory_tensor_t> <int64_t> csr_col_ptr_tensor.get_c_handle(),
-        <wholememory_tensor_t> <int64_t> edge_weight_tensor.get_c_handle(),
-        <wholememory_tensor_t> <int64_t> feature_tensor.get_c_handle(),
-        <wholememory_tensor_t> <int64_t> input_grad_feature_tensor.get_c_handle(),
-        <wholememory_tensor_t> <int64_t> output_grad_edge_weight_tensor.get_c_handle(),
-        <wholememory_tensor_t> <int64_t> output_grad_feature_tensor.get_c_handle(),
         <void*> stream_int))

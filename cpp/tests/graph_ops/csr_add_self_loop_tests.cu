@@ -20,7 +20,6 @@
 #include <wholememory/tensor_description.h>
 
 #include "../wholegraph_ops/graph_sampling_test_utils.hpp"
-#include "./spmm_csr_no_weight_utils.hpp"
 #include "csr_add_self_loop_utils.hpp"
 #include "error.hpp"
 
