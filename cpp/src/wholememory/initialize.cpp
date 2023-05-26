@@ -60,6 +60,9 @@ wholememory_error_code_t init(unsigned int flags) noexcept
   } catch (wholememory::cuda_error& wce) {
     WHOLEMEMORY_ERROR("init failed, cuda_error=%s", wce.what());
     return WHOLEMEMORY_CUDA_ERROR;
+  } catch (wholememory::cu_error& wce) {
+    WHOLEMEMORY_ERROR("init failed, cu_error=%s", wce.what());
+    return WHOLEMEMORY_CUDA_ERROR;
   } catch (...) {
     WHOLEMEMORY_ERROR("init failed, Unknown error.");
     return WHOLEMEMORY_UNKNOW_ERROR;

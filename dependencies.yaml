@@ -157,6 +157,9 @@ dependencies:
     common:
       - output_types: [conda, requirements]
         packages:
+          - c-compiler
+          - cxx-compiler
+          - ninja
           - numpy>=1.17
           - pytest
           - pytest-forked

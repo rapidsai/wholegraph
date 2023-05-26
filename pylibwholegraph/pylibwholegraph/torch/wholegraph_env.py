@@ -10,15 +10,20 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import os.path
+import importlib
 
 import torch
+import torch.utils.cpp_extension
+import pylibwholegraph
 import pylibwholegraph.binding.wholememory_binding as wmb
 from typing import Union
 from .utils import wholememory_dtype_to_torch_dtype, torch_dtype_to_wholememory_dtype
 
-
 default_cuda_stream_int_ptr = None
 default_wholegraph_env_context = None
+torch_cpp_ext_loaded = False
+torch_cpp_ext_lib = None
 
 
 def get_stream(use_default=True):
@@ -105,8 +110,20 @@ def torch_free_env_fn(
     memory_context.free()
 
 
+class ExtContextWrapper(object):
+    def __init__(self, env_func: int):
+        self.env_func = env_func
+
+    def get_env_fns(self) -> int:
+        return self.env_func
+
+
 def create_current_env_context():
     # print('in wholegraph_env.py create_current_env_context')
+    global torch_cpp_ext_loaded
+    global torch_cpp_ext_lib
+    if torch_cpp_ext_loaded:
+        return ExtContextWrapper(torch_cpp_ext_lib.get_wholegraph_env_fns())
     context = wmb.GlobalContextWrapper()
     global_context = TorchEmptyGlobalContext()
     context.create_context(
@@ -144,3 +161,36 @@ def wrap_torch_tensor(t: Union[torch.Tensor, None]) -> wmb.WrappedLocalTensor:
     py_desc.set_shape(tuple(t.shape))
     py_desc.set_stride(tuple(t.stride()))
     return wm_t.wrap_tensor(py_desc, t.data_ptr())
+
+
+def get_cpp_extension_src_path():
+    return os.path.dirname(pylibwholegraph.__file__)
+
+
+def compile_cpp_extension():
+    global torch_cpp_ext_loaded
+    global torch_cpp_ext_lib
+    cpp_extension_path = os.path.join(get_cpp_extension_src_path(), "torch_cpp_ext")
+    extra_cflags = []
+    extra_ldflags = ["-lwholegraph"]
+    if "CONDA_PREFIX" in os.environ:
+        extra_cflags.append(
+            "".join(["-I", os.path.join(os.environ["CONDA_PREFIX"], "include")])
+        )
+        extra_ldflags.append(
+            "".join(["-L", os.path.join(os.environ["CONDA_PREFIX"], "lib")])
+        )
+    torch.utils.cpp_extension.load(
+        name="pylibwholegraph.pylibwholegraph_torch_ext",
+        sources=[
+            os.path.join(cpp_extension_path, "wholegraph_torch_ext.cpp"),
+            os.path.join(cpp_extension_path, "torch_env_func_ptrs.cpp"),
+            os.path.join(cpp_extension_path, "torch_utils.cpp"),
+        ],
+        extra_cflags=extra_cflags,
+        extra_ldflags=extra_ldflags,
+        with_cuda=True,
+        verbose=True,
+    )
+    torch_cpp_ext_lib = importlib.import_module('pylibwholegraph.pylibwholegraph_torch_ext')
+    torch_cpp_ext_loaded = True

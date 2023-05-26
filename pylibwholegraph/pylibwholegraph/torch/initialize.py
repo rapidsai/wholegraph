@@ -31,12 +31,12 @@ def init_torch_env(world_rank: int, world_size: int, local_rank: int, local_size
 
     if "MASTER_ADDR" not in os.environ:
         if world_rank == 0:
-            print('[WARNING] MASTER_ADDR not set, resetting to localhost')
+            print("[WARNING] MASTER_ADDR not set, resetting to localhost")
         os.environ["MASTER_ADDR"] = "localhost"
 
     if "MASTER_PORT" not in os.environ:
         if world_rank == 0:
-            print('[WARNING] MASTER_PORT not set, resetting to 12335')
+            print("[WARNING] MASTER_PORT not set, resetting to 12335")
         os.environ["MASTER_PORT"] = "12335"
 
     wmb.init(0)

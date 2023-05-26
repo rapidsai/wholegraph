@@ -45,12 +45,12 @@ nvidia-smi
 set +e
 
 rapids-logger "pytest pylibwholegraph"
-pushd pylibwholegraph/tests/
+PYLIBWHOLEGRAPH_INSTALL_PATH=`python -c 'import os; import pylibwholegraph; print(os.path.dirname(pylibwholegraph.__file__))'`
+PYTEST_PATH=${PYLIBWHOLEGRAPH_INSTALL_PATH}/tests
 pytest \
   --cache-clear \
   --forked \
-  pylibwholegraph/ wholegraph_torch/ops/test_wholegraph_gather_scatter.py
-popd
+  ${PYTEST_PATH}/pylibwholegraph/ ${PYTEST_PATH}/wholegraph_torch/ops/test_wholegraph_gather_scatter.py
 
 echo "test_python is exiting with value: ${EXITCODE}"
 exit ${EXITCODE}

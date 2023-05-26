@@ -13,19 +13,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#pragma once
 
-#include <nanobind/nanobind.h>
+#include <cuda_runtime_api.h>
+#include <wholememory/env_func_ptrs.h>
 
-namespace nb = nanobind;
+namespace wholegraph_torch {
 
-void init_wholegraph_types(nb::module_&);
-void init_wholegraph_functions(nb::module_&);
+/**
+ * @brief : PyTorch environment functions for memory allocation.
+ *
+ * @return : pointers to the functions of current CUDA device
+ */
+wholememory_env_func_t* get_pytorch_env_func();
 
-NB_MODULE(pylibwholegraph_ext, m)
-{
-  // we want to first initialize global types and the graph classes so that
-  // docstrings in later bindings can use the named types rather than the name
-  // of the C++ type
-  init_wholegraph_types(m);
-  init_wholegraph_functions(m);
-}
+cudaStream_t get_current_stream();
+
+}  // namespace wholegraph_torch

@@ -57,6 +57,11 @@ requirements:
     - python
     - scikit-build {{ scikit_build_version }}
   run:
+    - {{ compiler('c') }}
+    - {{ compiler('cuda') }} {{ cuda_version }}
+    - {{ compiler('cxx') }}
+    - cmake {{ cmake_version }}
+    - ninja
     - {{ pin_compatible('cudatoolkit', max_pin='x', min_pin='x') }}
     - libwholegraph ={{ version }}
     - python

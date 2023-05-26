@@ -163,4 +163,4 @@ def routine_func(world_rank: int, world_size: int):
 def test_wholegraph_gather_scatter():
     gpu_count = wmb.fork_get_gpu_count()
     assert gpu_count > 0
-    multiprocess_run(gpu_count, routine_func, True)
+    multiprocess_run(gpu_count, routine_func)

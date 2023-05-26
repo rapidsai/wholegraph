@@ -44,6 +44,7 @@ class CleanCommand(Command):
 cmdclass = dict()
 cmdclass["clean"] = CleanCommand
 
+
 setup(
     name="pylibwholegraph",
     description="pylibwholegraph - GPU Graph Storage for GNN feature and graph structure",
@@ -65,6 +66,10 @@ setup(
             "pylibwholegraph.*",
         ]
     ),
+    package_data={
+        "pylibwholegraph": ["torch_cpp_ext/*.cpp", "torch_cpp_ext/*.h"],
+    },
+    include_package_data=True,
     python_requires=">=3.6",
     license="Apache",
     cmdclass=cmdclass,
