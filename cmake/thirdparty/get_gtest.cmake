@@ -1,5 +1,5 @@
 #=============================================================================
-# Copyright (c) 2021, NVIDIA CORPORATION.
+# Copyright (c) 2021-2022, NVIDIA CORPORATION.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,21 +14,11 @@
 # limitations under the License.
 #=============================================================================
 
-function(find_and_configure_nccl)
+function(find_and_configure_gtest)
 
-    if(TARGET NCCL::NCCL)
-        return()
-    endif()
-
-    rapids_find_generate_module(NCCL
-        HEADER_NAMES  nccl.h
-        LIBRARY_NAMES nccl
-    )
-
-    # Currently NCCL has no CMake build-system so we require
-    # it built and installed on the machine already
-    rapids_find_package(NCCL REQUIRED)
+    include(${rapids-cmake-dir}/cpm/gtest.cmake)
+    rapids_cpm_gtest()
 
 endfunction()
 
-find_and_configure_nccl()
+find_and_configure_gtest()

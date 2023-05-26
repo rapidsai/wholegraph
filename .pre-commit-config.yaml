@@ -1,0 +1,42 @@
+## https://pre-commit.com/
+#
+# Before first use: `pre-commit install`
+# To run: `pre-commit run --all-files`
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.4.0
+    hooks:
+      - id: check-added-large-files
+      - id: debug-statements
+      - id: mixed-line-ending
+      - id: trailing-whitespace
+        args: [--markdown-linebreak-ext=md]
+      - id: end-of-file-fixer
+  - repo: https://github.com/PyCQA/flake8
+    rev: 6.0.0
+    hooks:
+      - id: flake8
+        args: ["--config=.flake8"]
+        exclude: |
+          (?x)^(
+            scripts
+          )
+  - repo: https://github.com/pre-commit/mirrors-clang-format
+    rev: v16.0.0
+    hooks:
+      - id: clang-format
+        exclude: |
+          (?x)^(
+            scripts/checks/__clang_cuda_additional_intrinsics.h
+          )
+        types_or: [c, c++, cuda]
+        args: ["-fallback-style=none", "-style=file", "-i"]
+  - repo: local
+    hooks:
+      - id: copyright-check
+        name: copyright-check
+        entry: python3 ./scripts/checks/copyright.py --update-current-year
+        #entry: python3 ./scripts/checks/copyright.py --git-modified-only --update-current-year
+        language: python
+        pass_filenames: false
+        additional_dependencies: [gitpython]
