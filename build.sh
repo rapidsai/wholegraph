@@ -2,9 +2,9 @@
 
 # Copyright (c) 2019-2023, NVIDIA CORPORATION.
 
-# wholegraph build script for single components
+# wholegraph build script
 
-# This script is used to build single components in this repo from
+# This script is used to build component(s) in this repo from
 # source, and can be called with various options to customize the
 # build as needed (see the help output for details)
 
@@ -18,16 +18,32 @@ ARGS=$*
 # script, and that this script resides in the repo dir!
 REPODIR=$(cd $(dirname $0); pwd)
 
-VALIDARGS="clean libwholegraph tests "
-VALIDARGS+="pylibwholegraph -v -g -n "
-VALIDARGS+="--native --cmake-args --compile-cmd -h --help"
+VALIDARGS="
+    clean
+    uninstall
+    libwholegraph
+    pylibwholegraph
+    tests
+    benchmarks
+    docs
+    -v
+    -g
+    -n
+    --native
+    --cmake-args
+    --compile-cmd
+    -h
+    --help"
+
 HELP="$0 [<target> ...] [<flag> ...]
  where <target> is:
    clean                    - remove all existing build artifacts and configuration (start over).
+   uninstall                - uninstall libwholegraph and pylibwholegraph from a prior build/install (see also -n)
    libwholegraph            - build the libwholegraph C++ library.
+   pylibwholegraph          - build the pylibwholegraph Python package.
    tests                    - build the C++ (OPG) tests.
    benchmarks               - build benchmarks.
-   pylibwholegraph          - build the pylibwholegraph Python package.
+   docs                     - build the docs
  and <flag> is:
    -v                          - verbose build mode
    -g                          - build for debug
@@ -36,16 +52,29 @@ HELP="$0 [<target> ...] [<flag> ...]
    --cmake-args=\\\"<args>\\\" - add arbitrary CMake arguments to any cmake call
    --compile-cmd               - only output compile commands (invoke CMake without build)
    -h | --h[elp]               - print this text
+
+ default action (no args) is to build and install 'libwholegraph' and then 'pylibwholegraph'
+
+ libwholegraph build dir is: ${LIBWHOLEGRAPH_BUILD_DIR}
+
+ Set env var LIBWHOLEGRAPH_BUILD_DIR to override libcugraph build dir.
 "
-LIBWHOLEGRAPH_BUILD_DIR=${REPODIR}/build
-PYLIBWHOLEGRAPH_BUILD_DIRS="${REPODIR}/pylibwholegraph/build"
-PYLIBWHOLEGRAPH_BUILD_DIRS+=" ${REPODIR}/pylibwholegraph/_skbuild"
-PYLIBWHOLEGRAPH_BUILD_DIRS+=" ${REPODIR}/pylibwholegraph/pylibwholegraph/binding/include"
-PYLIBWHOLEGRAPH_BUILD_DIRS+=" ${REPODIR}/pylibwholegraph/pylibwholegraph/binding/lib"
-BUILD_DIRS="${LIBWHOLEGRAPH_BUILD_DIR} ${PYLIBWHOLEGRAPH_BUILD_DIRS}"
+LIBWHOLEGRAPH_BUILD_DIR=${LIBWHOLEGRAPH_BUILD_DIR:=${REPODIR}/cpp/build}
+
+PYLIBWHOLEGRAPH_BUILD_DIRS="${REPODIR}/python/pylibwholegraph/build"
+PYLIBWHOLEGRAPH_BUILD_DIRS+=" ${REPODIR}/python/pylibwholegraph/_skbuild"
+PYLIBWHOLEGRAPH_BUILD_DIRS+=" ${REPODIR}/python/pylibwholegraph/pylibwholegraph/binding/include"
+PYLIBWHOLEGRAPH_BUILD_DIRS+=" ${REPODIR}/python/pylibwholegraph/pylibwholegraph/binding/lib"
+
+# All python build dirs using _skbuild are handled by cleanPythonDir, but
+# adding them here for completeness
+BUILD_DIRS="${LIBWHOLEGRAPH_BUILD_DIR}
+            ${PYLIBWHOLEGRAPH_BUILD_DIRS}
+"
 
 # Set defaults for vars modified by flags to this script
 VERBOSE_FLAG=""
+CMAKE_VERBOSE_OPTION=""
 BUILD_TYPE=Release
 BUILD_ALL_GPU_ARCH=1
 INSTALL_TARGET="--target install"
@@ -54,12 +83,26 @@ INSTALL_TARGET="--target install"
 #  FIXME: if INSTALL_PREFIX is not set, check PREFIX, then check
 #         CONDA_PREFIX, but there is no fallback from there!
 INSTALL_PREFIX=${INSTALL_PREFIX:=${PREFIX:=${CONDA_PREFIX}}}
-PARALLEL_LEVEL=${PARALLEL_LEVEL:=""}
+PARALLEL_LEVEL=${PARALLEL_LEVEL:="`nproc`"}
+BUILD_ABI=${BUILD_ABI:=ON}
 
 export CMAKE_GENERATOR="${CMAKE_GENERATOR:=Ninja}"
 
 function hasArg {
     (( ${NUMARGS} != 0 )) && (echo " ${ARGS} " | grep -q " $1 ")
+}
+
+function buildAll {
+    (( ${NUMARGS} == 0 )) || !(echo " ${ARGS} " | grep -q " [^-][a-zA-Z0-9\_\-]\+ ")
+}
+
+function cleanPythonDir {
+    pushd $1 > /dev/null
+    rm -rf dist wholegraph/raft *.egg-info
+    find . -type d -name __pycache__ -print | xargs rm -rf
+    find . -type d -name _skbuild -print | xargs rm -rf
+    find . -type d -name _external_repositories -print | xargs rm -rf
+    popd > /dev/null
 }
 
 function cmakeArgs {
@@ -94,16 +137,18 @@ if (( ${NUMARGS} != 0 )); then
     # Check for cmake args
     cmakeArgs
     for a in ${ARGS}; do
-    if ! (echo " ${VALIDARGS} " | grep -q " ${a} "); then
+    if ! (echo " ${VALIDARGS} " | grep -q "^[[:blank:]]*${a}$"); then
         echo "Invalid option: ${a}"
         exit 1
     fi
+    echo " running ${a} "
     done
 fi
 
 # Process flags
 if hasArg -v; then
     VERBOSE_FLAG=-v
+    CMAKE_VERBOSE_OPTION="--log-level=VERBOSE"
 fi
 if hasArg -g; then
     BUILD_TYPE=Debug
@@ -113,6 +158,26 @@ if hasArg -n; then
 fi
 if hasArg --native; then
     BUILD_ALL_GPU_ARCH=0
+fi
+
+# If clean or uninstall targets given, run them prior to any other steps
+if hasArg uninstall; then
+    if [[ "$INSTALL_PREFIX" != "" ]]; then
+        rm -rf ${INSTALL_PREFIX}/include/wholememory
+        rm -f ${INSTALL_PREFIX}/lib/libwholegraph.so
+        rm -rf ${INSTALL_PREFIX}/lib/cmake/wholegraph
+    fi
+    # This may be redundant given the above, but can also be used in case
+    # there are other installed files outside of the locations above.
+    if [ -e ${LIBWHOLEGRAPH_BUILD_DIR}/install_manifest.txt ]; then
+        xargs rm -f < ${LIBWHOLEGRAPH_BUILD_DIR}/install_manifest.txt > /dev/null 2>&1
+    fi
+    # uninstall cugraph and pylibcugraph installed from a prior "setup.py
+    # install"
+    # FIXME: if multiple versions of these packages are installed, this only
+    # removes the latest one and leaves the others installed. build.sh uninstall
+    # can be run multiple times to remove all of them, but that is not obvious.
+    pip uninstall -y pylibcugraph cugraph cugraph-service-client cugraph-service-server cugraph-dgl cugraph-pyg
 fi
 
 # If clean given, run it prior to any other steps
@@ -128,7 +193,7 @@ if hasArg clean; then
     fi
     done
     # remove any left-over cpython shared libraries
-    find ${REPODIR}/pylibwholegraph -name "*.cpython*.so" -type f -delete
+    find ${REPODIR}/python/pylibwholegraph -name "*.cpython*.so" -type f -delete
 fi
 
 # set values based on flags
