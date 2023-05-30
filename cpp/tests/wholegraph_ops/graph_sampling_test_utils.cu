@@ -304,7 +304,7 @@ REGISTER_DISPATCH_TWO_TYPES(HOSTSAMPLEALL, host_sample_all, SINT3264, SINT3264)
 
 template <int Offset = 0>
 void random_sample_without_replacement_cpu_base(std::vector<int>* a,
-                                                const std::vector<uint32_t>& r,
+                                                const std::vector<int>& r,
                                                 int M,
                                                 int N)
 {
@@ -395,14 +395,14 @@ void host_unweighted_sample_without_replacement(
         output_local_id++;
       }
     } else {
-      std::vector<uint32_t> r(neighbor_count);
+      std::vector<int> r(neighbor_count);
       for (int j = 0; j < device_num_threads; j++) {
         int local_gidx = gidx + j;
         PCGenerator rng(random_seed, (uint64_t)local_gidx, (uint64_t)0);
 
         for (int k = 0; k < items_per_thread; k++) {
           int id = k * device_num_threads + j;
-          uint32_t random_num;
+          int random_num;
           rng.next(random_num);
           if (id < neighbor_count) { r[id] = id < M ? (random_num % (N - id)) : N; }
         }
@@ -560,7 +560,7 @@ template <typename WeightType>
 float host_gen_key_from_weight(const WeightType weight, PCGenerator& rng)
 {
   float u             = -rng.next_float(1.0f, 0.5f);
-  int64_t random_num2 = 0;
+  uint64_t random_num2 = 0;
   int seed_count      = -1;
   do {
     rng.next(random_num2);
