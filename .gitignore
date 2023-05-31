@@ -16,6 +16,8 @@ build*/
 *~
 DartConfiguration.tcl
 .DS_Store
+*.egg-info
+*.egg
 
 # Unit test / coverage reports
 htmlcov/

@@ -32,6 +32,7 @@ VALIDARGS="
     --native
     --cmake-args
     --compile-cmd
+   --clean
     -h
     --help"
 
@@ -48,9 +49,10 @@ HELP="$0 [<target> ...] [<flag> ...]
    -v                          - verbose build mode
    -g                          - build for debug
    -n                          - no install step
-   --native                    - build for the GPU architecture of the current system
+   --allgpuarch               - build for all supported GPU architectures
    --cmake-args=\\\"<args>\\\" - add arbitrary CMake arguments to any cmake call
    --compile-cmd               - only output compile commands (invoke CMake without build)
+   --clean                    - clean an individual target (note: to do a complete rebuild, use the clean target described above)
    -h | --h[elp]               - print this text
 
  default action (no args) is to build and install 'libwholegraph' and then 'pylibwholegraph'
@@ -76,8 +78,9 @@ BUILD_DIRS="${LIBWHOLEGRAPH_BUILD_DIR}
 VERBOSE_FLAG=""
 CMAKE_VERBOSE_OPTION=""
 BUILD_TYPE=Release
-BUILD_ALL_GPU_ARCH=1
+BUILD_ALL_GPU_ARCH=0
 INSTALL_TARGET="--target install"
+PYTHON="python"
 
 # Set defaults for vars that may not have been defined externally
 #  FIXME: if INSTALL_PREFIX is not set, check PREFIX, then check
@@ -141,7 +144,7 @@ if (( ${NUMARGS} != 0 )); then
         echo "Invalid option: ${a}"
         exit 1
     fi
-    echo " running ${a} "
+    echo " args are ${a} "
     done
 fi
 
@@ -156,8 +159,9 @@ fi
 if hasArg -n; then
     INSTALL_TARGET=""
 fi
-if hasArg --native; then
-    BUILD_ALL_GPU_ARCH=0
+
+if hasArg --allgpuarch; then
+    BUILD_ALL_GPU_ARCH=1
 fi
 
 # If clean or uninstall targets given, run them prior to any other steps
@@ -172,16 +176,26 @@ if hasArg uninstall; then
     if [ -e ${LIBWHOLEGRAPH_BUILD_DIR}/install_manifest.txt ]; then
         xargs rm -f < ${LIBWHOLEGRAPH_BUILD_DIR}/install_manifest.txt > /dev/null 2>&1
     fi
-    # uninstall cugraph and pylibcugraph installed from a prior "setup.py
-    # install"
+    # uninstall libwholegraph and pylibwholegraph installed from a prior "setup.py install"
     # FIXME: if multiple versions of these packages are installed, this only
     # removes the latest one and leaves the others installed. build.sh uninstall
     # can be run multiple times to remove all of them, but that is not obvious.
-    pip uninstall -y pylibcugraph cugraph cugraph-service-client cugraph-service-server cugraph-dgl cugraph-pyg
+    pip uninstall -y libwholegraph pylibwholegraph
 fi
 
 # If clean given, run it prior to any other steps
 if hasArg clean; then
+    echo "- Cleaning"
+    # Ignore errors for clean since missing files, etc. are not failures
+    set +e
+    # remove artifacts generated inplace
+    # FIXME: ideally the "setup.py clean" command would be used for this, but
+    # currently running any setup.py command has side effects (eg. cloning repos).
+    # (cd ${REPODIR}/python && python setup.py clean)
+    if [[ -d ${REPODIR}/python ]]; then
+        cleanPythonDir ${REPODIR}/python
+    fi
+
     # If the dirs to clean are mounted dirs in a container, the
     # contents should be removed but the mounted dirs will remain.
     # The find removes all contents but leaves the dirs, the rmdir
@@ -196,14 +210,6 @@ if hasArg clean; then
     find ${REPODIR}/python/pylibwholegraph -name "*.cpython*.so" -type f -delete
 fi
 
-# set values based on flags
-if (( ${BUILD_ALL_GPU_ARCH} == 0 )); then
-    WHOLEGRAPH_CMAKE_CUDA_ARCHITECTURES="${WHOLEGRAPH_CMAKE_CUDA_ARCHITECTURES:=NATIVE}"
-    echo "Building for the architecture of the GPU in the system..."
-else
-    WHOLEGRAPH_CMAKE_CUDA_ARCHITECTURES="70-real;75-real;80-real;86-real;90"
-    echo "Building for *ALL* supported GPU architectures..."
-fi
 if hasArg tests; then
     BUILD_TESTS=ON
 else
@@ -217,7 +223,17 @@ fi
 
 ################################################################################
 # libwholegraph
-if hasArg libwholegraph; then
+if buildAll || hasArg libwholegraph; then
+
+    # set values based on flags
+    if (( ${BUILD_ALL_GPU_ARCH} == 0 )); then
+        WHOLEGRAPH_CMAKE_CUDA_ARCHITECTURES="${WHOLEGRAPH_CMAKE_CUDA_ARCHITECTURES:=NATIVE}"
+        echo "Building for the architecture of the GPU in the system..."
+    else
+        WHOLEGRAPH_CMAKE_CUDA_ARCHITECTURES="70-real;75-real;80-real;86-real;90"
+        echo "Building for *ALL* supported GPU architectures..."
+    fi
+
     cmake -S ${REPODIR}/cpp -B ${LIBWHOLEGRAPH_BUILD_DIR} \
           -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX} \
           -DCMAKE_CUDA_ARCHITECTURES=${WHOLEGRAPH_CMAKE_CUDA_ARCHITECTURES} \
@@ -237,28 +253,51 @@ fi
 
 ################################################################################
 # pylibwholegraph
-if hasArg pylibwholegraph; then
+if buildAll || hasArg pylibwholegraph; then
+    if hasArg --clean; then
+        cleanPythonDir ${REPODIR}/python/pylibwholegraph
+    fi
+
     # setup.py and cmake reference an env var LIBWHOLEGRAPH_DIR to find the
     # libwholegraph package (cmake).
     # If not set by the user, set it to LIBWHOLEGRAPH_BUILD_DIR
     LIBWHOLEGRAPH_DIR=${LIBWHOLEGRAPH_DIR:=${LIBWHOLEGRAPH_BUILD_DIR}}
     if ! hasArg --compile-cmd; then
-        cd ${REPODIR}/pylibwholegraph
+        cd ${REPODIR}/python/pylibwholegraph
+        echo "Changed to: ${PWD} and ${PYTHON}"
         env LIBWHOLEGRAPH_DIR=${LIBWHOLEGRAPH_DIR} \
-        ${PYTHON} ${REPODIR}/pylibwholegraph/setup.py build_ext --inplace \
+        ${PYTHON} setup.py build_ext --inplace \
             --build-type=${BUILD_TYPE} \
             ${EXTRA_CMAKE_ARGS}
         if ! hasArg -n; then
             env LIBWHOLEGRAPH_DIR=${LIBWHOLEGRAPH_DIR} \
-            ${PYTHON} ${REPODIR}/pylibwholegraph/setup.py install \
+            ${PYTHON} setup.py install \
                 --build-type=${BUILD_TYPE} \
                 ${EXTRA_CMAKE_ARGS}
         fi
     else
         # just invoke cmake without going through scikit-build
         env LIBWHOLEGRAPH_DIR=${LIBWHOLEGRAPH_DIR} \
-        cmake -S ${REPODIR}/pylibwholegraph -B ${REPODIR}/pylibwholegraph/_skbuild/build \
+        cmake -S ${REPODIR}/python/pylibwholegraph -B ${REPODIR}/python/pylibwholegraph/_skbuild/build \
            -DCMAKE_BUILD_TYPE=${BUILD_TYPE} \
             ${EXTRA_CMAKE_ARGS}
     fi
+fi
+
+################################################################################
+# Build the docs
+if hasArg docs; then
+    if [ ! -d ${LIBCUGRAPH_BUILD_DIR} ]; then
+        mkdir -p ${LIBCUGRAPH_BUILD_DIR}
+        cd ${LIBCUGRAPH_BUILD_DIR}
+        cmake -B "${LIBCUGRAPH_BUILD_DIR}" -S "${REPODIR}/cpp" \
+              -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX} \
+              -DCMAKE_BUILD_TYPE=${BUILD_TYPE} \
+              ${CMAKE_GENERATOR_OPTION} \
+              ${CMAKE_VERBOSE_OPTION}
+    fi
+    cd ${LIBCUGRAPH_BUILD_DIR}
+    cmake --build "${LIBCUGRAPH_BUILD_DIR}" -j${PARALLEL_LEVEL} --target docs_cugraph ${VERBOSE_FLAG}
+    cd ${REPODIR}/docs/cugraph
+    make html
 fi

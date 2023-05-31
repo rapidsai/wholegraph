@@ -102,7 +102,7 @@ endif()
 
 rapids_cpm_init()
 
-include(../cmake/thirdparty/get_raft.cmake)
+include(../../cpp/cmake/thirdparty/get_raft.cmake)
 
 ##############################################################################
 # - Dependencies  ------------------------------------------------------------
