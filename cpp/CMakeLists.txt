@@ -121,8 +121,8 @@ endif()
 
 rapids_cpm_init()
 
-include(../cmake/thirdparty/get_raft.cmake)
-include(../cmake/thirdparty/get_nccl.cmake)
+include(./cmake/thirdparty/get_raft.cmake)
+include(./cmake/thirdparty/get_nccl.cmake)
 
 file(GLOB WHOLEGRAPH_SOURCES
         "src/*.cpp"
@@ -188,7 +188,7 @@ PRIVATE
 
 # optionally build tests
 if(BUILD_TESTS AND CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
-    include(../cmake/thirdparty/get_gtest.cmake)
+    include(./cmake/thirdparty/get_gtest.cmake)
     include(CTest) # calls enable_testing()
 
     add_subdirectory(tests)
@@ -197,7 +197,7 @@ endif()
 ##############################################################################
 # - doxygen docs -------------------------------------------------------------
 
-include(../cmake/doxygen.cmake)
+include(./cmake/doxygen.cmake)
 add_doxygen_target(
         IN_DOXYFILE  Doxyfile.in
         OUT_DOXYFILE ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile
@@ -208,7 +208,7 @@ add_doxygen_target(
 ##############################################################################
 # - code checker -------------------------------------------------------------
 
-include(../cmake/CodeChecker.cmake)
+include(./cmake/CodeChecker.cmake)
 set(CLANG_FORMAT_EXE "clang-format")
 set(CLANG_TIDY_EXE "clang-tidy")
 set(FLAKE8_EXE "flake8")
