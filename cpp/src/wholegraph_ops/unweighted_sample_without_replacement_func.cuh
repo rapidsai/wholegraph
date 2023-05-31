@@ -104,7 +104,7 @@ __global__ void large_sample_kernel(wholememory_gref_t wm_csr_row_ptr,
   }
   __syncthreads();
   for (int idx = max_sample_count + threadIdx.x; idx < neighbor_count; idx += blockDim.x) {
-    int rand_num;
+    int32_t rand_num;
     rng.next(rand_num);
     rand_num %= idx + 1;
     if (rand_num < max_sample_count) { atomicMax((int*)(output + offset + rand_num), idx); }
@@ -192,10 +192,10 @@ __global__ void unweighted_sample_without_replacement_kernel(
   } shared_data;
 #pragma unroll
   for (int i = 0; i < ITEMS_PER_THREAD; i++) {
-    uint32_t idx = i * BLOCK_DIM + threadIdx.x;
-    uint32_t random_num;
+    int idx = i * BLOCK_DIM + threadIdx.x;
+    int32_t random_num;
     rng.next(random_num);
-    uint32_t r = idx < M ? (random_num % (N - idx)) : N;
+    int32_t r = idx < M ? (random_num % (N - idx)) : N;
     sa_p[i]    = ((uint64_t)r << 32UL) | idx;
   }
   __syncthreads();

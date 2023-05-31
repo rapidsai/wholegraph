@@ -22,7 +22,6 @@
 #include "error.hpp"
 #include "logger.hpp"
 
-// generate_negative=true: generate uint32 data 
 wholememory_error_code_t generate_random_positive_int_cpu(
   int64_t random_seed,
   int64_t subsequence,
@@ -42,7 +41,7 @@ wholememory_error_code_t generate_random_positive_int_cpu(
   PCGenerator rng((unsigned long long)random_seed, subsequence, 0);
   for (int64_t i = 0; i < output_tensor_desc.sizes[0]; i++) { 
     if (output_tensor_desc.dtype == WHOLEMEMORY_DT_INT) {
-      int random_num;
+      int32_t random_num;
       rng.next(random_num);  
       static_cast<int*>(output_ptr)[i] = random_num;
     } 
@@ -80,14 +79,14 @@ wholememory_error_code_t generate_exponential_distribution_negative_float_cpu(
       seed_count++;
     } while (!random_num2);
     auto count_one = [](unsigned long long num) {
-      int c = 0;
+      int32_t c = 0;
       while (num) {
         num >>= 1;
         c++;
       }
       return 64 - c;
     };
-    int one_bit = count_one(random_num2) + seed_count * 64;
+    int32_t one_bit = count_one(random_num2) + seed_count * 64;
     u *= pow(2, -one_bit);
     // float logk = (log1pf(u) / logf(2.0)) * (1.0f / (float)weight);
     float logk                     = (log1p(u) / log(2.0));
