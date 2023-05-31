@@ -62,6 +62,10 @@ function hasArg {
     (( ${NUMARGS} != 0 )) && (echo " ${ARGS} " | grep -q " $1 ")
 }
 
+function buildAll {
+    (( ${NUMARGS} == 0 )) || !(echo " ${ARGS} " | grep -q " [^-][a-zA-Z0-9\_\-]\+ ")
+}
+
 function cmakeArgs {
     # Check for multiple cmake args options
     if [[ $(echo $ARGS | { grep -Eo "\-\-cmake\-args" || true; } | wc -l ) -gt 1 ]]; then
@@ -152,7 +156,7 @@ fi
 
 ################################################################################
 # libwholegraph
-if hasArg libwholegraph; then
+if buildAll || hasArg libwholegraph; then
     cmake -S ${REPODIR}/cpp -B ${LIBWHOLEGRAPH_BUILD_DIR} \
           -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX} \
           -DCMAKE_CUDA_ARCHITECTURES=${WHOLEGRAPH_CMAKE_CUDA_ARCHITECTURES} \
@@ -172,7 +176,7 @@ fi
 
 ################################################################################
 # pylibwholegraph
-if hasArg pylibwholegraph; then
+if buildAll || hasArg pylibwholegraph; then
     # setup.py and cmake reference an env var LIBWHOLEGRAPH_DIR to find the
     # libwholegraph package (cmake).
     # If not set by the user, set it to LIBWHOLEGRAPH_BUILD_DIR
