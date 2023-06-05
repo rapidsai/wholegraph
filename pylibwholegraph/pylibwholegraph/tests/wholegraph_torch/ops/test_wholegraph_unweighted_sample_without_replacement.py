@@ -148,9 +148,7 @@ def host_unweighted_sample_without_replacement_func(
             random_values = torch.empty((N,), dtype=torch.int32)
             for j in range(block_threads):
                 local_gidx = gidx + j
-                random_nums = torch.ops.wholegraph_test.raft_pcg_generator_random(
-                    random_seed, local_gidx, items_per_thread
-                )
+                random_nums = wg_ops.generate_random_positive_int_cpu(random_seed, local_gidx, items_per_thread)
                 for k in range(items_per_thread):
                     id = k * block_threads + j
                     if id < neighbor_count:

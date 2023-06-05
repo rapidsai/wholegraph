@@ -155,3 +155,18 @@ def weighted_sample_without_replacement(
         )
     else:
         return output_sample_offset_tensor, output_dest_context.get_tensor()
+
+
+def generate_random_positive_int_cpu(random_seed,
+                         sub_sequence,
+                         output_random_value_count):
+    output = torch.empty((output_random_value_count,), dtype=torch.int)
+    wmb.host_generate_random_positive_int(random_seed, sub_sequence, wrap_torch_tensor(output))
+    return output
+
+def generate_exponential_distribution_negative_float_cpu(random_seed: int,
+                           sub_sequence: int,
+                           output_random_value_count: int):
+    output = torch.empty((output_random_value_count,), dtype = torch.float)
+    wmb.host_generate_exponential_distribution_negative_float(random_seed, sub_sequence, wrap_torch_tensor(output))
+    return output
