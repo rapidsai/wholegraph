@@ -287,17 +287,17 @@ fi
 ################################################################################
 # Build the docs
 if hasArg docs; then
-    if [ ! -d ${LIBCUGRAPH_BUILD_DIR} ]; then
-        mkdir -p ${LIBCUGRAPH_BUILD_DIR}
-        cd ${LIBCUGRAPH_BUILD_DIR}
-        cmake -B "${LIBCUGRAPH_BUILD_DIR}" -S "${REPODIR}/cpp" \
+    if [ ! -d ${LIBWHOLEGRAPH_BUILD_DIR} ]; then
+        mkdir -p ${LIBWHOLEGRAPH_BUILD_DIR}
+        cd ${LIBWHOLEGRAPH_BUILD_DIR}
+        cmake -B "${LIBWHOLEGRAPH_BUILD_DIR}" -S "${REPODIR}/cpp" \
               -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX} \
               -DCMAKE_BUILD_TYPE=${BUILD_TYPE} \
               ${CMAKE_GENERATOR_OPTION} \
               ${CMAKE_VERBOSE_OPTION}
     fi
-    cd ${LIBCUGRAPH_BUILD_DIR}
-    cmake --build "${LIBCUGRAPH_BUILD_DIR}" -j${PARALLEL_LEVEL} --target docs_cugraph ${VERBOSE_FLAG}
-    cd ${REPODIR}/docs/cugraph
+    cd ${LIBWHOLEGRAPH_BUILD_DIR}
+    cmake --build "${LIBWHOLEGRAPH_BUILD_DIR}" -j${PARALLEL_LEVEL} --target docs_wholegraph ${VERBOSE_FLAG}
+    cd ${REPODIR}/docs/wholegraph
     make html
 fi
