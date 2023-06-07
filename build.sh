@@ -34,7 +34,8 @@ VALIDARGS="
     --compile-cmd
    --clean
     -h
-    --help"
+    --help
+"
 
 HELP="$0 [<target> ...] [<flag> ...]
  where <target> is:
@@ -140,11 +141,10 @@ if (( ${NUMARGS} != 0 )); then
     # Check for cmake args
     cmakeArgs
     for a in ${ARGS}; do
-    if ! (echo " ${VALIDARGS} " | grep -q "^[[:blank:]]*${a}$"); then
+    if ! (echo "${VALIDARGS}" | grep -q "^[[:blank:]]*${a}$"); then
         echo "Invalid option: ${a}"
         exit 1
     fi
-    echo " args are ${a} "
     done
 fi
 
@@ -264,7 +264,6 @@ if buildAll || hasArg pylibwholegraph; then
     LIBWHOLEGRAPH_DIR=${LIBWHOLEGRAPH_DIR:=${LIBWHOLEGRAPH_BUILD_DIR}}
     if ! hasArg --compile-cmd; then
         cd ${REPODIR}/python/pylibwholegraph
-        echo "Changed to: ${PWD} and ${PYTHON}"
         env LIBWHOLEGRAPH_DIR=${LIBWHOLEGRAPH_DIR} \
         ${PYTHON} setup.py build_ext --inplace \
             --build-type=${BUILD_TYPE} \
