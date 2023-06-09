@@ -2,25 +2,25 @@
 # Order matters - match of highest importance goes last (last match wins)
 
 #doc code owners
-datasets/          @rapidsai/cugraph-doc-codeowners
-notebooks/         @rapidsai/cugraph-doc-codeowners
-docs/              @rapidsai/cugraph-doc-codeowners
-**/*.txt           @rapidsai/cugraph-doc-codeowners
-**/*.md            @rapidsai/cugraph-doc-codeowners
-**/*.rst           @rapidsai/cugraph-doc-codeowners
-**/*.ipynb         @rapidsai/cugraph-doc-codeowners
-**/*.pdf           @rapidsai/cugraph-doc-codeowners
-**/*.png           @rapidsai/cugraph-doc-codeowners
+datasets/          @rapidsai/wholegraph-doc-codeowners
+notebooks/         @rapidsai/wholegraph-doc-codeowners
+docs/              @rapidsai/wholegraph-doc-codeowners
+**/*.txt           @rapidsai/wholegraph-doc-codeowners
+**/*.md            @rapidsai/wholegraph-doc-codeowners
+**/*.rst           @rapidsai/wholegraph-doc-codeowners
+**/*.ipynb         @rapidsai/wholegraph-doc-codeowners
+**/*.pdf           @rapidsai/wholegraph-doc-codeowners
+**/*.png           @rapidsai/cugwholegraphraph-doc-codeowners
 
 #cpp code owners
-cpp/               @rapidsai/cugraph-cpp-codeowners
+cpp/               @rapidsai/wholegraph-cpp-codeowners
 
 #python code owners
-python/            @rapidsai/cugraph-python-codeowners
+python/            @rapidsai/wholegraph-python-codeowners
 
 #cmake code owners
-**/CMakeLists.txt  @rapidsai/cugraph-cmake-codeowners
-**/cmake/          @rapidsai/cugraph-cmake-codeowners
+**/CMakeLists.txt  @rapidsai/wholegraph-cmake-codeowners
+**/cmake/          @rapidsai/wholegraph-cmake-codeowners
 
 #build/ops code owners
 .github/           @rapidsai/ops-codeowners
