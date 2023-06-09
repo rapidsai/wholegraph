@@ -10,7 +10,7 @@ docs/              @rapidsai/wholegraph-doc-codeowners
 **/*.rst           @rapidsai/wholegraph-doc-codeowners
 **/*.ipynb         @rapidsai/wholegraph-doc-codeowners
 **/*.pdf           @rapidsai/wholegraph-doc-codeowners
-**/*.png           @rapidsai/cugwholegraphraph-doc-codeowners
+**/*.png           @rapidsai/wholegraph-doc-codeowners
 
 #cpp code owners
 cpp/               @rapidsai/wholegraph-cpp-codeowners
