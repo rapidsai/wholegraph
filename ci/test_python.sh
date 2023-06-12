@@ -50,7 +50,7 @@ PYTEST_PATH=${PYLIBWHOLEGRAPH_INSTALL_PATH}/tests
 pytest \
   --cache-clear \
   --forked \
-  ${PYTEST_PATH}/pylibwholegraph/ ${PYTEST_PATH}/wholegraph_torch/ops/test_wholegraph_gather_scatter.py
+  ${PYTEST_PATH}
 
 echo "test_python is exiting with value: ${EXITCODE}"
 exit ${EXITCODE}

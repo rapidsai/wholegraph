@@ -12,7 +12,6 @@
 # limitations under the License.
 
 import pytest
-from pylibwholegraph.torch.initialize import load_wholegraph_op_libraries
 import torch
 from pylibwholegraph.test_utils.test_comm import gen_csr_graph
 import pylibwholegraph.torch.graph_ops as wg_ops
@@ -39,7 +38,6 @@ def host_add_csr_self_loop(csr_row_ptr_tensor, csr_col_ptr_tensor):
 
 
 def routine_func(**kwargs):
-    load_wholegraph_op_libraries()
     target_node_count = kwargs["target_node_count"]
     neighbor_node_count = kwargs["neighbor_node_count"]
     edge_num = kwargs["edge_num"]

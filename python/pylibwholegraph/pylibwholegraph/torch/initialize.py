@@ -68,16 +68,3 @@ def finalize():
     :return: None
     """
     wmb.finalize()
-
-
-def load_wholegraph_op_libraries():
-    cxx11abi = torch.torch.compiled_with_cxx11_abi()
-    if cxx11abi is True:
-        lib_path = "wholegraph_torch/libwholegraph_torch_cxx11abi.so"
-    else:
-        lib_path = "wholegraph_torch/libwholegraph_torch_precxx11abi.so"
-    torch.ops.load_library(lib_path)
-
-
-def jit_load_wholegraph_op_libraries():
-    pass

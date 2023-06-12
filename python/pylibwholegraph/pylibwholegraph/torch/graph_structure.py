@@ -21,6 +21,7 @@ from . import wholegraph_ops
 class GraphStructure(object):
     r"""Graph structure storage
     Actually, it is the graph structure of one relation, represented in CSR format.
+    It contains CSR representation of Graph structure, and also attributes associated with nodes and edges.
     """
 
     def __init__(self):
@@ -35,6 +36,12 @@ class GraphStructure(object):
     def set_csr_graph(
         self, csr_row_ptr: WholeMemoryTensor, csr_col_ind: WholeMemoryTensor
     ):
+        """
+        Set the CSR graph structure
+        :param csr_row_ptr: CSR graph row pointer
+        :param csr_col_ind: CSR graph column index
+        :return: None
+        """
         assert csr_row_ptr.dim() == 1
         assert csr_row_ptr.dtype == torch.int64
         assert csr_row_ptr.shape[0] > 1
@@ -46,28 +53,50 @@ class GraphStructure(object):
         self.csr_col_ind = csr_col_ind
 
     def set_node_attribute(self, attr_name: str, attr_tensor: WholeMemoryTensor):
+        """
+        Set attribute for node
+        :param attr_name: attribute name for node
+        :param attr_tensor: attribute tensor
+        :return: None
+        """
         assert attr_name not in self.node_attributes
         assert attr_tensor.shape[0] == self.node_count
         self.node_attributes[attr_name] = attr_tensor
 
     def set_edge_attribute(self, attr_name: str, attr_tensor: WholeMemoryTensor):
+        """
+        Set attribute for edge
+        :param attr_name: attribute name for edge
+        :param attr_tensor: attribute tensor
+        :return: None
+        """
         assert attr_name not in self.edge_attributes
         assert attr_tensor.shape[0] == self.edge_count
         self.edge_attributes[attr_name] = attr_tensor
 
     def unweighted_sample_without_replacement_one_hop(
         self,
-        centor_nodes_tensor: torch.Tensor,
+        center_nodes_tensor: torch.Tensor,
         max_sample_count: int,
         *,
         random_seed: Union[int, None] = None,
         need_center_local_output: bool = False,
         need_edge_output: bool = False
     ):
+        """
+        Unweighted Sample without replacement on CSR graph structure
+        :param center_nodes_tensor: center node ids
+        :param max_sample_count: max sample count for each center node
+        :param random_seed: random seed for the sampler
+        :param need_center_local_output: If True, output a tensor same length as sampled nodes but each element is the
+            center node index in center_nodes_tensor.
+        :param need_edge_output: If True, output the edge index of each sampled node
+        :return: csr_row_ptr, sampled_nodes[, center_node_local_id, edge_index]
+        """
         return wholegraph_ops.unweighted_sample_without_replacement(
             self.csr_row_ptr.wmb_tensor,
             self.csr_col_ind.wmb_tensor,
-            centor_nodes_tensor,
+            center_nodes_tensor,
             max_sample_count,
             random_seed,
             need_center_local_output,
@@ -84,6 +113,17 @@ class GraphStructure(object):
         need_center_local_output: bool = False,
         need_edge_output: bool = False
     ):
+        """
+        Weighted Sample without replacement on CSR graph structure with edge weights attribute
+        :param weight_name: edge attribute name for weight
+        :param center_nodes_tensor: center node ids
+        :param max_sample_count: max sample count for each center node
+        :param random_seed: random seed for the sampler
+        :param need_center_local_output: If True, output a tensor same length as sampled nodes but each element is the
+            center node index in center_nodes_tensor.
+        :param need_edge_output: If True, output the edge index of each sampled node
+        :return: csr_row_ptr, sampled_nodes[, center_node_local_id, edge_index]
+        """
         assert weight_name in self.edge_attributes
         weight_tensor = self.edge_attributes[weight_name]
         return wholegraph_ops.weighted_sample_without_replacement(
@@ -103,6 +143,13 @@ class GraphStructure(object):
         max_neighbors: List[int],
         weight_name: Union[str, None] = None,
     ):
+        """
+        Multilayer sample without replacement
+        :param node_ids: initial node ids
+        :param max_neighbors: maximum neighbor for each layer
+        :param weight_name: edge attribute name for weight, if None, use unweighted sample
+        :return: target_gids, edge_indice, csr_row_ptr, csr_col_ind
+        """
         hops = len(max_neighbors)
         edge_indice = [None] * hops
         csr_row_ptr = [None] * hops

@@ -12,7 +12,6 @@
 # limitations under the License.
 
 import pytest
-from pylibwholegraph.torch.initialize import load_wholegraph_op_libraries
 import torch
 import pylibwholegraph.torch.graph_ops as wg_ops
 
@@ -30,7 +29,6 @@ def host_neighbor_raw_to_unique(unique_node_tensor, neighbor_node_tensor):
 
 
 def routine_func(**kwargs):
-    load_wholegraph_op_libraries()
     target_node_count = kwargs["target_node_count"]
     neighbor_node_count = kwargs["neighbor_node_count"]
     target_node_dtype = kwargs["target_node_dtype"]

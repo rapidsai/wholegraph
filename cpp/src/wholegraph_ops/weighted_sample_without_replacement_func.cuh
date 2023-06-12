@@ -39,9 +39,9 @@ namespace wholegraph_ops {
 template <typename WeightType>
 __device__ __forceinline__ float gen_key_from_weight(const WeightType weight, PCGenerator& rng)
 {
-  float u             = -rng.next_float(1.0f, 0.5f);
+  float u              = -rng.next_float(1.0f, 0.5f);
   uint64_t random_num2 = 0;
-  int seed_count      = -1;
+  int seed_count       = -1;
   do {
     rng.next(random_num2);
     seed_count++;

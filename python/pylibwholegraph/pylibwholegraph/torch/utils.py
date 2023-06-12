@@ -20,6 +20,11 @@ WholeMemoryDataType = wmb.WholeMemoryDataType
 
 
 def torch_dtype_to_wholememory_dtype(torch_dtype: torch.dtype):
+    """
+    Convert torch.dtype to WholeMemoryDataType
+    :param torch_dtype: torch.dtype
+    :return: WholeMemoryDataType
+    """
     if torch_dtype == torch.float:
         return WholeMemoryDataType.DtFloat
     elif torch_dtype == torch.half:
@@ -41,6 +46,11 @@ def torch_dtype_to_wholememory_dtype(torch_dtype: torch.dtype):
 
 
 def wholememory_dtype_to_torch_dtype(wm_dtype: WholeMemoryDataType):
+    """
+    Convert WholeMemoryDataType to torch.dtype
+    :param wm_dtype: WholeMemoryDataType
+    :return: torch.dtype
+    """
     if wm_dtype == WholeMemoryDataType.DtFloat:
         return torch.float
     elif wm_dtype == WholeMemoryDataType.DtHalf:
@@ -62,6 +72,11 @@ def wholememory_dtype_to_torch_dtype(wm_dtype: WholeMemoryDataType):
 
 
 def get_file_size(filename: str):
+    """
+    Get file size.
+    :param filename: file name
+    :return: size of file
+    """
     if not os.path.isfile(filename):
         raise ValueError("File %s not found or not file" % (filename,))
     if not os.access(filename, os.R_OK):

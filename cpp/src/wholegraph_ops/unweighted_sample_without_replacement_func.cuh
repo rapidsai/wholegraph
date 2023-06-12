@@ -196,7 +196,7 @@ __global__ void unweighted_sample_without_replacement_kernel(
     int32_t random_num;
     rng.next(random_num);
     int32_t r = idx < M ? (random_num % (N - idx)) : N;
-    sa_p[i]    = ((uint64_t)r << 32UL) | idx;
+    sa_p[i]   = ((uint64_t)r << 32UL) | idx;
   }
   __syncthreads();
   BlockRadixSort(shared_data.temp_storage).SortBlockedToStriped(sa_p);
