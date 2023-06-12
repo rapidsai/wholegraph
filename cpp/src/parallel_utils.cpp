@@ -93,6 +93,8 @@ void MultiProcessRun(int world_size, std::function<void(int, int)> f, bool inlin
 
 int ForkGetDeviceCount()
 {
+  static int s_device_count = -1;
+  if (s_device_count >= 0) { return s_device_count; }
   int pipes[2];
   if (pipe(pipes) == -1) {
     WHOLEMEMORY_ERROR("Create pipe failed.");
@@ -120,6 +122,7 @@ int ForkGetDeviceCount()
     int wstatus;
     pid_t pid_ret = waitpid(pid, &wstatus, 0);
     if (pid_ret != pid) { WHOLEMEMORY_FATAL("wait dev_count process failed."); }
+    s_device_count = dev_count;
     return dev_count;
   }
 }

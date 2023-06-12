@@ -27,6 +27,14 @@ def wholememory_gather_forward_functor(
     requires_grad=False,
     torch_output_dtype=None,
 ):
+    """
+    Wrapper functor for gather op of WholeMemory Tensor
+    :param wholememory_tensor: PyWholeMemoryTensor
+    :param indices_tensor: Indices to gather from
+    :param requires_grad: if requires gradients
+    :param torch_output_dtype: output dtype, None for same as wholememory_tensor
+    :return: Gathered tensor
+    """
     assert indices_tensor.dim() == 1
     assert indices_tensor.dtype == torch.int32 or indices_tensor.dtype == torch.int64
     if torch_output_dtype is None:
@@ -52,6 +60,13 @@ def wholememory_scatter_functor(
     indices_tensor: torch.Tensor,
     wholememory_tensor: wmb.PyWholeMemoryTensor,
 ):
+    """
+    Wrapper functor for scatter op of WholeMemory Tensor
+    :param input_tensor: Input tensor to scater to WholeMemory Tensor
+    :param indices_tensor: Indices to scatter to
+    :param wholememory_tensor: WholeMemory Tensor
+    :return: None
+    """
     assert indices_tensor.dim() == 1
     assert indices_tensor.dtype == torch.int32 or indices_tensor.dtype == torch.int64
     wmb.wholememory_scatter_op(

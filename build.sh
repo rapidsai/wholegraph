@@ -29,6 +29,7 @@ VALIDARGS="
     -v
     -g
     -n
+    --allgpuarch
     --native
     --cmake-args
     --compile-cmd
@@ -81,7 +82,7 @@ CMAKE_VERBOSE_OPTION=""
 BUILD_TYPE=Release
 BUILD_ALL_GPU_ARCH=0
 INSTALL_TARGET="--target install"
-PYTHON="python"
+PYTHON=${PYTHON:-python}
 
 # Set defaults for vars that may not have been defined externally
 #  FIXME: if INSTALL_PREFIX is not set, check PREFIX, then check

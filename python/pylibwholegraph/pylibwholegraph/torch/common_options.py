@@ -49,6 +49,13 @@ def add_training_options(parser: OptionParser):
         help="cache ratio",
     )
     parser.add_option(
+        "--use-cpp-ext",
+        action="store_true",
+        dest="use_cpp_ext",
+        default=False,
+        help="Whether to use cpp extension for pytorch"
+    )
+    parser.add_option(
         "--train-embedding",
         action="store_true",
         dest="train_embedding",

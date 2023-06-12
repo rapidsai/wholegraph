@@ -28,6 +28,16 @@ all_comm_local_size = 1
 
 
 def set_world_info(world_rank: int, world_size: int, local_rank: int, local_size: int):
+    """
+    Set the global world's information. This is used for create common used communicators, like local node communicator,
+    global communicator, or local device communicator.
+
+    :param world_rank: world rank of current process.
+    :param world_size: world size
+    :param local_rank: local rank of current process in current machine node.
+    :param local_size: local size of each machine node
+    :return: None
+    """
     global all_comm_world_rank, all_comm_world_size, all_comm_local_rank, all_comm_local_size
     all_comm_world_rank = world_rank
     all_comm_world_size = world_size
@@ -36,19 +46,31 @@ def set_world_info(world_rank: int, world_size: int, local_rank: int, local_size
 
 
 class WholeMemoryCommunicator(object):
-    r"""WholeMemory Communicator"""
+    """
+    WholeMemory Communicator.
+    You should not create object of this class directly, use create_group_communicator, get_global_communicator,
+    get_local_node_communicator or get_local_device_communicator instead.
+    """
 
     def __init__(self, wmb_comm: wmb.PyWholeMemoryComm):
         super().__init__()
         self.wmb_comm = wmb_comm
 
     def get_rank(self):
+        """Get rank of current process in this communicator"""
         return self.wmb_comm.get_rank()
 
     def get_size(self):
+        """Get world size of this communicator"""
         return self.wmb_comm.get_size()
 
     def barrier(self):
+        """
+        Barrier on WholeMemory Communicator.
+        This function will use internal communicator associated CUDA stream. And synchronized with host.
+        So if you have work in other CUDA stream, and expect that to be done before barrier, you may need to
+        synchrionze that stream before calling this function.
+        """
         return self.wmb_comm.barrier()
 
     def destroy(self):
@@ -57,7 +79,7 @@ class WholeMemoryCommunicator(object):
 
 
 def create_group_communicator(group_size: int = -1, comm_stride: int = 1):
-    r"""Create WholeMemory Communicator.
+    """Create WholeMemory Communicator.
     For example: 24 ranks with group_size = 4 and comm_stride = 2 will create following groups:
     [0, 2, 4, 6], [1, 3, 5, 7], [8, 10, 12, 14], [9, 11, 13, 15], [16, 18, 20, 22], [17, 19, 21, 23]
     :param group_size: Size of each group, -1 means to use all ranks in just one single group.
@@ -95,12 +117,21 @@ def create_group_communicator(group_size: int = -1, comm_stride: int = 1):
 
 
 def destroy_communicator(wm_comm: WholeMemoryCommunicator):
+    """
+    Destroy WholeMemoryCommunicator
+    :param wm_comm: WholeMemoryCommunicator to destroy
+    :return: None
+    """
     if wm_comm is not None and wm_comm.wmb_comm is not None:
         wmb.destroy_communicator(wm_comm.wmb_comm)
         wm_comm.wmb_comm = None
 
 
 def get_global_communicator():
+    """
+    Get the global communicator of this job
+    :return: WholeMemoryCommunicator that has all GPUs in it.
+    """
     global global_communicator, local_node_communicator, local_device_communicator
     global all_comm_local_size, all_comm_world_size
     if global_communicator is None:
@@ -115,6 +146,10 @@ def get_global_communicator():
 
 
 def get_local_node_communicator():
+    """
+    Get the local node communicator of this job
+    :return: WholeMemoryCommunicator that has GPUs in the same node.
+    """
     global global_communicator, local_node_communicator, local_device_communicator
     global all_comm_local_size, all_comm_world_size
     if local_node_communicator is None:
@@ -129,6 +164,10 @@ def get_local_node_communicator():
 
 
 def get_local_device_communicator():
+    """
+    Get the local device communicator of this job
+    :return: WholeMemoryCommunicator that has only the GPU belonging to current process.
+    """
     global global_communicator, local_node_communicator, local_device_communicator
     global all_comm_local_size, all_comm_world_size
     if local_device_communicator is None:

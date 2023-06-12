@@ -152,41 +152,10 @@ message(STATUS "PYLIBWHOLEGRAPH: CXX_DEFINITIONS='${CXX_DEFINITIONS}'")
 ##############################################################################
 # - Variables ----------------------------------------------------------------
 
-#set(WHOLEGRAPH_PY_TARGET "pylibwholegraph_ext" CACHE STRING "wholegraph nanobind target name")
-
 set(WHOLEGRAPH_CPP_TARGET "wholegraph::wholegraph" CACHE STRING "libwholegraph target name")
-
-##############################################################################
-# - nanobind targets ---------------------------------------------------------
-
-# Build the actual extension module
-#nanobind_add_module(
-#        ${WHOLEGRAPH_PY_TARGET}
-#        NB_STATIC # Build static libnanobind (the extension module itself remains a shared library)
-#        ${CMAKE_CURRENT_LIST_DIR}/cpp/pylibwholegraph_ext.cpp
-#        ${CMAKE_CURRENT_LIST_DIR}/cpp/wholegraph_types.cpp
-#        ${CMAKE_CURRENT_LIST_DIR}/cpp/wholegraph_functions.cpp
-#)
-#
-## this adds includes from the C++ target as well
-#target_link_libraries(${WHOLEGRAPH_PY_TARGET}
-#        PUBLIC
-#        ${WHOLEGRAPH_CPP_TARGET}
-#        )
-
-##############################################################################
-# - Install Targets  ---------------------------------------------------------
-
-#install(
-#        TARGETS     ${WHOLEGRAPH_PY_TARGET}
-#        DESTINATION ${CMAKE_INSTALL_PREFIX}/${PYTHON_RELATIVE_SITE_PACKAGES_DIR})
 
 add_subdirectory(pylibwholegraph/binding)
 
 # when used without setup.py, command is like:
 # export LIBWHOLEGRAPH_DIR=`pwd`/../../cpp/build/install
 # cmake ../ -DSKBUILD=ON
-
-if (BUILD_OPS_WITH_TORCH_C10_API)
-    add_subdirectory(wholegraph_torch)
-endif()

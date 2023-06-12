@@ -14,38 +14,36 @@
  * limitations under the License.
  */
 
-#include <wholememory/wholegraph_op.h>
 #include <cmath>
+#include <wholememory/wholegraph_op.h>
 #include <wholememory_ops/raft_random.cuh>
-
 
 #include "error.hpp"
 #include "logger.hpp"
 
-wholememory_error_code_t generate_random_positive_int_cpu(
-  int64_t random_seed,
-  int64_t subsequence,
-  wholememory_tensor_t output
-) {
+wholememory_error_code_t generate_random_positive_int_cpu(int64_t random_seed,
+                                                          int64_t subsequence,
+                                                          wholememory_tensor_t output)
+{
   auto output_tensor_desc = *wholememory_tensor_get_tensor_description(output);
   if (output_tensor_desc.dim != 1) {
     WHOLEMEMORY_ERROR("output should be 1D tensor.");
     return WHOLEMEMORY_INVALID_INPUT;
   }
-  if (output_tensor_desc.dtype != WHOLEMEMORY_DT_INT64 && output_tensor_desc.dtype != WHOLEMEMORY_DT_INT) {
+  if (output_tensor_desc.dtype != WHOLEMEMORY_DT_INT64 &&
+      output_tensor_desc.dtype != WHOLEMEMORY_DT_INT) {
     WHOLEMEMORY_ERROR("output should be int64 or int32 tensor.");
     return WHOLEMEMORY_INVALID_INPUT;
   }
 
   auto* output_ptr = wholememory_tensor_get_data_pointer(output);
   PCGenerator rng((unsigned long long)random_seed, subsequence, 0);
-  for (int64_t i = 0; i < output_tensor_desc.sizes[0]; i++) { 
+  for (int64_t i = 0; i < output_tensor_desc.sizes[0]; i++) {
     if (output_tensor_desc.dtype == WHOLEMEMORY_DT_INT) {
       int32_t random_num;
-      rng.next(random_num);  
+      rng.next(random_num);
       static_cast<int*>(output_ptr)[i] = random_num;
-    } 
-    else {
+    } else {
       int64_t random_num;
       rng.next(random_num);
       static_cast<int64_t*>(output_ptr)[i] = random_num;
@@ -55,10 +53,8 @@ wholememory_error_code_t generate_random_positive_int_cpu(
 }
 
 wholememory_error_code_t generate_exponential_distribution_negative_float_cpu(
-  int64_t random_seed,
-  int64_t subsequence,
-  wholememory_tensor_t output
-) {
+  int64_t random_seed, int64_t subsequence, wholememory_tensor_t output)
+{
   auto output_tensor_desc = *wholememory_tensor_get_tensor_description(output);
   if (output_tensor_desc.dim != 1) {
     WHOLEMEMORY_ERROR("output should be 1D tensor.");
@@ -71,9 +67,9 @@ wholememory_error_code_t generate_exponential_distribution_negative_float_cpu(
   auto* output_ptr = wholememory_tensor_get_data_pointer(output);
   PCGenerator rng((unsigned long long)random_seed, subsequence, 0);
   for (int64_t i = 0; i < output_tensor_desc.sizes[0]; i++) {
-    float u             = -rng.next_float(1.0f, 0.5f);
+    float u              = -rng.next_float(1.0f, 0.5f);
     uint64_t random_num2 = 0;
-    int seed_count      = -1;
+    int seed_count       = -1;
     do {
       rng.next(random_num2);
       seed_count++;
@@ -89,7 +85,7 @@ wholememory_error_code_t generate_exponential_distribution_negative_float_cpu(
     int32_t one_bit = count_one(random_num2) + seed_count * 64;
     u *= pow(2, -one_bit);
     // float logk = (log1pf(u) / logf(2.0)) * (1.0f / (float)weight);
-    float logk                     = (log1p(u) / log(2.0));
+    float logk                         = (log1p(u) / log(2.0));
     static_cast<float*>(output_ptr)[i] = logk;
   }
   return WHOLEMEMORY_SUCCESS;

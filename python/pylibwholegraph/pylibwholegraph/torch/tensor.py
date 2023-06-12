@@ -58,6 +58,12 @@ class WholeMemoryTensor(object):
         )
 
     def get_sub_tensor(self, starts, ends):
+        """
+        Get sub tensor of WholeMemory Tensor
+        :param starts: An array of the start indices of each dim
+        :param ends: An array of the end indices of each dim, -1 means to the last element
+        :return: WholeMemory Tensor
+        """
         return WholeMemoryTensor(self.wmb_tensor.get_sub_tensor(starts, ends))
 
     def get_local_tensor(self, host_view: bool = False):
@@ -109,20 +115,42 @@ class WholeMemoryTensor(object):
             )
 
     def from_filelist(self, filelist: Union[List[str], str]):
+        """
+        Load WholeMemory Tensor from file lists
+        :param filelist: file list to load from
+        :return: None
+        """
         if isinstance(filelist, str):
             filelist = [filelist]
         self.wmb_tensor.from_filelist(filelist)
 
     def from_file_prefix(self, file_prefix: str, part_count: Union[int, None] = None):
+        """
+        Load WholeMemory  tensor from files with same prefix, files has format
+            "%s_part_%d_of_%d" % (prefix, part_id, part_count)
+        :param file_prefix: file name prefix
+        :param part_count: part count of file
+        :return: None
+        """
         if part_count is None:
             part_count = self.get_comm().get_size()
         file_list = get_part_file_list(file_prefix, part_count)
         self.from_filelist(file_list)
 
     def local_to_file(self, filename: str):
+        """
+        Store local tensor of WholeMemory Tensor to file, all ranks should call this together with different filename
+        :param filename: file name of local tensor file.
+        :return: None
+        """
         self.wmb_tensor.to_file(filename)
 
     def to_file_prefix(self, file_prefix: str):
+        """
+        Store WholeMemory Tensor to files with same prefix.
+        :param file_prefix: file name prefix
+        :return: None
+        """
         wm_comm = self.get_comm()
         filename = get_part_file_name(
             file_prefix, wm_comm.get_rank(), wm_comm.get_size()
@@ -138,7 +166,7 @@ def create_wholememory_tensor(
     dtype: torch.dtype,
     strides: List[int],
 ):
-    r"""
+    """
     Create empty WholeMemory Tensor. Now only support dim = 1 or 2
     :param comm: WholeMemoryCommunicator
     :param memory_type: WholeMemory type, should be continuous, chunked or distributed
@@ -181,7 +209,7 @@ def create_wholememory_tensor_from_filelist(
     last_dim_size: int = 0,
     last_dim_strides: int = -1,
 ):
-    r"""
+    """
     Create WholeMemory Tensor from list of binary files.
     :param comm: WholeMemoryCommunicator
     :param memory_type: WholeMemory type, should be continuous, chunked or distributed
@@ -224,5 +252,10 @@ def create_wholememory_tensor_from_filelist(
 
 
 def destroy_wholememory_tensor(wm_tensor: WholeMemoryTensor):
+    """
+    Destroy allocated WholeMemory Tensor
+    :param wm_tensor: WholeMemory Tensor
+    :return: None
+    """
     wmb.destroy_wholememory_tensor(wm_tensor.wmb_tensor)
     wm_tensor.wmb_tensor = None

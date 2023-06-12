@@ -319,7 +319,6 @@ void random_sample_without_replacement_cpu_base(std::vector<int>* a,
   }
 }
 
-
 template <typename IdType, typename ColIdType>
 void host_unweighted_sample_without_replacement(
   void* host_csr_row_ptr,
@@ -545,9 +544,9 @@ inline int count_one(unsigned long long num)
 template <typename WeightType>
 float host_gen_key_from_weight(const WeightType weight, PCGenerator& rng)
 {
-  float u             = -rng.next_float(1.0f, 0.5f);
+  float u              = -rng.next_float(1.0f, 0.5f);
   uint64_t random_num2 = 0;
-  int seed_count      = -1;
+  int seed_count       = -1;
   do {
     rng.next(random_num2);
     seed_count++;

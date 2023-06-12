@@ -14,10 +14,7 @@
 import pytest
 import pylibwholegraph.binding.wholememory_binding as wmb
 from pylibwholegraph.utils.multiprocess import multiprocess_run
-from pylibwholegraph.torch.initialize import (
-    init_torch_env_and_create_wm_comm,
-    load_wholegraph_op_libraries,
-)
+from pylibwholegraph.torch.initialize import init_torch_env_and_create_wm_comm
 import torch
 from functools import partial
 from pylibwholegraph.test_utils.test_comm import (
@@ -148,7 +145,7 @@ def host_unweighted_sample_without_replacement_func(
             random_values = torch.empty((N,), dtype=torch.int32)
             for j in range(block_threads):
                 local_gidx = gidx + j
-                random_nums = torch.ops.wholegraph_test.raft_pcg_generator_random(
+                random_nums = wg_ops.generate_random_positive_int_cpu(
                     random_seed, local_gidx, items_per_thread
                 )
                 for k in range(items_per_thread):
@@ -228,7 +225,6 @@ def routine_func(world_rank: int, world_size: int, **kwargs):
         world_rank, world_size, world_rank, world_size
     )
     wm_comm = wm_comm.wmb_comm
-    load_wholegraph_op_libraries()
     host_csr_row_ptr = kwargs["host_csr_row_ptr"]
     host_csr_col_ptr = kwargs["host_csr_col_ptr"]
     graph_node_count = kwargs["graph_node_count"]

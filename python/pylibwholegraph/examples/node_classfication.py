@@ -131,6 +131,9 @@ def main_func():
         wgth.get_local_size(),
     )
 
+    if options.use_cpp_ext:
+        wgth.compile_cpp_extension()
+
     train_ds, valid_ds, test_ds = wgth.create_node_claffication_datasets(
         options.pickle_data_path
     )

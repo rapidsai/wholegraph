@@ -28,12 +28,12 @@ env PATH=${PATH}:/usr/local/cuda/bin
 # library in the second run.
 CMAKE_EXTRA_ARGS="--cmake-args=\"-DBUILD_OPS_WITH_TORCH_C10_API=OFF\""
 rapids-logger "Generate compilation databases for C++ library and tests"
-./build.sh clean libwholegraph tests pylibwholegraph --compile-cmd ${CMAKE_EXTRA_ARGS}
+./build.sh clean libwholegraph tests pylibwholegraph --allgpuarch --compile-cmd ${CMAKE_EXTRA_ARGS}
 
 #  -git_modified_only -v
 rapids-logger "Run clang-tidy"
 python scripts/checks/run-clang-tidy.py \
   -ignore wholememory_binding \
-  build/compile_commands.json \
-  pylibwholegraph/_skbuild/build/compile_commands.json \
+  cpp/build/compile_commands.json \
+  python/pylibwholegraph/_skbuild/build/compile_commands.json \
   -v

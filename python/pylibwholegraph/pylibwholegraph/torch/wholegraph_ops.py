@@ -41,26 +41,26 @@ def unweighted_sample_without_replacement(
         center_nodes_tensor.shape[0] + 1, device="cuda", dtype=torch.int
     )
     output_dest_context = TorchMemoryContext()
-    output_dest_tensor_id = id(output_dest_context)
+    output_dest_c_context = output_dest_context.get_c_context()
     output_center_localid_context = None
-    output_center_localid_tensor_id = 0
+    output_center_localid_c_context = 0
     output_edge_gid_context = None
-    output_edge_gid_tensor_id = 0
+    output_edge_gid_c_context = 0
     if need_center_local_output:
         output_center_localid_context = TorchMemoryContext()
-        output_center_localid_tensor_id = id(output_center_localid_context)
+        output_center_localid_c_context = output_center_localid_context.get_c_context()
     if need_edge_output:
         output_edge_gid_context = TorchMemoryContext()
-        output_edge_gid_tensor_id = id(output_edge_gid_context)
+        output_edge_gid_c_context = output_edge_gid_context.get_c_context()
     wmb.csr_unweighted_sample_without_replacement(
         wm_csr_row_ptr_tensor,
         wm_csr_col_ptr_tensor,
         wrap_torch_tensor(center_nodes_tensor),
         max_sample_count,
         wrap_torch_tensor(output_sample_offset_tensor),
-        output_dest_tensor_id,
-        output_center_localid_tensor_id,
-        output_edge_gid_tensor_id,
+        output_dest_c_context,
+        output_center_localid_c_context,
+        output_edge_gid_c_context,
         random_seed,
         get_wholegraph_env_fns(),
         get_stream(),
@@ -109,17 +109,17 @@ def weighted_sample_without_replacement(
         center_nodes_tensor.shape[0] + 1, device="cuda", dtype=torch.int
     )
     output_dest_context = TorchMemoryContext()
-    output_dest_tensor_id = id(output_dest_context)
+    output_dest_c_context = output_dest_context.get_c_context()
     output_center_localid_context = None
-    output_center_localid_tensor_id = 0
+    output_center_localid_c_context = 0
     output_edge_gid_context = None
-    output_edge_gid_tensor_id = 0
+    output_edge_gid_c_context = 0
     if need_center_local_output:
         output_center_localid_context = TorchMemoryContext()
-        output_center_localid_tensor_id = id(output_center_localid_context)
+        output_center_localid_c_context = output_center_localid_context.get_c_context()
     if need_edge_output:
         output_edge_gid_context = TorchMemoryContext()
-        output_edge_gid_tensor_id = id(output_edge_gid_context)
+        output_edge_gid_c_context = output_edge_gid_context.get_c_context()
     wmb.csr_weighted_sample_without_replacement(
         wm_csr_row_ptr_tensor,
         wm_csr_col_ptr_tensor,
@@ -127,9 +127,9 @@ def weighted_sample_without_replacement(
         wrap_torch_tensor(center_nodes_tensor),
         max_sample_count,
         wrap_torch_tensor(output_sample_offset_tensor),
-        output_dest_tensor_id,
-        output_center_localid_tensor_id,
-        output_edge_gid_tensor_id,
+        output_dest_c_context,
+        output_center_localid_c_context,
+        output_edge_gid_c_context,
         random_seed,
         get_wholegraph_env_fns(),
         get_stream(),
@@ -155,3 +155,23 @@ def weighted_sample_without_replacement(
         )
     else:
         return output_sample_offset_tensor, output_dest_context.get_tensor()
+
+
+def generate_random_positive_int_cpu(
+    random_seed, sub_sequence, output_random_value_count
+):
+    output = torch.empty((output_random_value_count,), dtype=torch.int)
+    wmb.host_generate_random_positive_int(
+        random_seed, sub_sequence, wrap_torch_tensor(output)
+    )
+    return output
+
+
+def generate_exponential_distribution_negative_float_cpu(
+    random_seed: int, sub_sequence: int, output_random_value_count: int
+):
+    output = torch.empty((output_random_value_count,), dtype=torch.float)
+    wmb.host_generate_exponential_distribution_negative_float(
+        random_seed, sub_sequence, wrap_torch_tensor(output)
+    )
+    return output

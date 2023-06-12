@@ -13,10 +13,7 @@
 
 import pytest
 from pylibwholegraph.utils.multiprocess import multiprocess_run
-from pylibwholegraph.torch.initialize import (
-    init_torch_env_and_create_wm_comm,
-    load_wholegraph_op_libraries,
-)
+from pylibwholegraph.torch.initialize import init_torch_env_and_create_wm_comm
 import pylibwholegraph.binding.wholememory_binding as wmb
 import torch
 import random
@@ -90,14 +87,18 @@ def host_weighted_sample_without_replacement_func(
                                 torch.tensor([id], dtype=col_id_dtype),
                             )
                         )
-                generated_random_weight = (
-                    torch.ops.wholegraph_test.raft_pcg_generator_random_from_weight(
-                        random_seed,
-                        local_gidx,
-                        local_edge_weights,
-                        generated_edge_weight_count,
+                random_values = (
+                    wg_ops.generate_exponential_distribution_negative_float_cpu(
+                        random_seed, local_gidx, generated_edge_weight_count
                     )
                 )
+                generated_random_weight = torch.tensor(
+                    [
+                        (1.0 / local_edge_weights[i]) * random_values[i]
+                        for i in range(generated_edge_weight_count)
+                    ]
+                )
+
                 total_neighbor_generated_weights = torch.cat(
                     (total_neighbor_generated_weights, generated_random_weight)
                 )
@@ -182,7 +183,6 @@ def routine_func(world_rank: int, world_size: int, **kwargs):
         world_rank, world_size, world_rank, world_size
     )
     wm_comm = wm_comm.wmb_comm
-    load_wholegraph_op_libraries()
     host_csr_row_ptr = kwargs["host_csr_row_ptr"]
     host_csr_col_ptr = kwargs["host_csr_col_ptr"]
     host_csr_weight_ptr = kwargs["host_csr_weight_ptr"]

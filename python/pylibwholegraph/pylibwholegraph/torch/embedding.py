@@ -31,6 +31,12 @@ from .wholegraph_env import wrap_torch_tensor, get_wholegraph_env_fns, get_strea
 
 
 class WholeMemoryOptimizer(object):
+    """
+    Sparse Optimizer for WholeMemoryEmbedding.
+    Many WholeMemoryEmbedding can share same WholeMemoryOptimizer
+    You should not create WholeMemoryOptimizer object directly, but use :func:`create_wholememory_optimizer` instead.
+    """
+
     def __init__(self, global_comm: WholeMemoryCommunicator):
         super().__init__()
         self.wmb_opt = wmb.WholeMemoryOptimizer()
@@ -38,7 +44,7 @@ class WholeMemoryOptimizer(object):
         self.global_comm = global_comm
 
     def add_embedding(self, wm_embedding):
-        r"""Add WholeMemory Embedding to this optimizer
+        """Add WholeMemory Embedding to this optimizer
         NOTE: you don't need to call this method, it is automatic called when WholeMemory Embedding is created.
         :param wm_embedding: WholeMemory Embedding that use this optimizer
         :return: None
@@ -56,6 +62,12 @@ class WholeMemoryOptimizer(object):
 
 
 def create_wholememory_optimizer(optimizer_type: str, param_dict: dict):
+    """
+    Create WholeMemoryOptimizer.
+    :param optimizer_type: Type of the Optimizer
+    :param param_dict: parameters of the optimizer
+    :return: WholeMemoryOptimizer
+    """
     wm_optimizer = WholeMemoryOptimizer(get_global_communicator())
     wm_optimizer.wmb_opt.create_optimizer(
         str_to_wmb_wholememory_optimizer_type(optimizer_type), param_dict
@@ -64,11 +76,22 @@ def create_wholememory_optimizer(optimizer_type: str, param_dict: dict):
 
 
 def destroy_wholememory_optimizer(optimizer: WholeMemoryOptimizer):
+    """
+    Destroy WholeMemoryOptimizer
+    :param optimizer: WholeMemoryOptimizer to destroy
+    :return: None
+    """
     optimizer.wmb_opt.destroy_optimizer()
     optimizer.wmb_opt = None
 
 
 class WholeMemoryCachePolicy(object):
+    """
+    Cache policy to create WholeMemoryEmbedding.
+    NOTE: You should not create WholeMemoryCachePolicy object directly,
+    use :func:`create_wholememory_cache_policy` instead.
+    """
+
     def __init__(self, wmb_cache_policy: wmb.WholeMemoryCachePolicy):
         super().__init__()
         self.wmb_cache_policy = wmb_cache_policy

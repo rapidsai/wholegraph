@@ -49,29 +49,51 @@ class TorchEmptyGlobalContext(object):
 class TorchMemoryContext(object):
     def __init__(self):
         self.tensor = None
+        if torch_cpp_ext_loaded:
+            self.handle = torch_cpp_ext_lib.create_output_context()
+        else:
+            self.handle = 0
+
+    def __del__(self):
+        self.free()
+
+    def get_c_context(self):
+        if torch_cpp_ext_loaded:
+            return self.handle
+        else:
+            return id(self)
 
     def set_tensor(self, t: torch.Tensor):
         self.tensor = t
 
+    def get_handle(self):
+        return self.handle
+
     def get_tensor(self):
-        return self.tensor
+        if torch_cpp_ext_loaded:
+            self.tensor = torch_cpp_ext_lib.get_tensor_from_context(self.handle)
+            return self.tensor
+        else:
+            return self.tensor
 
     def free(self):
         self.tensor = None
+        if torch_cpp_ext_loaded and self.get_handle() != 0:
+            torch_cpp_ext_lib.destroy_output_context(self.get_handle())
+            self.handle = 0
 
 
 def torch_create_memory_context_env_fn(
     global_context: TorchEmptyGlobalContext,
 ) -> TorchMemoryContext:
     t = TorchMemoryContext()
-    # print('torch_create_memory_context_env_fn t=%d' % (id(t), ))
     return t
 
 
 def torch_destroy_memory_context_env_fn(
     memory_context: TorchMemoryContext, global_context: TorchEmptyGlobalContext
 ):
-    pass
+    memory_context.free()
 
 
 def torch_malloc_env_fn(
@@ -168,6 +190,7 @@ def get_cpp_extension_src_path():
 
 def compile_cpp_extension():
     import torch.utils.cpp_extension
+
     global torch_cpp_ext_loaded
     global torch_cpp_ext_lib
     cpp_extension_path = os.path.join(get_cpp_extension_src_path(), "torch_cpp_ext")
@@ -179,6 +202,13 @@ def compile_cpp_extension():
         )
         extra_ldflags.append(
             "".join(["-L", os.path.join(os.environ["CONDA_PREFIX"], "lib")])
+        )
+    if "LIBWHOLEGRAPH_DIR" in os.environ:
+        extra_cflags.append(
+            "".join(["-I", os.path.join(os.environ["LIBWHOLEGRAPH_DIR"], "include")])
+        )
+        extra_ldflags.append(
+            "".join(["-L", os.path.join(os.environ["LIBWHOLEGRAPH_DIR"], "lib")])
         )
     torch.utils.cpp_extension.load(
         name="pylibwholegraph.pylibwholegraph_torch_ext",
@@ -192,5 +222,7 @@ def compile_cpp_extension():
         with_cuda=True,
         verbose=True,
     )
-    torch_cpp_ext_lib = importlib.import_module('pylibwholegraph.pylibwholegraph_torch_ext')
+    torch_cpp_ext_lib = importlib.import_module(
+        "pylibwholegraph.pylibwholegraph_torch_ext"
+    )
     torch_cpp_ext_loaded = True

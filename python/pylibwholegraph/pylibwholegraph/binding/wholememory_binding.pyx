@@ -1791,6 +1791,16 @@ cdef extern from "wholememory/wholegraph_op.h":
             wholememory_env_func_t * p_env_fns,
             void * stream)
 
+    cdef wholememory_error_code_t generate_random_positive_int_cpu(
+            int64_t random_seed,
+            int64_t subsequence,
+            wholememory_tensor_t output)
+
+    cdef wholememory_error_code_t generate_exponential_distribution_negative_float_cpu(
+            int64_t random_seed,
+            int64_t subsequence,
+            wholememory_tensor_t output)
+
 cpdef void csr_unweighted_sample_without_replacement(
         PyWholeMemoryTensor wm_csr_row_ptr_tensor,
         PyWholeMemoryTensor wm_csr_col_ptr_tensor,
@@ -1844,6 +1854,29 @@ cpdef void csr_weighted_sample_without_replacement(
         random_seed,
         <wholememory_env_func_t *> p_env_fns_int,
         <void *> stream_int))
+
+cpdef void host_generate_random_positive_int(
+        int64_t random_seed,
+        int64_t subsequence,
+        WrappedLocalTensor output
+):
+    check_wholememory_error_code(generate_random_positive_int_cpu(
+        random_seed,
+        subsequence,
+        <wholememory_tensor_t> <int64_t> output.get_c_handle()
+    ))
+
+
+cpdef void host_generate_exponential_distribution_negative_float(
+        int64_t random_seed,
+        int64_t subsequence,
+        WrappedLocalTensor output
+):
+    check_wholememory_error_code(generate_exponential_distribution_negative_float_cpu(
+        random_seed,
+        subsequence,
+        <wholememory_tensor_t> <int64_t> output.get_c_handle()
+    ))
 
 
 cdef extern from "wholememory/graph_op.h":
