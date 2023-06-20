@@ -44,12 +44,7 @@ requirements:
     - {{ compiler('cuda') }} {{ cuda_version }}
     - {{ compiler('cxx') }}
     - cmake {{ cmake_version }}
-    - cudatoolkit ={{ cuda_version }}
-    - libraft-headers ={{ minor_version }}
-    - librmm ={{ minor_version }}
     - ninja
-    - nccl
-    - doxygen =1.8.20
     - sysroot_{{ target_platform }} {{ sysroot_version }}
   host:
     - cmake {{ cmake_version }}
@@ -62,6 +57,7 @@ requirements:
     - libraft ={{ minor_version }}
     - libraft-headers ={{ minor_version }}
     - librmm ={{ minor_version }}
+    - nccl {{ nccl_version }}
 
 
 outputs:
@@ -82,9 +78,11 @@ outputs:
         - libraft ={{ minor_version }}
         - libraft-headers ={{ minor_version }}
         - librmm ={{ minor_version }}
-        - nccl
+        - nccl {{ nccl_version }}
     about:
       home: https://rapids.ai/
+      license: Apache-2.0
+      license_file: ../../../LICENSE
       summary: libwholegraph library
   - name: libwholegraph-tests
     version: {{ version }}
@@ -104,4 +102,6 @@ outputs:
         - gtest {{ gtest_version }}
     about:
       home: https://rapids.ai/
+      license: Apache-2.0
+      license_file: ../../../LICENSE
       summary: libwholegraph tests
