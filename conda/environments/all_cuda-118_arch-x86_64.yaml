@@ -24,8 +24,10 @@ dependencies:
 - gmock>=1.13.0
 - ipykernel
 - ipython
-- libraft-headers=23.06.*
-- librmm=23.06.*
+- libcugraphops=23.8.*
+- libraft-headers=23.8.*
+- libraft=23.8.*
+- librmm=23.8.*
 - nanobind>=0.2.0
 - nbsphinx
 - nccl
