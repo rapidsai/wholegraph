@@ -20,6 +20,8 @@ dependencies:
 - gcc_linux-64=11.*
 - gitpython
 - graphviz
+- gtest>=1.13.0
+- gmock>=1.13.0
 - ipykernel
 - ipython
 - libraft-headers=23.06.*
