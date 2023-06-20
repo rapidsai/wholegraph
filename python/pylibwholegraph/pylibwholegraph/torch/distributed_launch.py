@@ -16,7 +16,7 @@ from optparse import OptionParser
 
 
 class DistributedConfig(object):
-    def __int__(self):
+    def __init__(self):
         super(DistributedConfig, self).__init__()
         self.rank = -1
         self.world_size = -1
