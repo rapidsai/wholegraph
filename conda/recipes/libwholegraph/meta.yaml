@@ -57,6 +57,8 @@ requirements:
     - cudatoolkit ={{ cuda_version }}
     - libraft-headers ={{ minor_version }}
     - librmm ={{ minor_version }}
+    - gmock {{ gtest_version }}
+    - gtest {{ gtest_version }}
 
 outputs:
   - name: libwholegraph
