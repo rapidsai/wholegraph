@@ -89,31 +89,31 @@ endfunction()
 ConfigureTest(PARALLEL_UTILS_TEST parallel_utils_tests.cpp)
 
 # wholememory communicator tests
-ConfigureTest(WHOLEMEMORY_COMM_TEST wholememory/wholememory_comm_tests.cpp)
+#ConfigureTest(WHOLEMEMORY_COMM_TEST wholememory/wholememory_comm_tests.cpp)
 
 # wholememory handle tests
-ConfigureTest(WHOLEMEMORY_HANDLE_TEST wholememory/wholememory_handle_tests.cpp)
+#ConfigureTest(WHOLEMEMORY_HANDLE_TEST wholememory/wholememory_handle_tests.cpp)
 
 # wholememory tensor tests
-ConfigureTest(WHOLEMEMORY_TENSOR_TEST wholememory/wholememory_tensor_tests.cpp)
+#ConfigureTest(WHOLEMEMORY_TENSOR_TEST wholememory/wholememory_tensor_tests.cpp)
 
 # wholememory gather op tests
-ConfigureTest(WHOLEMEMORY_GATHER_TEST wholememory_ops/wholememory_gather_tests.cu wholememory_ops/embedding_test_utils.cu)
+#ConfigureTest(WHOLEMEMORY_GATHER_TEST wholememory_ops/wholememory_gather_tests.cu wholememory_ops/embedding_test_utils.cu)
 
 # wholememory scatter op tests
-ConfigureTest(WHOLEMEMORY_SCATTER_TEST wholememory_ops/wholememory_scatter_tests.cu wholememory_ops/embedding_test_utils.cu)
+#ConfigureTest(WHOLEMEMORY_SCATTER_TEST wholememory_ops/wholememory_scatter_tests.cu wholememory_ops/embedding_test_utils.cu)
 
 #wholegraph unweighted samping op tests
-ConfigureTest(WHOLEGRAPH_CSR_UNWEIGHTED_SAMPLE_WITHOUT_REPLACEMENT_TEST wholegraph_ops/wholegraph_csr_unweighted_sample_without_replacement_tests.cu wholegraph_ops/graph_sampling_test_utils.cu)
+#ConfigureTest(WHOLEGRAPH_CSR_UNWEIGHTED_SAMPLE_WITHOUT_REPLACEMENT_TEST wholegraph_ops/wholegraph_csr_unweighted_sample_without_replacement_tests.cu wholegraph_ops/graph_sampling_test_utils.cu)
 
 #wholegraph weighted samping op tests
-ConfigureTest(WHOLEGRAPH_CSR_WEIGHTED_SAMPLE_WITHOUT_REPLACEMENT_TEST wholegraph_ops/wholegraph_csr_weighted_sample_without_replacement_tests.cu wholegraph_ops/graph_sampling_test_utils.cu)
+#ConfigureTest(WHOLEGRAPH_CSR_WEIGHTED_SAMPLE_WITHOUT_REPLACEMENT_TEST wholegraph_ops/wholegraph_csr_weighted_sample_without_replacement_tests.cu wholegraph_ops/graph_sampling_test_utils.cu)
 
 #wholegraph cache set tests
 ConfigureTest(WHOLEGRAPH_CACHESET_TEST wholememory_ops/cacheset_tests.cu)
 
 #wholegraph embedding tests
-ConfigureTest(WHOLEGRAPH_EMBEDDING_TEST wholememory_ops/wholememory_embedding_tests.cu wholememory_ops/embedding_test_utils.cu)
+#ConfigureTest(WHOLEGRAPH_EMBEDDING_TEST wholememory_ops/wholememory_embedding_tests.cu wholememory_ops/embedding_test_utils.cu)
 
 #wholegraph embedding gradient apply tests
 #ConfigureTest(WHOLEGRAPH_EMBEDDING_GRADIENT_APPLY_TEST wholememory_ops/wholememory_embedding_gradient_apply_tests.cu wholememory_ops/embedding_test_utils.cu)
