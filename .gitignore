@@ -18,6 +18,7 @@ DartConfiguration.tcl
 .DS_Store
 *.egg-info
 *.egg
+env.yaml
 
 # Unit test / coverage reports
 htmlcov/
