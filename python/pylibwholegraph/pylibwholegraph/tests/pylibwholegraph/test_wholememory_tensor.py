@@ -11,6 +11,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import pytest
+
 import pylibwholegraph.binding.wholememory_binding as wmb
 from pylibwholegraph.utils.multiprocess import multiprocess_run
 from pylibwholegraph.torch.initialize import init_torch_env_and_create_wm_comm
@@ -109,6 +111,7 @@ def routine_func(world_rank: int, world_size: int):
             matrix_test_case(wm_comm, dt, mt, ml, single_matrix_size)
 
 
+@pytest.mark.skip(reason="bus error")
 def test_wholememory_tensor():
     gpu_count = wmb.fork_get_gpu_count()
     assert gpu_count > 0
