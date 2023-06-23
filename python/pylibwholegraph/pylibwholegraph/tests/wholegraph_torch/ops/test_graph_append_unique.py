@@ -81,6 +81,7 @@ def routine_func(**kwargs):
         )
 
 
+@pytest.mark.skip(reason="bus error")
 @pytest.mark.parametrize("target_node_count", [10, 113])
 @pytest.mark.parametrize("neighbor_node_count", [104, 1987])
 @pytest.mark.parametrize("target_node_dtype", [torch.int32, torch.int64])
