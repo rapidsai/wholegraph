@@ -54,6 +54,7 @@ void MultiProcessRun(int world_size, std::function<void(int, int)> f, bool inlin
   int child_idx             = 0;
   int current_running_count = running_count.fetch_add(1);
   if (current_running_count > 0) {
+    running_count.fetch_sub(1);
     WHOLEMEMORY_FATAL("Already have MultiProcessRun, running_count=%d", current_running_count);
   }
   for (; child_idx < world_size; child_idx++) {
@@ -81,10 +82,12 @@ void MultiProcessRun(int world_size, std::function<void(int, int)> f, bool inlin
     int wstatus;
     pid_t pid_ret = waitpid(pids[i], &wstatus, 0);
     if (pid_ret != pids[i]) {
+      running_count.fetch_sub(1);
       WHOLEMEMORY_FATAL(
         "Rank %d returned pid %d not equal to pid %d", i, (int)pid_ret, (int)pids[i]);
     }
     if ((!WIFEXITED(wstatus)) || (WEXITSTATUS(wstatus) != 0)) {
+      running_count.fetch_sub(1);
       WHOLEMEMORY_FATAL("Rank %d exit with error", i);
     }
   }

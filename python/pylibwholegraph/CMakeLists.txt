@@ -14,10 +14,10 @@
 # limitations under the License.
 #=============================================================================
 
-set(RAPIDS_VERSION "23.06")
-set(WHOLEGRAPH_VERSION "${RAPIDS_VERSION}.00")
+cmake_minimum_required(VERSION 3.26.4 FATAL_ERROR)
 
-cmake_minimum_required(VERSION 3.23.1 FATAL_ERROR)
+set(RAPIDS_VERSION "23.08")
+set(WHOLEGRAPH_VERSION "${RAPIDS_VERSION}.00")
 
 include(FetchContent)
 
