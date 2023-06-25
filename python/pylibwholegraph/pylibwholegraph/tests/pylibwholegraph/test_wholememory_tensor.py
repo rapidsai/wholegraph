@@ -109,9 +109,9 @@ def routine_func(world_rank: int, world_size: int):
         ]:
             array_test_case(wm_comm, dt, mt, ml, single_array_size)
             matrix_test_case(wm_comm, dt, mt, ml, single_matrix_size)
+    wmb.finalize()
 
 
-@pytest.mark.skip(reason="bus error")
 def test_wholememory_tensor():
     gpu_count = wmb.fork_get_gpu_count()
     assert gpu_count > 0

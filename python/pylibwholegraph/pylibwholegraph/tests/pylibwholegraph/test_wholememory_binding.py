@@ -111,9 +111,9 @@ def routine_func(world_rank: int, world_size: int):
             wmb.WholeMemoryMemoryLocation.MlDevice,
         ]:
             single_test_case(wm_comm, mt, ml, malloc_size, granularity)
+    wmb.finalize()
 
 
-@pytest.mark.skip(reason="error")
 def test_dlpack():
     gpu_count = wmb.fork_get_gpu_count()
     assert gpu_count > 0

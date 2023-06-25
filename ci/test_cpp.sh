@@ -38,11 +38,6 @@ nvidia-smi
 
 set +e
 
-rapids-logger "Mount /dev/shm"
-mkdir -p /mnt/shm
-mount -t tmpfs -o size=16g tmpfs /mnt/shm
-mount --bind /mnt/shm /dev/shm
-
 # Run libwholegraph tests from libwholegraph-tests package
 rapids-logger "Run tests"
 INSTALLED_TEST_PATH=${CONDA_PREFIX}/bin/gtests/libwholegraph
@@ -59,9 +54,5 @@ for file in "${INSTALLED_TEST_PATH}"/*; do
     fi
   fi
 done
-
-rapids-logger "Unmount /dev/shm"
-umount /dev/shm
-umount /mnt/shm
 
 exit 0

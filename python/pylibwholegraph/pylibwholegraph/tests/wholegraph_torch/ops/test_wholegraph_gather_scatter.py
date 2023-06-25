@@ -160,9 +160,9 @@ def routine_func(world_rank: int, world_size: int):
                 wm_comm, dt, mt, ml, embedding_count, embedding_dim, indice_count, True
             )
             # scatter_gather_test_cast(wm_comm, dt, mt, ml, embedding_count, embedding_dim, indice_count, False)
+    wmb.finalize()
 
 
-@pytest.mark.skip(reason="bus error")
 def test_wholegraph_gather_scatter():
     gpu_count = wmb.fork_get_gpu_count()
     assert gpu_count > 0
