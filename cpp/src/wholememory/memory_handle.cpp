@@ -458,7 +458,7 @@ class global_mapped_host_wholememory_impl : public wholememory_impl {
       shm_id = shmget(shm_key, alloc_strategy_.local_alloc_size, 0644 | IPC_CREAT | IPC_EXCL);
       if (shm_id == -1) {
         WHOLEMEMORY_FATAL(
-            "Create host shared memory from IPC key %d failed, Reason=%s", shm_key, strerror(errno));
+          "Create host shared memory from IPC key %d failed, Reason=%s", shm_key, strerror(errno));
       }
 #else
       shm_fd = shm_open(shm_full_path.c_str(), O_CREAT | O_RDWR, S_IRUSR | S_IWUSR);
@@ -476,7 +476,7 @@ class global_mapped_host_wholememory_impl : public wholememory_impl {
       shm_id = shmget(shm_key, alloc_strategy_.local_alloc_size, 0644);
       if (shm_id == -1) {
         WHOLEMEMORY_FATAL(
-            "Get host shared memory from IPC key %d failed, Reason=%s", shm_key, strerror(errno));
+          "Get host shared memory from IPC key %d failed, Reason=%s", shm_key, strerror(errno));
       }
 #else
       shm_fd = shm_open(shm_full_path.c_str(), O_RDWR, S_IRUSR | S_IWUSR);
