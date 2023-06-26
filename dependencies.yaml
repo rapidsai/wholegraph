@@ -226,9 +226,9 @@ dependencies:
           - matrix:
               arch: aarch64
               cuda: "11.8"
+            packages:
               - pytorch=2.0.0
               - pytorch-cuda=11.8
-            packages:
           - matrix:
             packages:
   docs:
