@@ -508,7 +508,8 @@ void check_value_same(void* value, void* ref, int64_t size)
   for (int i = 0; i < size; i++) {
     if (value_ptr[i] != ref_ptr[i]) {
       if (diff_count < 10) {
-        printf("value = %ld, ref = %ld\n",
+        printf("i=%d, value = %ld, ref = %ld\n",
+               i,
                static_cast<int64_t>(value_ptr[i]),
                static_cast<int64_t>(ref_ptr[i]));
         EXPECT_EQ(value_ptr[i], ref_ptr[i]);
