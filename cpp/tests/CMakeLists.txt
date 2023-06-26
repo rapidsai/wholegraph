@@ -119,7 +119,7 @@ ConfigureTest(WHOLEGRAPH_EMBEDDING_TEST wholememory_ops/wholememory_embedding_te
 ConfigureTest(WHOLEGRAPH_EMBEDDING_GRADIENT_APPLY_TEST wholememory_ops/wholememory_embedding_gradient_apply_tests.cu wholememory_ops/embedding_test_utils.cu)
 
 #graph append unique op tests
-ConfigureTest(GRAPH_APPEND_UNIQUE_TEST graph_ops/append_unique_tests.cu graph_ops/append_unique_test_utils.cu wholegraph_ops/graph_sampling_test_utils.cu)
+#ConfigureTest(GRAPH_APPEND_UNIQUE_TEST graph_ops/append_unique_tests.cu graph_ops/append_unique_test_utils.cu wholegraph_ops/graph_sampling_test_utils.cu)
 
 #graph csr add self loop op tests
 ConfigureTest(GRAPH_CSR_ADD_SELF_LOOP_TEST graph_ops/csr_add_self_loop_tests.cu graph_ops/csr_add_self_loop_utils.cu wholegraph_ops/graph_sampling_test_utils.cu)

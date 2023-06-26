@@ -65,7 +65,7 @@ requirements:
     - {{ pin_compatible('cudatoolkit', max_pin='x', min_pin='x') }}
     - libwholegraph ={{ version }}
     - python
-    - pytorch
+    - pytorch-cuda
 
 about:
   home: https://rapids.ai/
