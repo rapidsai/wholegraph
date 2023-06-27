@@ -167,28 +167,32 @@ TEST_P(GraphAppendUniqueParameterTests, AppendUniqueTest)
   EXPECT_EQ(cudaStreamSynchronize(stream), cudaSuccess);
 
   int ref_total_unique_node_count;
-  graph_ops::testing::host_append_unique(
-    host_target_nodes_ptr,
-    target_node_desc,
-    host_neighbor_nodes_ptr,
-    neighbor_node_desc,
-    &ref_total_unique_node_count,
-    &ref_host_output_unique_nodes_ptr);
+  graph_ops::testing::host_append_unique(host_target_nodes_ptr,
+                                         target_node_desc,
+                                         host_neighbor_nodes_ptr,
+                                         neighbor_node_desc,
+                                         &ref_total_unique_node_count,
+                                         &ref_host_output_unique_nodes_ptr);
 
   EXPECT_EQ(total_unique_count, ref_total_unique_node_count);
-  graph_ops::testing::host_gen_append_unique_neighbor_raw_to_unique(host_output_unique_nodes_ptr, wholememory_create_array_desc(total_unique_count, 0, target_node_desc.dtype),
+  graph_ops::testing::host_gen_append_unique_neighbor_raw_to_unique(
+    host_output_unique_nodes_ptr,
+    wholememory_create_array_desc(total_unique_count, 0, target_node_desc.dtype),
     host_neighbor_nodes_ptr,
     neighbor_node_desc,
     (void**)&ref_host_output_neighbor_raw_to_unique_mapping_ptr,
     neighbor_raw_to_unique_mapping_desc);
-  
+
   if (target_node_desc.dtype == WHOLEMEMORY_DT_INT) {
-    std::sort(static_cast<int*>(host_output_unique_nodes_ptr) + target_node_count, static_cast<int*>(host_output_unique_nodes_ptr) + total_unique_count);
-    std::sort(static_cast<int*>(ref_host_output_unique_nodes_ptr) + target_node_count, static_cast<int*>(ref_host_output_unique_nodes_ptr) + total_unique_count);
-  }
-  else if (target_node_desc.dtype == WHOLEMEMORY_DT_INT64) {
-    std::sort(static_cast<int64_t*>(host_output_unique_nodes_ptr) + target_node_count, static_cast<int64_t*>(host_output_unique_nodes_ptr) + total_unique_count);
-    std::sort(static_cast<int64_t*>(ref_host_output_unique_nodes_ptr) + target_node_count, static_cast<int64_t*>(ref_host_output_unique_nodes_ptr) + total_unique_count);
+    std::sort(static_cast<int*>(host_output_unique_nodes_ptr) + target_node_count,
+              static_cast<int*>(host_output_unique_nodes_ptr) + total_unique_count);
+    std::sort(static_cast<int*>(ref_host_output_unique_nodes_ptr) + target_node_count,
+              static_cast<int*>(ref_host_output_unique_nodes_ptr) + total_unique_count);
+  } else if (target_node_desc.dtype == WHOLEMEMORY_DT_INT64) {
+    std::sort(static_cast<int64_t*>(host_output_unique_nodes_ptr) + target_node_count,
+              static_cast<int64_t*>(host_output_unique_nodes_ptr) + total_unique_count);
+    std::sort(static_cast<int64_t*>(ref_host_output_unique_nodes_ptr) + target_node_count,
+              static_cast<int64_t*>(ref_host_output_unique_nodes_ptr) + total_unique_count);
   }
 
   wholegraph_ops::testing::host_check_two_array_same(

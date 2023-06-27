@@ -29,13 +29,13 @@ void host_append_unique(void* target_nodes_ptr,
                         int* host_total_unique_count,
                         void** host_output_unique_nodes_ptr);
 
-void host_gen_append_unique_neighbor_raw_to_unique(void* host_output_unique_nodes_ptr, 
-                                                   wholememory_array_description_t output_unique_nodes_desc,
-                                                   void* host_neighbor_nodes_ptr,
-                                                   wholememory_array_description_t neighbor_node_desc,
-                                                   void** ref_host_output_neighbor_raw_to_unique_mapping_ptr,
-                                                   wholememory_array_description_t output_neighbor_raw_to_unique_mapping_desc);
-
+void host_gen_append_unique_neighbor_raw_to_unique(
+  void* host_output_unique_nodes_ptr,
+  wholememory_array_description_t output_unique_nodes_desc,
+  void* host_neighbor_nodes_ptr,
+  wholememory_array_description_t neighbor_node_desc,
+  void** ref_host_output_neighbor_raw_to_unique_mapping_ptr,
+  wholememory_array_description_t output_neighbor_raw_to_unique_mapping_desc);
 
 }  // namespace testing
 }  // namespace graph_ops

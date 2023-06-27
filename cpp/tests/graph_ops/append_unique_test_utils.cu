@@ -144,47 +144,59 @@ void host_append_unique(void* target_nodes_ptr,
   }
 }
 
-template<typename DataType>
-void host_get_append_unique_neighbor_raw_to_unique(void* host_output_unique_nodes_ptr, 
-                                                   wholememory_array_description_t output_unique_nodes_desc,
-                                                    void* host_neighbor_nodes_ptr,
-                                                   wholememory_array_description_t neighbor_node_desc,
-                                                   void** host_output_neighbor_raw_to_unique_mapping_ptr,
-                                                   wholememory_array_description_t output_neighbor_raw_to_unique_mapping_desc) {
-  
+template <typename DataType>
+void host_get_append_unique_neighbor_raw_to_unique(
+  void* host_output_unique_nodes_ptr,
+  wholememory_array_description_t output_unique_nodes_desc,
+  void* host_neighbor_nodes_ptr,
+  wholememory_array_description_t neighbor_node_desc,
+  void** host_output_neighbor_raw_to_unique_mapping_ptr,
+  wholememory_array_description_t output_neighbor_raw_to_unique_mapping_desc)
+{
   DataType* output_unique_nodes_ptr = static_cast<DataType*>(host_output_unique_nodes_ptr);
-  DataType* neighbor_nodes_ptr = static_cast<DataType*>(host_neighbor_nodes_ptr);
+  DataType* neighbor_nodes_ptr      = static_cast<DataType*>(host_neighbor_nodes_ptr);
   std::unordered_map<DataType, int> unique_node_map;
   for (int64_t i = 0; i < output_unique_nodes_desc.size; i++) {
     DataType key = output_unique_nodes_ptr[i];
     unique_node_map.insert(std::make_pair(key, i));
   }
   for (int64_t i = 0; i < neighbor_node_desc.size; i++) {
-    DataType  key = neighbor_nodes_ptr[i];
+    DataType key                                                          = neighbor_nodes_ptr[i];
     static_cast<int*>(*host_output_neighbor_raw_to_unique_mapping_ptr)[i] = unique_node_map[key];
   }
-
 }
 
-void host_gen_append_unique_neighbor_raw_to_unique(void* host_output_unique_nodes_ptr, 
-                                                   wholememory_array_description_t output_unique_nodes_desc,
-                                                   void* host_neighbor_nodes_ptr,
-                                                   wholememory_array_description_t neighbor_nodes_desc,
-                                                   void** host_output_neighbor_raw_to_unique_mapping_ptr,
-                                                   wholememory_array_description_t output_neighbor_raw_to_unique_mapping_desc) {
+void host_gen_append_unique_neighbor_raw_to_unique(
+  void* host_output_unique_nodes_ptr,
+  wholememory_array_description_t output_unique_nodes_desc,
+  void* host_neighbor_nodes_ptr,
+  wholememory_array_description_t neighbor_nodes_desc,
+  void** host_output_neighbor_raw_to_unique_mapping_ptr,
+  wholememory_array_description_t output_neighbor_raw_to_unique_mapping_desc)
+{
   EXPECT_EQ(output_unique_nodes_desc.dtype, neighbor_nodes_desc.dtype);
   if (*host_output_neighbor_raw_to_unique_mapping_ptr == nullptr) {
-    *host_output_neighbor_raw_to_unique_mapping_ptr =
-      (void*)malloc(wholememory_get_memory_size_from_array(&output_neighbor_raw_to_unique_mapping_desc));
-  }
-  
-  if (output_unique_nodes_desc.dtype == WHOLEMEMORY_DT_INT) {
-    host_get_append_unique_neighbor_raw_to_unique<int>(host_output_unique_nodes_ptr, output_unique_nodes_desc, host_neighbor_nodes_ptr, neighbor_nodes_desc, host_output_neighbor_raw_to_unique_mapping_ptr, output_neighbor_raw_to_unique_mapping_desc);
-  }
-  else if (output_unique_nodes_desc.dtype == WHOLEMEMORY_DT_INT64) {
-    host_get_append_unique_neighbor_raw_to_unique<int64_t>(host_output_unique_nodes_ptr, output_unique_nodes_desc, host_neighbor_nodes_ptr, neighbor_nodes_desc, host_output_neighbor_raw_to_unique_mapping_ptr, output_neighbor_raw_to_unique_mapping_desc);
+    *host_output_neighbor_raw_to_unique_mapping_ptr = (void*)malloc(
+      wholememory_get_memory_size_from_array(&output_neighbor_raw_to_unique_mapping_desc));
   }
 
+  if (output_unique_nodes_desc.dtype == WHOLEMEMORY_DT_INT) {
+    host_get_append_unique_neighbor_raw_to_unique<int>(
+      host_output_unique_nodes_ptr,
+      output_unique_nodes_desc,
+      host_neighbor_nodes_ptr,
+      neighbor_nodes_desc,
+      host_output_neighbor_raw_to_unique_mapping_ptr,
+      output_neighbor_raw_to_unique_mapping_desc);
+  } else if (output_unique_nodes_desc.dtype == WHOLEMEMORY_DT_INT64) {
+    host_get_append_unique_neighbor_raw_to_unique<int64_t>(
+      host_output_unique_nodes_ptr,
+      output_unique_nodes_desc,
+      host_neighbor_nodes_ptr,
+      neighbor_nodes_desc,
+      host_output_neighbor_raw_to_unique_mapping_ptr,
+      output_neighbor_raw_to_unique_mapping_desc);
+  }
 }
 
 }  // namespace testing
