@@ -175,12 +175,10 @@ TEST_P(GraphCsrAddSelfLoopParameterTests, CsrAddSelfLoopParameterTest)
                                              csr_row_ptr_array_desc,
                                              host_ref_output_csr_col_ptr,
                                              output_csr_col_ptr_array_desc);
-  printf("===== Start checking output_csr_row_ptr =====\n");
   wholegraph_ops::testing::host_check_two_array_same(host_output_csr_row_ptr,
                                                      csr_row_ptr_array_desc,
                                                      host_ref_output_csr_row_ptr,
                                                      csr_row_ptr_array_desc);
-  printf("===== Start checking output_csr_col_ptr =====\n");
   wholegraph_ops::testing::host_check_two_array_same(host_output_csr_col_ptr,
                                                      output_csr_col_ptr_array_desc,
                                                      host_ref_output_csr_col_ptr,
