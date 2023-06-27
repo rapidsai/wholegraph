@@ -65,7 +65,6 @@ def routine_func(**kwargs):
     assert torch.equal(output_csr_col_ptr_tensor, output_csr_col_ptr_tensor_ref)
 
 
-@pytest.mark.skip(reason="bus error")
 @pytest.mark.parametrize("target_node_count", [101, 113])
 @pytest.mark.parametrize("neighbor_node_count", [157, 1987])
 @pytest.mark.parametrize("edge_num", [1001, 2305])

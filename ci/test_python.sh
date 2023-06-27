@@ -9,6 +9,12 @@ EXITCODE=0
 . /opt/conda/etc/profile.d/conda.sh
 
 ARCH=$(arch)
+
+if [ "${ARCH}" = "aarch64" ]; then
+  rapids-logger "Exiting aarch64 due to no pytorch-cuda"
+  exit ${EXITCODE}
+fi
+
 rapids-logger "Generate Python testing dependencies"
 rapids-dependency-file-generator \
   --output conda \
