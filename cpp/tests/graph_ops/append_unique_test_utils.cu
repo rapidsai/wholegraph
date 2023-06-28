@@ -14,10 +14,12 @@
  * limitations under the License.
  */
 #include "append_unique_test_utils.hpp"
+#include <cstdint>
 #include <gtest/gtest.h>
 #include <iterator>
 #include <random>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 #include <wholememory/tensor_description.h>
 
@@ -90,9 +92,7 @@ void host_get_append_unique(void* target_nodes_ptr,
                             void* neighbor_nodes_ptr,
                             wholememory_array_description_t neighbor_nodes_desc,
                             int* host_total_unique_count,
-                            void** host_output_unique_nodes_ptr,
-                            void** host_output_neighbor_raw_to_unique_ptr,
-                            wholememory_array_description_t output_neighbor_raw_to_unique_desc)
+                            void** host_output_unique_nodes_ptr)
 {
   std::unordered_map<DataType, int> append_unique_hash_table;
   int unique_count = target_nodes_desc.size;
@@ -116,10 +116,6 @@ void host_get_append_unique(void* target_nodes_ptr,
     int index                                                    = iter->second;
     static_cast<DataType*>(*host_output_unique_nodes_ptr)[index] = key;
   }
-  for (int64_t i = 0; i < neighbor_nodes_desc.size; i++) {
-    DataType key = static_cast<DataType*>(neighbor_nodes_ptr)[i];
-    static_cast<int*>(*host_output_neighbor_raw_to_unique_ptr)[i] = append_unique_hash_table[key];
-  }
 }
 
 void host_append_unique(void* target_nodes_ptr,
@@ -127,13 +123,9 @@ void host_append_unique(void* target_nodes_ptr,
                         void* neighbor_nodes_ptr,
                         wholememory_array_description_t neighbor_nodes_desc,
                         int* host_total_unique_count,
-                        void** host_output_unique_nodes_ptr,
-                        void** host_output_neighbor_raw_to_unique_ptr,
-                        wholememory_array_description_t output_neighbor_raw_to_unique_desc)
+                        void** host_output_unique_nodes_ptr)
 {
   EXPECT_EQ(target_nodes_desc.dtype, neighbor_nodes_desc.dtype);
-  *host_output_neighbor_raw_to_unique_ptr =
-    (void*)malloc(wholememory_get_memory_size_from_array(&output_neighbor_raw_to_unique_desc));
 
   if (target_nodes_desc.dtype == WHOLEMEMORY_DT_INT) {
     host_get_append_unique<int>(target_nodes_ptr,
@@ -141,18 +133,69 @@ void host_append_unique(void* target_nodes_ptr,
                                 neighbor_nodes_ptr,
                                 neighbor_nodes_desc,
                                 host_total_unique_count,
-                                host_output_unique_nodes_ptr,
-                                host_output_neighbor_raw_to_unique_ptr,
-                                output_neighbor_raw_to_unique_desc);
+                                host_output_unique_nodes_ptr);
   } else if (target_nodes_desc.dtype == WHOLEMEMORY_DT_INT64) {
     host_get_append_unique<int64_t>(target_nodes_ptr,
                                     target_nodes_desc,
                                     neighbor_nodes_ptr,
                                     neighbor_nodes_desc,
                                     host_total_unique_count,
-                                    host_output_unique_nodes_ptr,
-                                    host_output_neighbor_raw_to_unique_ptr,
-                                    output_neighbor_raw_to_unique_desc);
+                                    host_output_unique_nodes_ptr);
+  }
+}
+
+template <typename DataType>
+void host_get_append_unique_neighbor_raw_to_unique(
+  void* host_output_unique_nodes_ptr,
+  wholememory_array_description_t output_unique_nodes_desc,
+  void* host_neighbor_nodes_ptr,
+  wholememory_array_description_t neighbor_node_desc,
+  void** host_output_neighbor_raw_to_unique_mapping_ptr,
+  wholememory_array_description_t output_neighbor_raw_to_unique_mapping_desc)
+{
+  DataType* output_unique_nodes_ptr = static_cast<DataType*>(host_output_unique_nodes_ptr);
+  DataType* neighbor_nodes_ptr      = static_cast<DataType*>(host_neighbor_nodes_ptr);
+  std::unordered_map<DataType, int> unique_node_map;
+  for (int64_t i = 0; i < output_unique_nodes_desc.size; i++) {
+    DataType key = output_unique_nodes_ptr[i];
+    unique_node_map.insert(std::make_pair(key, i));
+  }
+  for (int64_t i = 0; i < neighbor_node_desc.size; i++) {
+    DataType key                                                          = neighbor_nodes_ptr[i];
+    static_cast<int*>(*host_output_neighbor_raw_to_unique_mapping_ptr)[i] = unique_node_map[key];
+  }
+}
+
+void host_gen_append_unique_neighbor_raw_to_unique(
+  void* host_output_unique_nodes_ptr,
+  wholememory_array_description_t output_unique_nodes_desc,
+  void* host_neighbor_nodes_ptr,
+  wholememory_array_description_t neighbor_nodes_desc,
+  void** host_output_neighbor_raw_to_unique_mapping_ptr,
+  wholememory_array_description_t output_neighbor_raw_to_unique_mapping_desc)
+{
+  EXPECT_EQ(output_unique_nodes_desc.dtype, neighbor_nodes_desc.dtype);
+  if (*host_output_neighbor_raw_to_unique_mapping_ptr == nullptr) {
+    *host_output_neighbor_raw_to_unique_mapping_ptr = (void*)malloc(
+      wholememory_get_memory_size_from_array(&output_neighbor_raw_to_unique_mapping_desc));
+  }
+
+  if (output_unique_nodes_desc.dtype == WHOLEMEMORY_DT_INT) {
+    host_get_append_unique_neighbor_raw_to_unique<int>(
+      host_output_unique_nodes_ptr,
+      output_unique_nodes_desc,
+      host_neighbor_nodes_ptr,
+      neighbor_nodes_desc,
+      host_output_neighbor_raw_to_unique_mapping_ptr,
+      output_neighbor_raw_to_unique_mapping_desc);
+  } else if (output_unique_nodes_desc.dtype == WHOLEMEMORY_DT_INT64) {
+    host_get_append_unique_neighbor_raw_to_unique<int64_t>(
+      host_output_unique_nodes_ptr,
+      output_unique_nodes_desc,
+      host_neighbor_nodes_ptr,
+      neighbor_nodes_desc,
+      host_output_neighbor_raw_to_unique_mapping_ptr,
+      output_neighbor_raw_to_unique_mapping_desc);
   }
 }
 

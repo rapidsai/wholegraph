@@ -13,6 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <cstdint>
+#include <cstdio>
 #include <gtest/gtest.h>
 
 #include "../wholegraph_ops/graph_sampling_test_utils.hpp"
@@ -165,16 +167,34 @@ TEST_P(GraphAppendUniqueParameterTests, AppendUniqueTest)
   EXPECT_EQ(cudaStreamSynchronize(stream), cudaSuccess);
 
   int ref_total_unique_node_count;
-  graph_ops::testing::host_append_unique(
-    host_target_nodes_ptr,
-    target_node_desc,
+  graph_ops::testing::host_append_unique(host_target_nodes_ptr,
+                                         target_node_desc,
+                                         host_neighbor_nodes_ptr,
+                                         neighbor_node_desc,
+                                         &ref_total_unique_node_count,
+                                         &ref_host_output_unique_nodes_ptr);
+
+  EXPECT_EQ(total_unique_count, ref_total_unique_node_count);
+  graph_ops::testing::host_gen_append_unique_neighbor_raw_to_unique(
+    host_output_unique_nodes_ptr,
+    wholememory_create_array_desc(total_unique_count, 0, target_node_desc.dtype),
     host_neighbor_nodes_ptr,
     neighbor_node_desc,
-    &ref_total_unique_node_count,
-    &ref_host_output_unique_nodes_ptr,
     (void**)&ref_host_output_neighbor_raw_to_unique_mapping_ptr,
     neighbor_raw_to_unique_mapping_desc);
-  EXPECT_EQ(total_unique_count, ref_total_unique_node_count);
+
+  if (target_node_desc.dtype == WHOLEMEMORY_DT_INT) {
+    std::sort(static_cast<int*>(host_output_unique_nodes_ptr) + target_node_count,
+              static_cast<int*>(host_output_unique_nodes_ptr) + total_unique_count);
+    std::sort(static_cast<int*>(ref_host_output_unique_nodes_ptr) + target_node_count,
+              static_cast<int*>(ref_host_output_unique_nodes_ptr) + total_unique_count);
+  } else if (target_node_desc.dtype == WHOLEMEMORY_DT_INT64) {
+    std::sort(static_cast<int64_t*>(host_output_unique_nodes_ptr) + target_node_count,
+              static_cast<int64_t*>(host_output_unique_nodes_ptr) + total_unique_count);
+    std::sort(static_cast<int64_t*>(ref_host_output_unique_nodes_ptr) + target_node_count,
+              static_cast<int64_t*>(ref_host_output_unique_nodes_ptr) + total_unique_count);
+  }
+
   wholegraph_ops::testing::host_check_two_array_same(
     host_output_unique_nodes_ptr,
     wholememory_create_array_desc(total_unique_count, 0, target_node_desc.dtype),
@@ -183,9 +203,9 @@ TEST_P(GraphAppendUniqueParameterTests, AppendUniqueTest)
 
   wholegraph_ops::testing::host_check_two_array_same(
     host_output_neighbor_raw_to_unique_mapping_ptr,
-    wholememory_create_array_desc(neighbor_node_count, 0, neighbor_node_desc.dtype),
+    neighbor_raw_to_unique_mapping_desc,
     ref_host_output_neighbor_raw_to_unique_mapping_ptr,
-    wholememory_create_array_desc(neighbor_node_count, 0, neighbor_node_desc.dtype));
+    neighbor_raw_to_unique_mapping_desc);
 
   (default_env_func->output_fns).free_fn(&output_unique_node_memory_ctx, nullptr);
   if (host_output_unique_nodes_ptr != nullptr) { free(host_output_unique_nodes_ptr); }

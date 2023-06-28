@@ -354,9 +354,10 @@ def routine_func(world_rank: int, world_size: int, **kwargs):
 
     wmb.destroy_wholememory_tensor(wm_csr_row_ptr)
     wmb.destroy_wholememory_tensor(wm_csr_col_ptr)
+    wmb.destroy_wholememory_tensor(wm_csr_weight_ptr)
+    wmb.finalize()
 
 
-@pytest.mark.skip(reason="bus error")
 @pytest.mark.parametrize("graph_node_count", [113])
 @pytest.mark.parametrize("graph_edge_count", [1043])
 @pytest.mark.parametrize("max_sample_count", [11])
