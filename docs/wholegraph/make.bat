@@ -9,7 +9,7 @@ if "%SPHINXBUILD%" == "" (
 )
 set SOURCEDIR=source
 set BUILDDIR=build
-set SPHINXPROJ=cuGraph
+set SPHINXPROJ=wholegraph
 
 if "%1" == "" goto help
 
