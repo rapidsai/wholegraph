@@ -1,8 +1,10 @@
 # Building from Source
 
-The following instructions are for users wishing to build wholegraph from source code.  These instructions are tested on supported distributions of Linux, CUDA, and Python - See [RAPIDS Getting Started](https://rapids.ai/start.html) for list of supported environments.  Other operating systems _might be_ compatible, but are not currently tested.
+The following instructions are for users wishing to build wholegraph from source code. These instructions are tested on supported distributions of Linux,CUDA,
+and Python - See [RAPIDS Getting Started](https://rapids.ai/start.html) for list of supported environments.
+Other operating systems _might be_ compatible, but are not currently tested.
 
-The wholegraph package include both a C/C++ CUDA portion and a python portion.  Both libraries need to be installed in order for cuGraph to operate correctly.
+The wholegraph package include both a C/C++ CUDA portion and a python portion. Both libraries need to be installed in order for cuGraph to operate correctly.
 
 ## Prerequisites
 
@@ -64,7 +66,7 @@ conda activate wholegraph_dev
 
 
 ### Build and Install Using the `build.sh` Script
-Using the `build.sh` script make compiling and installing wholegraph a breeze.  To build and install, simply do:
+Using the `build.sh` script make compiling and installing wholegraph a breeze. To build and install, simply do:
 
 ```bash
 $ cd $WHOLEGRAPH_HOME
@@ -201,7 +203,9 @@ Note: This conda installation only applies to Linux and Python versions 3.8/3.10
 
 ### (OPTIONAL) Set environment variable on activation
 
-It is possible to configure the conda environment to set environmental variables on activation. Providing instructions to set PATH to include the CUDA toolkit bin directory and LD_LIBRARY_PATH to include the CUDA lib64 directory will be helpful.
+It is possible to configure the conda environment to set environmental variables on activation.
+Providing instructions to set PATH to include the CUDA toolkit bin directory and LD_LIBRARY_PATH to
+include the CUDA lib64 directory will be helpful.
 
 ```bash
 cd  ~/anaconda3/envs/cugraph_dev
