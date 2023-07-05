@@ -66,7 +66,8 @@ conda activate wholegraph_dev
 
 
 ### Build and Install Using the `build.sh` Script
-Using the `build.sh` script make compiling and installing wholegraph a breeze. To build and install, simply do:
+Using the `build.sh` script make compiling and installing wholegraph a
+breeze. To build and install, simply do:
 
 ```bash
 $ cd $WHOLEGRAPH_HOME
@@ -101,7 +102,7 @@ build.sh [<target> ...] [<flag> ...]
 
 examples:
 $ ./build.sh clean                        # remove prior build artifacts (start over)
-$ ./build.sh 
+$ ./build.sh
 
 # make parallelism options can also be defined: Example build jobs using 4 threads (make -j4)
 $ PARALLEL_LEVEL=4 ./build.sh libwholegraph
@@ -183,7 +184,7 @@ Run either the C++ or the Python tests with datasets
     # Run the cugraph tests
     cd $WHOLEGRAPH_HOME
     cd cpp/build
-    gtests/GDFGRAPH_TEST		# this is an executable file
+    gtests/PARALLEL_UTILS_TESTS		# this is an executable file
     ```
  - **C++ tests with larger datasets**
 
