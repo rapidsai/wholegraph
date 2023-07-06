@@ -44,7 +44,7 @@ __Create the conda development environment__
 # create the conda environment (assuming in base `wholegraph` directory)
 
 # for CUDA 11.x
-conda env create --name wholegraph_dev --file conda/environments/wholegraph_dev
+conda env create --name wholegraph_dev --file conda/environments/all_cuda-118_arch-x86_64.yaml
 
 # activate the environment
 conda activate wholegraph_dev
@@ -59,7 +59,7 @@ conda deactivate
 ```bash
 
 # Where XXX is the CUDA 11 version
-conda env update --name wholegraph_dev --file conda/environments/wholegraph_dev
+conda env update --name wholegraph_dev --file conda/environments/all_cuda-118_arch-x86_64.yaml
 
 conda activate wholegraph_dev
 ```
@@ -142,11 +142,7 @@ cd $WHOLEGRAPH_HOME
 cd python
 cd pylibwholegraph
 python setup.py build_ext --inplace
-python setup.py install    # install pylibcugraph
-cd ../pylibwholegraph
-python setup.py build_ext --inplace
-python setup.py install    # install cugraph python bindings
-
+python setup.py install    # install pylibwholegraph
 ```
 
 
