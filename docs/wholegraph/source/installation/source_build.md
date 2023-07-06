@@ -149,91 +149,33 @@ python setup.py install    # install pylibwholegraph
 
 ## Run tests
 
-If you already have the datasets:
-
-   ```bash
-   export RAPIDS_DATASET_ROOT_DIR=<path_to_ccp_test_and_reference_data>
-   ```
-   If you do not have the datasets:
-
-   ```bash
-   cd $WHOLEGRAPH_HOME/datasets
-   source get_test_data.sh #This takes about 10 minutes and downloads 1GB data (>5 GB uncompressed)
-   ```
-
 Run either the C++ or the Python tests with datasets
 
   - **Python tests with datasets**
 
-
     ```bash
-    pip install python-louvain #some tests require this package to run
     cd $WHOLEGRAPH_HOME
     cd python
     pytest
     ```
+
   - **C++ stand alone tests**
 
     From the build directory :
 
     ```bash
-    # Run the cugraph tests
+    # Run the tests
     cd $WHOLEGRAPH_HOME
     cd cpp/build
     gtests/PARALLEL_UTILS_TESTS		# this is an executable file
     ```
- - **C++ tests with larger datasets**
 
-
-
-   Run the C++ tests on large input:
-
-   ```bash
-   cd $WHOLEGRAPH_HOME/cpp/build
-   #test one particular analytics (eg. pagerank)
-   gtests/PAGERANK_TEST
-   #test everything
-   make test
-   ```
 
 Note: This conda installation only applies to Linux and Python versions 3.8/3.10.
 
-### (OPTIONAL) Set environment variable on activation
-
-It is possible to configure the conda environment to set environmental variables on activation.
-Providing instructions to set PATH to include the CUDA toolkit bin directory and LD_LIBRARY_PATH to
-include the CUDA lib64 directory will be helpful.
-
-```bash
-cd  ~/anaconda3/envs/cugraph_dev
-
-mkdir -p ./etc/conda/activate.d
-mkdir -p ./etc/conda/deactivate.d
-touch ./etc/conda/activate.d/env_vars.sh
-touch ./etc/conda/deactivate.d/env_vars.sh
-```
-
-Next the env_vars.sh file needs to be edited
-
-```bash
-vi ./etc/conda/activate.d/env_vars.sh
-
-#!/bin/bash
-export PATH=/usr/local/cuda-11.0/bin:$PATH # or cuda-11.1 if using CUDA 11.1 and cuda-11.2 if using CUDA 11.2, respectively
-export LD_LIBRARY_PATH=/usr/local/cuda-11.0/lib64:$LD_LIBRARY_PATH # or cuda-11.1 if using CUDA 11.1 and cuda-11.2 if using CUDA 11.2, respectively
-```
-
-```
-vi ./etc/conda/deactivate.d/env_vars.sh
-
-#!/bin/bash
-unset PATH
-unset LD_LIBRARY_PATH
-```
-
 ## Creating documentation
 
-Python API documentation can be generated from _./docs/cugraph directory_. Or through using "./build.sh docs"
+Python API documentation can be generated from _./docs/wholegraph directory_. Or through using "./build.sh docs"
 
 ## Attribution
 Portions adopted from https://github.com/pytorch/pytorch/blob/master/CONTRIBUTING.md
