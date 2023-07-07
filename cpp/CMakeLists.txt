@@ -282,3 +282,19 @@ rapids_export(
         NAMESPACE wholegraph::
         DOCUMENTATION doc_string
         FINAL_CODE_BLOCK code_string)
+
+        ################################################################################
+# - make documentation ---------------------------------------------------------
+# requires doxygen and graphviz to be installed
+# from build directory, run make docs_wholegraph
+
+# doc targets for cugraph
+find_package(Doxygen 1.8.11)
+if(Doxygen_FOUND)
+    add_custom_command(OUTPUT WHOLEGRAPH_DOXYGEN
+                       WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/doxygen
+                       COMMAND doxygen Doxyfile
+                       VERBATIM)
+
+    add_custom_target(docs_wholegraph DEPENDS WHOLEGRAPH_DOXYGEN)
+endif()
