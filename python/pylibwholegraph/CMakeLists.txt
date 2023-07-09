@@ -42,7 +42,6 @@ project(PYLIBWHOLEGRAPH VERSION ${WHOLEGRAPH_VERSION} LANGUAGES C CXX CUDA)
 # - User Options  ------------------------------------------------------------
 
 option(DETECT_CONDA_ENV "Enable detection of conda environment for dependencies" ON)
-option(BUILD_OPS_WITH_TORCH_C10_API "Whether to build torch ops with c10 API" ON)
 
 ##############################################################################
 # - Base Rapids Options  -----------------------------------------------------
@@ -79,11 +78,12 @@ execute_process(COMMAND ${BUILD_PYTHON_EXE} -c "import sys; print(sys.executable
         OUTPUT_VARIABLE Python_EXECUTABLE OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_QUIET)
 execute_process(COMMAND ${BUILD_PYTHON_EXE} -c "import sysconfig; print(sysconfig.get_path('include'))"
         OUTPUT_VARIABLE Python_INCLUDE_DIR OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_QUIET)
-execute_process(COMMAND ${BUILD_PYTHON_EXE} -c "import sysconfig; print(sysconfig.get_config_var('BINLIBDEST'))"
+execute_process(COMMAND ${BUILD_PYTHON_EXE} -c "import sysconfig; print(sysconfig.get_config_var('LIBDEST'))"
         OUTPUT_VARIABLE Python_LIBRARY OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_QUIET)
 set(PYTHON_EXECUTABLE ${Python_EXECUTABLE})
 set(PYTHON_INCLUDE_DIR ${Python_INCLUDE_DIR})
 set(PYTHON_LIBRARY ${Python_LIBRARY})
+find_package(Python 3 COMPONENTS Interpreter Development REQUIRED)
 
 show_python_envs("python env")
 
@@ -108,7 +108,6 @@ include(../../cpp/cmake/thirdparty/get_raft.cmake)
 # - Dependencies  ------------------------------------------------------------
 
 #find_package(PythonInterp 3 REQUIRED)
-find_package(Python 3 COMPONENTS Interpreter Development REQUIRED)
 
 #include(${CMAKE_CURRENT_LIST_DIR}/../cmake/thirdparty/nanobind.cmake)
 

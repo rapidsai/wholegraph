@@ -33,7 +33,7 @@ void host_gen_append_unique_neighbor_raw_to_unique(
   void* host_output_unique_nodes_ptr,
   wholememory_array_description_t output_unique_nodes_desc,
   void* host_neighbor_nodes_ptr,
-  wholememory_array_description_t neighbor_node_desc,
+  wholememory_array_description_t neighbor_nodes_desc,
   void** ref_host_output_neighbor_raw_to_unique_mapping_ptr,
   wholememory_array_description_t output_neighbor_raw_to_unique_mapping_desc);
 

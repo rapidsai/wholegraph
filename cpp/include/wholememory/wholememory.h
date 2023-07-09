@@ -24,16 +24,21 @@
 extern "C" {
 #endif
 
+/**
+ * @brief WholeMemory Error Code definition
+ *
+ * Defines error code of WholeMemory library.
+ */
 enum wholememory_error_code_t {
-  WHOLEMEMORY_SUCCESS = 0,         /* success */
-  WHOLEMEMORY_UNKNOW_ERROR,        /* unknown error */
-  WHOLEMEMORY_NOT_IMPLEMENTED,     /* method is not implemented */
-  WHOLEMEMORY_LOGIC_ERROR,         /* logic error */
-  WHOLEMEMORY_CUDA_ERROR,          /* CUDA error */
-  WHOLEMEMORY_COMMUNICATION_ERROR, /* communication error */
-  WHOLEMEMORY_INVALID_INPUT,       /* input is invalid, e.g. nullptr */
-  WHOLEMEMORY_INVALID_VALUE,       /* input value is invalid */
-  WHOLEMEMORY_OUT_OF_MEMORY,       /* out of memory */
+  WHOLEMEMORY_SUCCESS = 0,         /*!< success */
+  WHOLEMEMORY_UNKNOW_ERROR,        /*!< unknown error */
+  WHOLEMEMORY_NOT_IMPLEMENTED,     /*!< method is not implemented */
+  WHOLEMEMORY_LOGIC_ERROR,         /*!< logic error */
+  WHOLEMEMORY_CUDA_ERROR,          /*!< CUDA error */
+  WHOLEMEMORY_COMMUNICATION_ERROR, /*!< communication error */
+  WHOLEMEMORY_INVALID_INPUT,       /*!< input is invalid, e.g. nullptr */
+  WHOLEMEMORY_INVALID_VALUE,       /*!< input value is invalid */
+  WHOLEMEMORY_OUT_OF_MEMORY,       /*!< out of memory */
 };
 
 #define WHOLEMEMORY_RETURN_ON_FAIL(X)                                                 \
@@ -46,17 +51,27 @@ enum wholememory_error_code_t {
     }                                                                                 \
   } while (0)
 
+/**
+ * @brief Memory Type of WholeMemory
+ *
+ * Memory Type is the Memory Address Mapping Type of WholeMemory
+ */
 enum wholememory_memory_type_t {
-  WHOLEMEMORY_MT_NONE = 0,
-  WHOLEMEMORY_MT_CONTINUOUS,
-  WHOLEMEMORY_MT_CHUNKED,
-  WHOLEMEMORY_MT_DISTRIBUTED,
+  WHOLEMEMORY_MT_NONE = 0,    /*!< Not defined.  */
+  WHOLEMEMORY_MT_CONTINUOUS,  /*!< Memory from all ranks are mapped in continuous address space */
+  WHOLEMEMORY_MT_CHUNKED,     /*!< Memory from all ranks are mapped in chunked address space */
+  WHOLEMEMORY_MT_DISTRIBUTED, /*!< Memory from other ranks are not mapped. */
 };
 
+/**
+ * @brief Memory Location of WholeMemory
+ *
+ * Memory Location of WholeMemory can be host or device.
+ */
 enum wholememory_memory_location_t {
-  WHOLEMEMORY_ML_NONE = 0,
-  WHOLEMEMORY_ML_DEVICE,
-  WHOLEMEMORY_ML_HOST,
+  WHOLEMEMORY_ML_NONE = 0, /*!< Not defined */
+  WHOLEMEMORY_ML_DEVICE,   /*!< Device Memory */
+  WHOLEMEMORY_ML_HOST,     /*!< Host Memory */
 };
 
 /**
@@ -72,10 +87,20 @@ wholememory_error_code_t wholememory_init(unsigned int flags);
  */
 wholememory_error_code_t wholememory_finalize();
 
-/* Opaque handle to communicator */
+/**
+ * @brief Opaque handle to communicator
+ *
+ * An Opaque handle to communicator
+ */
 typedef struct wholememory_comm_* wholememory_comm_t;
 
 #define WHOLEMEMORY_UNIQUE_ID_BYTES (128)
+/**
+ * @brief Unique ID for WholeMemory Communicators
+ *
+ * An Opaque handle to WholeMemory Communicators, exposes as char array.
+ * Underlying implementation may be ncclUniqueId_t
+ */
 struct wholememory_unique_id_t {
   char internal[WHOLEMEMORY_UNIQUE_ID_BYTES];
 };
@@ -130,6 +155,11 @@ wholememory_error_code_t wholememory_communicator_get_size(int* size, wholememor
  */
 wholememory_error_code_t wholememory_communicator_barrier(wholememory_comm_t comm);
 
+/**
+ * @brief Opaque handle to WholeMemory
+ *
+ * An Opaque handle to WholeMemory
+ */
 typedef struct wholememory_handle_* wholememory_handle_t;
 
 /**

@@ -22,24 +22,47 @@
 extern "C" {
 #endif
 
+/**
+ * @brief Opaque handle to WholeMemory Embedding Cache Policy
+ *
+ * An Opaque handle to WholeMemory Embedding Cache Policy
+ */
 typedef struct wholememory_embedding_cache_policy_* wholememory_embedding_cache_policy_t;
 
+/**
+ * @brief Opaque handle to WholeMemory Embedding Optimizer
+ *
+ * An Opaque handle to WholeMemory Embedding Optimizer
+ */
 typedef struct wholememory_embedding_optimizer_* wholememory_embedding_optimizer_t;
 
+/**
+ * @brief Opaque handle to WholeMemory Embedding
+ *
+ * An Opaque handle to WholeMemory Embedding
+ */
 typedef struct wholememory_embedding_* wholememory_embedding_t;
 
+/**
+ * @enum wholememory_access_type_t
+ * @brief defines access type of WholeMemory Embedding
+ */
 enum wholememory_access_type_t {
-  WHOLEMEMORY_AT_NONE = 0,
-  WHOLEMEMORY_AT_READONLY,
-  WHOLEMEMORY_AT_READWRITE,
+  WHOLEMEMORY_AT_NONE = 0,  /*!< Not defined */
+  WHOLEMEMORY_AT_READONLY,  /*!< Only have readonly access to the WholeMemory */
+  WHOLEMEMORY_AT_READWRITE, /*!< May have write access to the WholeMemory */
 };
 
+/**
+ * @enum wholememory_optimizer_type_t
+ * @brief defines optimizer type for WholeMemory Embedding
+ */
 enum wholememory_optimizer_type_t {
-  WHOLEMEMORY_OPT_NONE = 0,
-  WHOLEMEMORY_OPT_SGD,
-  WHOLEMEMORY_OPT_LAZY_ADAM,
-  WHOLEMEMORY_OPT_RMSPROP,
-  WHOLEMEMORY_OPT_ADAGRAD,
+  WHOLEMEMORY_OPT_NONE = 0,  /*!< No optimizer needed */
+  WHOLEMEMORY_OPT_SGD,       /*!< Use SGD optimizer */
+  WHOLEMEMORY_OPT_LAZY_ADAM, /*!< Use Lazy Adam optimizer */
+  WHOLEMEMORY_OPT_RMSPROP,   /*!< Use RMSProp optimizer */
+  WHOLEMEMORY_OPT_ADAGRAD,   /*!< Use AdaGrad optimizer */
 };
 
 /**

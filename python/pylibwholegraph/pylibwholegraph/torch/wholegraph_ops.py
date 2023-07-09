@@ -32,6 +32,9 @@ def unweighted_sample_without_replacement(
     need_center_local_output: bool = False,
     need_edge_output: bool = False,
 ):
+    """
+    Unweighted neighborhood sample in CSR WholeGraph
+    """
     assert wm_csr_row_ptr_tensor.dim() == 1
     assert wm_csr_col_ptr_tensor.dim() == 1
     assert center_nodes_tensor.dim() == 1
@@ -98,6 +101,9 @@ def weighted_sample_without_replacement(
     need_center_local_output: bool = False,
     need_edge_output: bool = False,
 ):
+    """
+    Weighted neighborhood sample in CSR WholeGraph
+    """
     assert wm_csr_row_ptr_tensor.dim() == 1
     assert wm_csr_col_ptr_tensor.dim() == 1
     assert wm_csr_weight_ptr_tensor.dim() == 1

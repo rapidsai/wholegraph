@@ -61,7 +61,7 @@ HELP="$0 [<target> ...] [<flag> ...]
 
  libwholegraph build dir is: ${LIBWHOLEGRAPH_BUILD_DIR}
 
- Set env var LIBWHOLEGRAPH_BUILD_DIR to override libcugraph build dir.
+ Set env var LIBWHOLEGRAPH_BUILD_DIR to override libwholegraph build dir.
 "
 LIBWHOLEGRAPH_BUILD_DIR=${LIBWHOLEGRAPH_BUILD_DIR:=${REPODIR}/cpp/build}
 
@@ -103,7 +103,7 @@ function buildAll {
 
 function cleanPythonDir {
     pushd $1 > /dev/null
-    rm -rf dist wholegraph/raft *.egg-info
+    rm -rf dist *.egg-info
     find . -type d -name __pycache__ -print | xargs rm -rf
     find . -type d -name _skbuild -print | xargs rm -rf
     find . -type d -name _external_repositories -print | xargs rm -rf
@@ -193,8 +193,8 @@ if hasArg clean; then
     # FIXME: ideally the "setup.py clean" command would be used for this, but
     # currently running any setup.py command has side effects (eg. cloning repos).
     # (cd ${REPODIR}/python && python setup.py clean)
-    if [[ -d ${REPODIR}/python ]]; then
-        cleanPythonDir ${REPODIR}/python
+    if [[ -d ${REPODIR}/python/pylibwholegraph ]]; then
+        cleanPythonDir ${REPODIR}/python/pylibwholegraph
     fi
 
     # If the dirs to clean are mounted dirs in a container, the

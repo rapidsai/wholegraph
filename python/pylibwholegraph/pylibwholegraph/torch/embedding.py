@@ -105,6 +105,16 @@ def create_wholememory_cache_policy(
     access_type: str = "readonly",
     ratio: float = 0.5,
 ):
+    """
+    Create WholeMemoryCachePolicy
+    NOTE: in most cases, :func:`create_builtin_cache_policy` can support. This function is a more flexible interface
+    :param cache_comm: WholeMemory communicator of the cache
+    :param memory_type: WholeMemory type of cache
+    :param memory_location: WholeMemory location of cache
+    :param access_type: Access type needed
+    :param ratio: Ratio of cache
+    :return: WholeMemoryCachePolicy
+    """
     wmb_cache_policy = wmb.WholeMemoryCachePolicy()
     wmb_cache_policy.create_policy(
         cache_comm.wmb_comm,
@@ -117,6 +127,11 @@ def create_wholememory_cache_policy(
 
 
 def destroy_wholememory_cache_policy(cache_policy: WholeMemoryCachePolicy):
+    """
+    Destroy WholeMemoryCachePolicy
+    :param cache_policy: WholeMemoryCachePolicy to destroy
+    :return: None
+    """
     wmb_cache_policy = cache_policy.wmb_cache_policy
     wmb_cache_policy.destroy_policy()
     cache_policy.wmb_cache_policy = None
@@ -138,7 +153,7 @@ def create_builtin_cache_policy(
     :param embedding_memory_type: WholeMemory type of raw embedding
     :param embedding_memory_location: WholeMemory location of raw embedding
     :param access_type: Access type needed
-    :param cache_ratio: ratio of cache
+    :param cache_ratio: Ratio of cache
     :param cache_memory_type: WholeMemory type of cache
     :param cache_memory_location: WholeMemory location of cache
     :return: WholeMemoryCachePolicy or None
@@ -492,11 +507,19 @@ def create_embedding_from_filelist(
 
 
 def destroy_embedding(wm_embedding: WholeMemoryEmbedding):
+    """
+    Destroy WholeMemoryEmbedding
+    :param wm_embedding: WholeMemoryEmbedding to destroy
+    :return: None
+    """
     wm_embedding.wmb_embedding.destroy_embedding()
     wm_embedding.wmb_embedding = None
 
 
 class WholeMemoryEmbeddingModule(torch.nn.Module):
+    """
+    torch.nn.Module wrapper of WholeMemoryEmbedding
+    """
     def __init__(self, wm_embedding: WholeMemoryEmbedding):
         super().__init__()
         self.wm_embedding = wm_embedding

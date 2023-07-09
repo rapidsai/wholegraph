@@ -1,10 +1,9 @@
-============
 Installation
 ============
 
-
 .. toctree::
-   :maxdepth: 3
+    :maxdepth: 2
 
-   getting_wholegraph
-   source_build
+    getting_wholegraph
+    container
+    source_build

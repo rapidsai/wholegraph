@@ -22,6 +22,11 @@
 extern "C" {
 #endif
 
+/**
+ * @brief Opaque handle to WholeMemoryTensor
+ *
+ * An Opaque handle to WholeMemoryTensor
+ */
 typedef struct wholememory_tensor_* wholememory_tensor_t;
 
 /**

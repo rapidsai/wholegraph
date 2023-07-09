@@ -77,7 +77,7 @@ wholememory_error_code_t graph_append_unique(
   void* output_neighbor_raw_to_unique_mapping_ptr =
     wholememory_tensor_get_data_pointer(output_neighbor_raw_to_unique_mapping_tensor);
 
-  return graph_ops::graph_append_unique(
+  return graph_ops::graph_append_unique_impl(
     target_nodes_ptr,
     target_nodes_array_desc,
     neighbor_nodes_ptr,
