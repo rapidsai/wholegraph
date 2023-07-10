@@ -44,6 +44,8 @@ popd
 
 rapids-logger "Build Sphinx docs"
 pushd docs/wholegraph
+env
+python3 -c 'import os; import pylibwholegraph; print(os.path.dirname(pylibwholegraph.__file__))'
 sphinx-build -b dirhtml ./source _html
 sphinx-build -b text ./source _text
 mkdir -p "${RAPIDS_DOCS_DIR}/wholegraph/"{html,txt,doxygen_docs}
