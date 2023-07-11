@@ -11,7 +11,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .initialize import init_torch_env, init_torch_env_and_create_wm_comm, finalize
 from .comm import (
     WholeMemoryCommunicator,
     create_group_communicator,
@@ -41,6 +40,8 @@ from .embedding import (
     destroy_embedding,
 )
 from .embedding import WholeMemoryEmbeddingModule
+
+from .initialize import init_torch_env, init_torch_env_and_create_wm_comm, finalize
 
 from .tensor import (
     WholeMemoryTensor,

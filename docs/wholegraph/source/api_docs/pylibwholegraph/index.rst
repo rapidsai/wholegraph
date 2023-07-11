@@ -12,13 +12,6 @@ APIs
     pylibwholegraph.torch.initialize.init_torch_env
     pylibwholegraph.torch.initialize.init_torch_env_and_create_wm_comm
     pylibwholegraph.torch.initialize.finalize
-    pylibwholegraph.torch.comm.WholeMemoryCommunicator
-    pylibwholegraph.torch.comm.set_world_info
-    pylibwholegraph.torch.comm.create_group_communicator
-    pylibwholegraph.torch.comm.destroy_communicator
-    pylibwholegraph.torch.comm.get_global_communicator
-    pylibwholegraph.torch.comm.get_local_node_communicator
-    pylibwholegraph.torch.comm.get_local_device_communicator
     pylibwholegraph.torch.tensor.WholeMemoryTensor
     pylibwholegraph.torch.tensor.create_wholememory_tensor
     pylibwholegraph.torch.tensor.create_wholememory_tensor_from_filelist
@@ -36,3 +29,11 @@ APIs
     pylibwholegraph.torch.embedding.destroy_embedding
     pylibwholegraph.torch.embedding.WholeMemoryEmbeddingModule
     pylibwholegraph.torch.graph_structure.GraphStructure
+
+..    pylibwholegraph.torch.comm.WholeMemoryCommunicator
+..    pylibwholegraph.torch.comm.set_world_info
+..    pylibwholegraph.torch.comm.create_group_communicator
+..    pylibwholegraph.torch.comm.destroy_communicator
+..    pylibwholegraph.torch.comm.get_global_communicator
+..    pylibwholegraph.torch.comm.get_local_node_communicator
+..    pylibwholegraph.torch.comm.get_local_device_communicator
