@@ -46,16 +46,11 @@ rapids-logger "Build Sphinx docs"
 pushd docs/wholegraph
 sphinx-build -b dirhtml ./source _html
 sphinx-build -b text ./source _text
-mkdir -p "${RAPIDS_DOCS_DIR}/wholegraph/"{html,txt,doxygen_docs}
+mkdir -p "${RAPIDS_DOCS_DIR}/wholegraph/"{html,txt}
 mv _html/* "${RAPIDS_DOCS_DIR}/wholegraph/html"
 mv _text/* "${RAPIDS_DOCS_DIR}/wholegraph/txt"
 popd
 
 rapids-logger "Output temp dir: ${RAPIDS_DOCS_DIR}"
 
-#if [[ "${RAPIDS_BUILD_TYPE}" == "branch" ]]; then
-#  rapids-logger "Upload Docs to S3"
-#  aws s3 sync --no-progress --delete cpp/html "s3://rapidsai-docs/libwholegraph/${VERSION_NUMBER}/html"
-#  aws s3 sync --no-progress --delete docs/wholegraph/html "s3://rapidsai-docs/wholegraph/${VERSION_NUMBER}/html"
-#  aws s3 sync --no-progress --delete docs/wholegraph/text "s3://rapidsai-docs/wholegraph/${VERSION_NUMBER}/txt"
-#fi
+rapids-upload-docs
