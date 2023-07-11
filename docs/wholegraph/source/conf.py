@@ -18,12 +18,15 @@
 #
 import os
 import sys
+import pylibwholegraph
 
 # If extensions (or modules to document with autodoc) are in another
 # directory, add these directories to sys.path here. If the directory
 # is relative to the documentation root, use os.path.abspath to make it
 # absolute, like shown here.
 sys.path.insert(0, os.path.abspath('sphinxext'))
+print('SYS.PATH=%s' % (sys.path, ))
+print('PYLIBWHOLEGRAPH PATH=%s' % (os.path.dirname(pylibwholegraph.__file__), ))
 
 from github_link import make_linkcode_resolve # noqa
 
