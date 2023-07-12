@@ -146,8 +146,8 @@ dependencies:
     common:
       - output_types: [conda, requirements]
         packages:
-          - libraft-headers=23.06.*
-          - librmm=23.06.*
+          - libraft-headers==23.08.*
+          - librmm==23.08.*
   test_cpp:
     common:
       - output_types: [conda, requirements]
@@ -164,9 +164,7 @@ dependencies:
           - pytest
           - pytest-forked
           - pytest-xdist
-          - unzip
           - nccl
-          - wget
     specific:
       - output_types: [conda, requirements]
         matrices:
