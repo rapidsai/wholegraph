@@ -7,7 +7,7 @@ pylibwholegraph API doc
 APIs
 ----
 .. autosummary::
-    :toctree: api/pylibwholegraph
+    :toctree: ../api/pylibwholegraph
 
     torch.initialize.init_torch_env
     torch.initialize.init_torch_env_and_create_wm_comm
