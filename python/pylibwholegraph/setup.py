@@ -48,7 +48,7 @@ cmdclass["clean"] = CleanCommand
 setup(
     name="pylibwholegraph",
     description="pylibwholegraph - GPU Graph Storage for GNN feature and graph structure",
-    version="23.06.00",
+    version="23.08.00",
     url="https://github.com/rapidsai/wholegraph",
     author="NVIDIA Corporation",
     classifiers=[

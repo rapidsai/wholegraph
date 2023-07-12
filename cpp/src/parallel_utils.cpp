@@ -50,12 +50,14 @@ void MultiProcessRun(int world_size, std::function<void(int, int)> f, bool inlin
   // which may fork too many process and lead to system crash.
   static std::atomic<int64_t> running_count(0);
   std::vector<pid_t> pids(world_size);
-  bool is_child             = false;
+  static bool is_child      = false;
   int child_idx             = 0;
   int current_running_count = running_count.fetch_add(1);
-  if (current_running_count > 0) {
-    running_count.fetch_sub(1);
-    WHOLEMEMORY_FATAL("Already have MultiProcessRun, running_count=%d", current_running_count);
+  if (current_running_count > 0 || is_child) {
+    if (!is_child) running_count.fetch_sub(1);
+    WHOLEMEMORY_FATAL("Already have MultiProcessRun, running_count=%d, %s child process",
+                      current_running_count,
+                      is_child ? "is" : "not");
   }
   for (; child_idx < world_size; child_idx++) {
     pids[child_idx] = fork();

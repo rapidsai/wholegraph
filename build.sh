@@ -61,7 +61,7 @@ HELP="$0 [<target> ...] [<flag> ...]
 
  libwholegraph build dir is: ${LIBWHOLEGRAPH_BUILD_DIR}
 
- Set env var LIBWHOLEGRAPH_BUILD_DIR to override libcugraph build dir.
+ Set env var LIBWHOLEGRAPH_BUILD_DIR to override libwholegraph build dir.
 "
 LIBWHOLEGRAPH_BUILD_DIR=${LIBWHOLEGRAPH_BUILD_DIR:=${REPODIR}/cpp/build}
 
@@ -83,6 +83,7 @@ BUILD_TYPE=Release
 BUILD_ALL_GPU_ARCH=0
 INSTALL_TARGET="--target install"
 PYTHON=${PYTHON:-python}
+DOCS_BUILD_DIR=build
 
 # Set defaults for vars that may not have been defined externally
 #  FIXME: if INSTALL_PREFIX is not set, check PREFIX, then check
@@ -103,7 +104,7 @@ function buildAll {
 
 function cleanPythonDir {
     pushd $1 > /dev/null
-    rm -rf dist wholegraph/raft *.egg-info
+    rm -rf dist *.egg-info
     find . -type d -name __pycache__ -print | xargs rm -rf
     find . -type d -name _skbuild -print | xargs rm -rf
     find . -type d -name _external_repositories -print | xargs rm -rf
@@ -193,8 +194,8 @@ if hasArg clean; then
     # FIXME: ideally the "setup.py clean" command would be used for this, but
     # currently running any setup.py command has side effects (eg. cloning repos).
     # (cd ${REPODIR}/python && python setup.py clean)
-    if [[ -d ${REPODIR}/python ]]; then
-        cleanPythonDir ${REPODIR}/python
+    if [[ -d ${REPODIR}/python/pylibwholegraph ]]; then
+        cleanPythonDir ${REPODIR}/python/pylibwholegraph
     fi
 
     # If the dirs to clean are mounted dirs in a container, the
@@ -209,6 +210,12 @@ if hasArg clean; then
     done
     # remove any left-over cpython shared libraries
     find ${REPODIR}/python/pylibwholegraph -name "*.cpython*.so" -type f -delete
+
+    # remove docs build
+    cd ${REPODIR}/docs/wholegraph
+    make BUILDDIR=${DOCS_BUILD_DIR} clean
+    rm -rf ${REPODIR}/docs/wholegraph/_xml
+    rm -rf ${REPODIR}/docs/wholegraph/_html
 fi
 
 if hasArg tests; then
@@ -297,7 +304,13 @@ if hasArg docs; then
               ${CMAKE_VERBOSE_OPTION}
     fi
     cd ${LIBWHOLEGRAPH_BUILD_DIR}
-    cmake --build "${LIBWHOLEGRAPH_BUILD_DIR}" -j${PARALLEL_LEVEL} --target docs_wholegraph ${VERBOSE_FLAG}
+    cmake --build "${LIBWHOLEGRAPH_BUILD_DIR}" -j${PARALLEL_LEVEL} --target doxygen ${VERBOSE_FLAG}
+    mkdir -p ${REPODIR}/docs/wholegraph/_html/doxygen_docs/libwholegraph/html
+    mv ${LIBWHOLEGRAPH_BUILD_DIR}/html/* ${REPODIR}/docs/wholegraph/_html/doxygen_docs/libwholegraph/html
+    mkdir -p ${REPODIR}/docs/wholegraph/_xml
+    # _xml is used for sphinx breathe project
+    mv ${LIBWHOLEGRAPH_BUILD_DIR}/xml/* "${REPODIR}/docs/wholegraph/_xml"
     cd ${REPODIR}/docs/wholegraph
-    make html
+    PYTHONPATH=${REPODIR}/python/pylibwholegraph:${PYTHONPATH} make BUILDDIR=${DOCS_BUILD_DIR} html
+    mv ${REPODIR}/docs/wholegraph/_html/doxygen_docs ${REPODIR}/docs/wholegraph/${DOCS_BUILD_DIR}/html/
 fi

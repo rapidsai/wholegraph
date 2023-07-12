@@ -27,16 +27,16 @@ extern "C" {
  * @brief defines WholeMemory data type for tensors
  */
 enum wholememory_dtype_t {
-  WHOLEMEMORY_DT_UNKNOWN = 0,
-  WHOLEMEMORY_DT_FLOAT,
-  WHOLEMEMORY_DT_HALF,
-  WHOLEMEMORY_DT_DOUBLE,
-  WHOLEMEMORY_DT_BF16,
-  WHOLEMEMORY_DT_INT,
-  WHOLEMEMORY_DT_INT64,
-  WHOLEMEMORY_DT_INT16,
-  WHOLEMEMORY_DT_INT8,
-  WHOLEMEMORY_DT_COUNT,
+  WHOLEMEMORY_DT_UNKNOWN = 0, /*!< Unknown type */
+  WHOLEMEMORY_DT_FLOAT,       /*!< 32-bit float type */
+  WHOLEMEMORY_DT_HALF,        /*!< 16-bit half float type */
+  WHOLEMEMORY_DT_DOUBLE,      /*!< 64-bit double type */
+  WHOLEMEMORY_DT_BF16,        /*!< 16-bit bfloat type */
+  WHOLEMEMORY_DT_INT,         /*!< 32-bit signed integer type */
+  WHOLEMEMORY_DT_INT64,       /*!< 64-bit signed integer type */
+  WHOLEMEMORY_DT_INT16,       /*!< 16-bit signed integer type */
+  WHOLEMEMORY_DT_INT8,        /*!< 8-bit signed integer type */
+  WHOLEMEMORY_DT_COUNT,       /*!< total count if types */
 };
 
 /**
@@ -67,9 +67,9 @@ bool wholememory_dtype_is_integer_number(wholememory_dtype_t dtype);
  * @brief wrapper for array in WholeMemory
  */
 struct wholememory_array_description_t {
-  int64_t size;
-  int64_t storage_offset; /* offset in number of elements, NOT in bytes. */
-  wholememory_dtype_t dtype;
+  int64_t size;              /*!< size of the array in elements. */
+  int64_t storage_offset;    /*!< offset in number of elements, NOT in bytes. */
+  wholememory_dtype_t dtype; /*!< data type of the array */
 };
 
 /**
@@ -77,10 +77,10 @@ struct wholememory_array_description_t {
  * @brief wrapper for matrix in WholeMemory
  */
 struct wholememory_matrix_description_t {
-  int64_t sizes[2];       /* sizes[0] is row of the matrix, sizes[1] is column of the matrix */
-  int64_t stride;         /* stride of first dimension, in number of elements */
-  int64_t storage_offset; /* offset in number of elements, NOT in bytes. */
-  wholememory_dtype_t dtype;
+  int64_t sizes[2];          /*!< sizes[0] is row of the matrix, sizes[1] is column of the matrix */
+  int64_t stride;            /*!< stride of first dimension, in number of elements */
+  int64_t storage_offset;    /*!< offset in number of elements, NOT in bytes. */
+  wholememory_dtype_t dtype; /*!< data type of the matrix */
 };
 
 #define WHOLEMEMORY_MAX_TENSOR_DIM (8)
@@ -90,12 +90,12 @@ struct wholememory_matrix_description_t {
  * @brief Tensor description in WholeMemory, dimension 0 is the slowest changed dimension
  */
 struct wholememory_tensor_description_t {
-  int64_t sizes[WHOLEMEMORY_MAX_TENSOR_DIM];   /* size of each dimension of the tensor, in number of
-                                                  elements */
-  int64_t strides[WHOLEMEMORY_MAX_TENSOR_DIM]; /* stride of the tensor, in number of elements */
-  int64_t storage_offset;                      /* offset in number of elements, NOT in bytes. */
-  int dim;
-  wholememory_dtype_t dtype;
+  int64_t sizes[WHOLEMEMORY_MAX_TENSOR_DIM]; /*!< size of each dimension of the tensor, in number of
+                                                elements */
+  int64_t strides[WHOLEMEMORY_MAX_TENSOR_DIM]; /*!< stride of the tensor, in number of elements */
+  int64_t storage_offset;                      /*!< offset in number of elements, NOT in bytes. */
+  int dim;                                     /*!< dim of the tensor */
+  wholememory_dtype_t dtype;                   /*!< data type of the tensor */
 };
 
 /*!

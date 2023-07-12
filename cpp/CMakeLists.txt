@@ -195,17 +195,6 @@ if(BUILD_TESTS AND CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
 endif()
 
 ##############################################################################
-# - doxygen docs -------------------------------------------------------------
-
-include(./cmake/doxygen.cmake)
-add_doxygen_target(
-        IN_DOXYFILE  Doxyfile.in
-        OUT_DOXYFILE ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile
-        OUT_DIR      ${CMAKE_CURRENT_BINARY_DIR}/html
-        CWD          ${CMAKE_CURRENT_BINARY_DIR}
-        DEP_TARGETS  ${DOXYGEN_DEP_TARGETS})
-
-##############################################################################
 # - code checker -------------------------------------------------------------
 
 include(./cmake/CodeChecker.cmake)
@@ -286,15 +275,15 @@ rapids_export(
         ################################################################################
 # - make documentation ---------------------------------------------------------
 # requires doxygen and graphviz to be installed
-# from build directory, run make docs_wholegraph
+# from build directory, run make doxygen
 
-# doc targets for cugraph
-find_package(Doxygen 1.8.11)
-if(Doxygen_FOUND)
-    add_custom_command(OUTPUT WHOLEGRAPH_DOXYGEN
-                       WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/doxygen
-                       COMMAND doxygen Doxyfile
-                       VERBATIM)
+##############################################################################
+# - doxygen docs -------------------------------------------------------------
 
-    add_custom_target(docs_wholegraph DEPENDS WHOLEGRAPH_DOXYGEN)
-endif()
+include(./cmake/doxygen.cmake)
+add_doxygen_target(
+        IN_DOXYFILE  Doxyfile.in
+        OUT_DOXYFILE ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile
+        OUT_DIR      ${CMAKE_CURRENT_BINARY_DIR}/html
+        CWD          ${CMAKE_CURRENT_BINARY_DIR}
+        DEP_TARGETS  ${DOXYGEN_DEP_TARGETS})

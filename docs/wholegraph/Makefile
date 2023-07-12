@@ -6,10 +6,10 @@ SPHINXOPTS    =
 SPHINXBUILD   = sphinx-build
 SPHINXPROJ    = wholegraph
 SOURCEDIR     = source
-BUILDDIR      = build
+BUILDDIR     ?= build
 IMGDIR        = images
 
-gen_doc_dirs  = build source/api_docs/api
+gen_doc_dirs  = ${BUILDDIR} source/api_docs/api
 # Put it first so that "make" without argument is like "make help".
 help:
 	@$(SPHINXBUILD) -M help "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)

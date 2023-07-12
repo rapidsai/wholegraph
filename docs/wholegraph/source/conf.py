@@ -37,6 +37,7 @@ from github_link import make_linkcode_resolve # noqa
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
+    "breathe",
     "sphinx.ext.intersphinx",
     "sphinx.ext.autodoc",
     "sphinx.ext.autosummary",
@@ -184,6 +185,15 @@ texinfo_documents = [
      'Miscellaneous'),
 ]
 
+autodoc_mock_imports = [
+    "numpy",
+    "torch",
+    "torch.distributed",
+    "torch.utils.dlpack",
+    "torch.utils.data.Dataset",
+    "pylibwholegraph.binding.wholememory_binding"
+]
+
 
 # Example configuration for intersphinx: refer to the Python standard library.
 intersphinx_mapping = {'https://docs.python.org/': None}
@@ -192,6 +202,10 @@ intersphinx_mapping = {'https://docs.python.org/': None}
 # Config numpydoc
 numpydoc_show_inherited_class_members = False
 numpydoc_class_members_toctree = False
+
+breathe_projects = {
+    'libwholegraph': '../_xml',
+}
 
 
 def setup(app):
@@ -204,6 +218,6 @@ source_suffix = ['.rst', '.md']
 
 # The following is used by sphinx.ext.linkcode to provide links to github
 linkcode_resolve = make_linkcode_resolve(
-    'wholegraph', 'https://github.com/rapidsai/'
+    'pylibwholegraph', 'https://github.com/rapidsai/'
     'wholegraph/blob/{revision}/python/'
     '{package}/{path}#L{lineno}')

@@ -23,6 +23,9 @@ extern "C" {
 
 /**
  * @brief Global reference of a WholeMemory object
+ *
+ * A global reference is for Continuous of Chunked WholeMemory Type, in these types, each rank can
+ * directly access all memory from all ranks. The global reference is used to do this direct access.
  */
 struct wholememory_gref_t {
   void* pointer; /*!< pointer to data for CONTINUOUS WholeMemory or pointer to data pointer array

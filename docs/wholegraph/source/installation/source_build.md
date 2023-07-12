@@ -5,25 +5,33 @@ and Python - See [RAPIDS Getting Started](https://rapids.ai/start.html) for list
 Other operating systems _might be_ compatible, but are not currently tested.
 
 The wholegraph package include both a C/C++ CUDA portion and a python portion. Both libraries need to be installed in order for cuGraph to operate correctly.
+The C/C++ CUDA library is `libwholegraph` and the python library is `pylibwholegraph`.
 
 ## Prerequisites
 
 __Compiler__:
 * `gcc`         version 11.0+
 * `nvcc`        version 11.0+
-* `cmake`       version 3.23.1+
+* `cmake`       version 3.26.4+
 
-__CUDA:__
+__CUDA__:
 * CUDA 11.8+
 * NVIDIA driver 450.80.02+
 * Pascal architecture or better
 
 You can obtain CUDA from [https://developer.nvidia.com/cuda-downloads](https://developer.nvidia.com/cuda-downloads).
 
+__Other Packages__:
+* ninja
+* nccl
+* cython
+* setuputils3
+* scikit-learn
+* scikit-build
+* nanobind>=0.2.0
 
 ## Building wholegraph
 To install wholegraph from source, ensure the dependencies are met.
-
 
 ### Clone Repo and Configure Conda Environment
 __GIT clone a version of the repository__
@@ -112,7 +120,7 @@ Note that the libraries will be installed to the location set in `$PREFIX` if se
 
 
 ## Building each section independently
-#### Build and Install the C++/CUDA `libwholegraph` Library
+### Build and Install the C++/CUDA `libwholegraph` Library
 CMake depends on the `nvcc` executable being on your path or defined in `$CUDACXX`.
 
 This project uses cmake for building the C/C++ library. To configure cmake, run:
@@ -135,7 +143,7 @@ The default installation locations are `$CMAKE_INSTALL_PREFIX/lib` and `$CMAKE_I
 
 ### Building and installing the Python package
 
-2) Install the Python packages to your Python path:
+Build and Install the Python packages to your Python path:
 
 ```bash
 cd $WHOLEGRAPH_HOME
@@ -144,8 +152,6 @@ cd pylibwholegraph
 python setup.py build_ext --inplace
 python setup.py install    # install pylibwholegraph
 ```
-
-
 
 ## Run tests
 
