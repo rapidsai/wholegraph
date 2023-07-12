@@ -12,4 +12,3 @@ sed -i "s/^version = .*/version = \"${VERSION}\"/g" \
 
 # pyproject.toml cuda suffixes
 sed -i "s/name = \"pylibwholegraph\"/name = \"pylibwholegraph${CUDA_SUFFIX}\"/g" python/pylibwholegraph/pyproject.toml
-
