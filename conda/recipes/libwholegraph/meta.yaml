@@ -48,6 +48,12 @@ requirements:
     - {{ compiler('cuda') }}
     {% endif %}
     - cuda-version ={{ cuda_version }}
+    {% if cuda_major == "11" %}
+    - cudatoolkit
+    {% else %}
+    - cuda-cudart-dev
+    - cuda-driver-dev
+    {% endif %}
     - cmake {{ cmake_version }}
     - ninja
     - sysroot_{{ target_platform }} {{ sysroot_version }}
@@ -81,6 +87,7 @@ outputs:
         - cudatoolkit
         {% else %}
         - cuda-cudart-dev
+        - cuda-driver-dev
         {% endif %}
       run:
         - cuda-version ={{ cuda_version }}
@@ -118,6 +125,7 @@ outputs:
         - cudatoolkit
         {% else %}
         - cuda-cudart-dev
+        - cuda-driver-dev
         {% endif %}
       run:
         - {{ pin_subpackage('libwholegraph', exact=True) }}

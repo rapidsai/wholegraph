@@ -13,6 +13,11 @@ if [ "${ARCH}" = "aarch64" ]; then
   exit ${EXITCODE}
 fi
 
+if [ "${RAPIDS_CUDA_VERSION:0:2}" == "12" ]; then
+  rapids-logger "Exiting CUDA 12 due to no pytorch stable yet"
+  exit ${EXITCODE}
+fi
+
 rapids-logger "Generate Python testing dependencies"
 rapids-dependency-file-generator \
   --output conda \

@@ -77,7 +77,6 @@ requirements:
     - cuda-version ={{ cuda_version }}
     - cmake {{ cmake_version }}
     - ninja
-    - {{ pin_compatible('cudatoolkit', max_pin='x', min_pin='x') }}
     - libwholegraph ={{ version }}
     - python
 
