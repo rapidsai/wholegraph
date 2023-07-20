@@ -53,7 +53,6 @@ requirements:
     - doxygen {{ doxygen_version }}
     - gmock {{ gtest_version }}
     - gtest {{ gtest_version }}
-    - libcugraphops ={{ minor_version }}
     - libraft ={{ minor_version }}
     - libraft-headers ={{ minor_version }}
     - librmm ={{ minor_version }}
@@ -74,7 +73,6 @@ outputs:
         - cmake {{ cmake_version }}
       run:
         - cudatoolkit {{ cuda_spec }}
-        - libcugraphops ={{ minor_version }}
         - libraft ={{ minor_version }}
         - libraft-headers ={{ minor_version }}
         - librmm ={{ minor_version }}

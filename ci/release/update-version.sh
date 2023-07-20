@@ -66,7 +66,6 @@ NEXT_SHORT_TAG_PEP440=$(python -c "from setuptools.extern import packaging; prin
 
 DEPENDENCIES=(
 
-  libcugraphops
   libraft
   libraft-headers
   librmm

@@ -25,7 +25,6 @@ dependencies:
 - gmock>=1.13.0
 - ipykernel
 - ipython
-- libcugraphops=23.8.*
 - libraft-headers=23.8.*
 - libraft=23.8.*
 - librmm=23.8.*
