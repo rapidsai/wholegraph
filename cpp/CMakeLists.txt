@@ -51,6 +51,7 @@ rapids_cmake_write_version_file(include/wholegraph/version_config.hpp)
 
 ##############################################################################
 # - User Options  ------------------------------------------------------------
+option(BUILD_SHARED_LIBS "Build libwholegraph shared libraries" ON)
 option(CMAKE_CUDA_LINEINFO "Enable the -lineinfo option for nvcc (useful for cuda-memcheck / profiler" OFF)
 option(BUILD_TESTS "Configure CMake to build tests" ON)
 option(CUDA_STATIC_RUNTIME "Statically link the CUDA toolkit runtime and libraries" OFF)
@@ -143,7 +144,7 @@ file(GLOB WHOLEGRAPH_SOURCES
         "src/graph_ops/*.cu"
         "src/graph_ops/*.cpp")
 
-add_library(wholegraph SHARED "")
+add_library(wholegraph)
 add_library(wholegraph::wholegraph ALIAS wholegraph)
 
 target_sources(wholegraph PRIVATE ${WHOLEGRAPH_SOURCES})
