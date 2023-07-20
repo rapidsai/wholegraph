@@ -53,15 +53,23 @@ rapids_cmake_write_version_file(include/wholegraph/version_config.hpp)
 # - User Options  ------------------------------------------------------------
 option(CMAKE_CUDA_LINEINFO "Enable the -lineinfo option for nvcc (useful for cuda-memcheck / profiler" OFF)
 option(BUILD_TESTS "Configure CMake to build tests" ON)
+option(CUDA_STATIC_RUNTIME "Statically link the CUDA toolkit runtime and libraries" OFF)
 
 ##############################################################################
 # - Set options based on user defined one  -----------------------------------
+set(_ctk_static_suffix "")
+if(CUDA_STATIC_RUNTIME)
+  set(_ctk_static_suffix "_static")
+endif()
 
 ##############################################################################
 # - Base rapids options ------------------------------------------------------
 # default build type
 #rapids_cmake_build_type(Release)
 rapids_cmake_build_type(RelWithDebInfo)
+
+# CUDA runtime
+rapids_cuda_init_runtime(USE_STATIC ${CUDA_STATIC_RUNTIME})
 
 message("CMAKE_INSTALL_PREFIX=${CMAKE_INSTALL_PREFIX}")
 
@@ -180,7 +188,7 @@ target_include_directories(wholegraph
 target_link_libraries(wholegraph
 PUBLIC
     CUDA::cuda_driver
-    CUDA::cudart
+    CUDA::cudart${_ctk_static_suffix}
     raft::raft
 PRIVATE
     NCCL::NCCL

@@ -42,6 +42,7 @@ project(PYLIBWHOLEGRAPH VERSION ${WHOLEGRAPH_VERSION} LANGUAGES C CXX CUDA)
 # - User Options  ------------------------------------------------------------
 
 option(DETECT_CONDA_ENV "Enable detection of conda environment for dependencies" ON)
+option(WHOLEGRAPH_BUILD_WHEELS "Whether we're building a wheel for pypi" OFF)
 
 ##############################################################################
 # - Base Rapids Options  -----------------------------------------------------
@@ -117,6 +118,10 @@ find_package(wholegraph "${RAPIDS_VERSION}.0" EXACT)
 message("WholeGraph")
 if (WHOLEGRAPH_FOUND)
     message(STATUS "PYLIBWHOLEGRAPH: using pre-built wholegraph C++ package")
+elseif(WHOLEGRAPH_BUILD_WHEELS)
+    # statically link dependencies if building wheels
+    message(STATUS "PYLIBWHOLEGRAPH: build wheels")
+    add_subdirectory(../../cpp/ libwholegraph EXCLUDE_FROM_ALL)
 else()
     message(FATAL_ERROR "PYLIBWHOLEGRAPH: could not find wholegraph package in "
             "cmake prefix ${CMAKE_PREFIX_PATH} or user dir $ENV{LIBWHOLEGRAPH_DIR}")
