@@ -131,6 +131,7 @@ dependencies:
               cuda: "12.0"
             packages:
               - cuda-version=12.0
+              - cuda-cudart-dev
               - cuda-nvtx
   checks:
     common:
