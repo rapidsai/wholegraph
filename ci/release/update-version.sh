@@ -43,17 +43,18 @@ function sed_runner() {
 sed_runner 's/'"branch-.*\/RAPIDS.cmake"'/'"branch-${NEXT_SHORT_TAG}\/RAPIDS.cmake"'/g' fetch_rapids.cmake
 
 # cpp CMakeLists update
-sed_runner 's/'"VERSION ${CURRENT_SHORT_TAG}.*"'/'"VERSION ${NEXT_FULL_TAG}"'/g' cpp/CMakeLists.txt
+sed_runner 's/'"RAPIDS_VERSION \".*\")"'/'"RAPIDS_VERSION \"${NEXT_SHORT_TAG}\")"'/g' cpp/CMakeLists.txt
 
 # Python CMakeLists updates
-sed_runner 's/'"cudf_version .*)"'/'"cudf_version ${NEXT_FULL_TAG})"'/g' python/pylibwholegraph/CMakeLists.txt
+sed_runner 's/'"RAPIDS_VERSION .*)"'/'"RAPIDS_VERSION ${NEXT_FULL_TAG})"'/g' python/pylibwholegraph/CMakeLists.txt
 
-
+# Python setup.py updates
+sed_runner 's/'version=".*"'/'version="${NEXT_FULL_TAG}"'/g' python/pylibwholegraph/setup.py
 
 
 # RTD update
-sed_runner 's/version = .*/version = '"'${NEXT_SHORT_TAG}'"'/g' docs/cugraph/source/conf.py
-sed_runner 's/release = .*/release = '"'${NEXT_FULL_TAG}'"'/g' docs/cugraph/source/conf.py
+sed_runner 's/version = .*/version = '"'${NEXT_SHORT_TAG}'"'/g' docs/wholegraph/source/conf.py
+sed_runner 's/release = .*/release = '"'${NEXT_FULL_TAG}'"'/g' docs/wholegraph/source/conf.py
 
 # Python __init__.py updates
 sed_runner "s/__version__ = .*/__version__ = \"${NEXT_FULL_TAG}\"/g" python/pylibwholegraph/pylibwholegraph/__init__.py
@@ -78,13 +79,13 @@ for DEP in "${DEPENDENCIES[@]}"; do
   for FILE in dependencies.yaml conda/environments/*.yaml; do
     sed_runner "/-.* ${DEP}==/ s/==.*/==${NEXT_SHORT_TAG_PEP440}.*/g" ${FILE}
   done
-  for FILE in python/**/pyproject.toml python/**/**/pyproject.toml; do
+  for FILE in python/**/pyproject.toml; do
     sed_runner "/\"${DEP}==/ s/==.*\"/==${NEXT_SHORT_TAG_PEP440}.*\"/g" ${FILE}
   done
 done
 
 # Doxyfile update
-sed_runner "s|PROJECT_NUMBER[[:space:]]*=.*|PROJECT_NUMBER=${NEXT_SHORT_TAG}|" cpp/doxygen/Doxyfile
+sed_runner "s|PROJECT_NUMBER[[:space:]]*=.*|PROJECT_NUMBER=${NEXT_SHORT_TAG}|" cpp/Doxyfile
 
 
 # CI files

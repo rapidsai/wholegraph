@@ -281,10 +281,9 @@ rapids_export(
 # - doxygen docs -------------------------------------------------------------
 
 find_package(Doxygen 1.8.11)
-include(./cmake/doxygen.cmake)
 if(Doxygen_FOUND)
         add_custom_command(OUTPUT WHOLEGRAPH_DOXYGEN
-                           WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/doxygen
+                           WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
                            COMMAND doxygen Doxyfile
                            VERBATIM)
 
