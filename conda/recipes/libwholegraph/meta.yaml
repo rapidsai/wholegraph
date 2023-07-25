@@ -41,19 +41,28 @@ build:
 requirements:
   build:
     - {{ compiler('c') }}
-    - {{ compiler('cuda') }} {{ cuda_version }}
     - {{ compiler('cxx') }}
+    {% if cuda_major == "11" %}
+    - {{ compiler('cuda11') }} ={{ cuda_version }}
+    {% else %}
+    - {{ compiler('cuda') }}
+    {% endif %}
+    - cuda-version ={{ cuda_version }}
+    {% if cuda_major == "11" %}
+    - cudatoolkit
+    {% else %}
+    - cuda-cudart-dev
+    - cuda-driver-dev
+    {% endif %}
     - cmake {{ cmake_version }}
     - ninja
     - sysroot_{{ target_platform }} {{ sysroot_version }}
   host:
     - cmake {{ cmake_version }}
-    - cuda-nvtx ={{ cuda_version }}
-    - cudatoolkit ={{ cuda_version }}
+    - cuda-version ={{ cuda_version }}
     - doxygen {{ doxygen_version }}
     - gmock {{ gtest_version }}
     - gtest {{ gtest_version }}
-    - libcugraphops ={{ minor_version }}
     - libraft ={{ minor_version }}
     - libraft-headers ={{ minor_version }}
     - librmm ={{ minor_version }}
@@ -72,9 +81,19 @@ outputs:
     requirements:
       build:
         - cmake {{ cmake_version }}
+      host:
+        - cuda-version ={{ cuda_version }}
+        {% if cuda_major == "11" %}
+        - cudatoolkit
+        {% else %}
+        - cuda-cudart-dev
+        - cuda-driver-dev
+        {% endif %}
       run:
-        - cudatoolkit {{ cuda_spec }}
-        - libcugraphops ={{ minor_version }}
+        - cuda-version ={{ cuda_version }}
+        {% if cuda_major == "11" %}
+        - cudatoolkit
+        {% endif %}
         - libraft ={{ minor_version }}
         - libraft-headers ={{ minor_version }}
         - librmm ={{ minor_version }}
@@ -91,13 +110,29 @@ outputs:
       number: {{ GIT_DESCRIBE_NUMBER }}
       string: cuda{{ cuda_major }}_{{ date_string }}_{{ GIT_DESCRIBE_HASH }}_{{ GIT_DESCRIBE_NUMBER }}
       ignore_run_exports_from:
+        {% if cuda_major == "11" %}
+        - {{ compiler('cuda11') }} ={{ cuda_version }}
+        {% else %}
         - {{ compiler('cuda') }}
+        {% endif %}
+        - cuda-version ={{ cuda_version }}
     requirements:
       build:
         - cmake {{ cmake_version }}
+      host:
+        - cuda-version ={{ cuda_version }}
+        {% if cuda_major == "11" %}
+        - cudatoolkit
+        {% else %}
+        - cuda-cudart-dev
+        - cuda-driver-dev
+        {% endif %}
       run:
         - {{ pin_subpackage('libwholegraph', exact=True) }}
-        - cudatoolkit {{ cuda_spec }}
+        - cuda-version ={{ cuda_version }}
+        {% if cuda_major == "11" %}
+        - cudatoolkit
+        {% endif %}
         - gmock {{ gtest_version }}
         - gtest {{ gtest_version }}
     about:

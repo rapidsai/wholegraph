@@ -351,13 +351,13 @@ cdef class GlobalContextWrapper:
         if output_global_context:
             self.output_global_context = <PyObject *> output_global_context
             Py_INCREF(self.output_global_context)
-        self.env_func.temporary_fns.create_memory_context_fn = &python_cb_wrapper_temp_create_context
-        self.env_func.temporary_fns.destroy_memory_context_fn = &python_cb_wrapper_temp_destroy_context
-        self.env_func.temporary_fns.malloc_fn = &python_cb_wrapper_temp_malloc
-        self.env_func.temporary_fns.free_fn = &python_cb_wrapper_temp_free
+        self.env_func.temporary_fns.create_memory_context_fn = <wholememory_create_memory_context_func_t>&python_cb_wrapper_temp_create_context
+        self.env_func.temporary_fns.destroy_memory_context_fn = <wholememory_destroy_memory_context_func_t>&python_cb_wrapper_temp_destroy_context
+        self.env_func.temporary_fns.malloc_fn = <wholememory_malloc_func_t>&python_cb_wrapper_temp_malloc
+        self.env_func.temporary_fns.free_fn = <wholememory_free_func_t>&python_cb_wrapper_temp_free
         self.env_func.temporary_fns.global_context = <PyObject *> self
-        self.env_func.output_fns.malloc_fn = &python_cb_wrapper_output_malloc
-        self.env_func.output_fns.free_fn = &python_cb_wrapper_output_free
+        self.env_func.output_fns.malloc_fn = <wholememory_malloc_func_t>&python_cb_wrapper_output_malloc
+        self.env_func.output_fns.free_fn = <wholememory_free_func_t>&python_cb_wrapper_output_free
         self.env_func.output_fns.global_context = <PyObject *> self
 
     cpdef int64_t get_env_fns(self):
@@ -952,7 +952,7 @@ cdef class PyWholeMemoryUniqueID:
         dlm_tensor.manager_ctx = <void *> self
         cpython.Py_INCREF(self)
         dlm_tensor.deleter = deleter
-        return cpython.PyCapsule_New(dlm_tensor, 'dltensor', pycapsule_deleter)
+        return cpython.PyCapsule_New(dlm_tensor, 'dltensor', <cpython.PyCapsule_Destructor>&pycapsule_deleter)
 
     def __dlpack_device__(self):
         return (kDLCPU, 0)
@@ -1173,7 +1173,7 @@ cdef class PyWholeMemoryFlattenDlpack:
         dlm_tensor.manager_ctx = <void *> self
         cpython.Py_INCREF(self)
         dlm_tensor.deleter = deleter
-        return cpython.PyCapsule_New(dlm_tensor, 'dltensor', pycapsule_deleter)
+        return cpython.PyCapsule_New(dlm_tensor, 'dltensor', <cpython.PyCapsule_Destructor> &pycapsule_deleter)
 
     def __dlpack_device__(self):
         if self.device_type == MlHost:

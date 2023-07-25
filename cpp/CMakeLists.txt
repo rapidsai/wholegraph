@@ -280,10 +280,12 @@ rapids_export(
 ##############################################################################
 # - doxygen docs -------------------------------------------------------------
 
-include(./cmake/doxygen.cmake)
-add_doxygen_target(
-        IN_DOXYFILE  Doxyfile.in
-        OUT_DOXYFILE ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile
-        OUT_DIR      ${CMAKE_CURRENT_BINARY_DIR}/html
-        CWD          ${CMAKE_CURRENT_BINARY_DIR}
-        DEP_TARGETS  ${DOXYGEN_DEP_TARGETS})
+find_package(Doxygen 1.8.11)
+if(Doxygen_FOUND)
+        add_custom_command(OUTPUT WHOLEGRAPH_DOXYGEN
+                           WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+                           COMMAND doxygen Doxyfile
+                           VERBATIM)
+
+        add_custom_target(doxygen DEPENDS WHOLEGRAPH_DOXYGEN)
+endif()

@@ -6,9 +6,15 @@ set -euo pipefail
 . /opt/conda/etc/profile.d/conda.sh
 
 ARCH=$(arch)
+EXITCODE=0
 
 if [ "${ARCH}" = "aarch64" ]; then
   rapids-logger "Exiting aarch64 due to no pytorch-cuda"
+  exit ${EXITCODE}
+fi
+
+if [ "${RAPIDS_CUDA_VERSION:0:2}" == "12" ]; then
+  rapids-logger "Exiting CUDA 12 due to no pytorch stable yet"
   exit ${EXITCODE}
 fi
 
@@ -44,7 +50,6 @@ rapids-mamba-retry install \
 
 rapids-logger "Check GPU usage"
 nvidia-smi
-EXITCODE=0
 trap "EXITCODE=1" ERR
 set +e
 
