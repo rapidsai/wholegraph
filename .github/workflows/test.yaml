@@ -30,3 +30,13 @@ jobs:
       branch: ${{ inputs.branch }}
       date: ${{ inputs.date }}
       sha: ${{ inputs.sha }}
+  wheel-tests-pylibwholegraph:
+    secrets: inherit
+    uses: rapidsai/shared-action-workflows/.github/workflows/wheels-test.yaml@branch-23.08
+    with:
+      build_type: nightly
+      branch: ${{ inputs.branch }}
+      date: ${{ inputs.date }}
+      sha: ${{ inputs.sha }}
+      script: ci/test_wheel.sh
+      matrix_filter: map(select(.ARCH == "amd64"))

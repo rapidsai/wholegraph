@@ -45,6 +45,13 @@ files:
       - run
       - pytorch_cpu
       - clang_tools
+  py_build_pylibwholegraph:
+    output: pyproject
+    pyproject_dir: python/pylibwholegraph
+    extras:
+      table: build-system
+    includes:
+      - python_build_wheel
 channels:
   - rapidsai
   - rapidsai-nightly
@@ -270,3 +277,13 @@ dependencies:
           - clangxx=16.0.0
           - clang-tools=16.0.0
           - gitpython
+  python_build_wheel:
+    common:
+      - output_types: [pyproject]
+        packages:
+          - cmake>=3.26.4
+          - cython>=0.29,<0.30
+          - ninja
+          - setuptools
+          - scikit-build>=0.13.1
+          - wheel

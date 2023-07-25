@@ -18,6 +18,8 @@ jobs:
       - conda-python-build
       - conda-python-tests
       - docs-build
+      - wheel-build-pylibwholegraph
+      - wheel-test-pylibwholegraph
     secrets: inherit
     uses: rapidsai/shared-action-workflows/.github/workflows/pr-builder.yaml@branch-23.08
   checks:
@@ -59,3 +61,18 @@ jobs:
       arch: "amd64"
       container_image: "rapidsai/ci:latest"
       run_script: "ci/build_docs.sh"
+  wheel-build-pylibwholegraph:
+    needs: checks
+    secrets: inherit
+    uses: rapidsai/shared-action-workflows/.github/workflows/wheels-build.yaml@branch-23.08
+    with:
+      build_type: pull-request
+      script: ci/build_wheel.sh
+  wheel-test-pylibwholegraph:
+    needs: wheel-build-pylibwholegraph
+    secrets: inherit
+    uses: rapidsai/shared-action-workflows/.github/workflows/wheels-test.yaml@branch-23.08
+    with:
+      build_type: pull-request
+      script: ci/test_wheel.sh
+      matrix_filter: map(select(.ARCH == "amd64"))
