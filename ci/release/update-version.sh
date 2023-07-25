@@ -65,7 +65,6 @@ sed_runner "s/^version = .*/version = \"${NEXT_FULL_TAG}\"/g" python/pylibwholeg
 NEXT_SHORT_TAG_PEP440=$(python -c "from setuptools.extern import packaging; print(packaging.version.Version('${NEXT_SHORT_TAG}'))")
 
 DEPENDENCIES=(
-
   libraft
   libraft-headers
   librmm

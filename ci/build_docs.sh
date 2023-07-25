@@ -30,7 +30,7 @@ export RAPIDS_DOCS_DIR="$(mktemp -d)"
 rapids-mamba-retry install \
   --channel "${CPP_CHANNEL}" \
   --channel "${PYTHON_CHANNEL}" \
-libwholegraph pylibwholegraph numpy
+libwholegraph pylibwholegraph
 
 rapids-logger "Build Doxygen docs"
 pushd cpp
