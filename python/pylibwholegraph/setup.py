@@ -46,20 +46,6 @@ cmdclass["clean"] = CleanCommand
 
 
 setup(
-    name="pylibwholegraph",
-    description="pylibwholegraph - GPU Graph Storage for GNN feature and graph structure",
-    version="23.08.00",
-    url="https://github.com/rapidsai/wholegraph",
-    author="NVIDIA Corporation",
-    classifiers=[
-        "Programming Language :: Python",
-        "Programming Language :: Python :: 3.6",
-        "Programming Language :: Python :: 3.7",
-        "Programming Language :: Python :: 3.8",
-        "Programming Language :: Python :: 3.9"
-        "Programming Language :: Python :: 3.10"
-        "Programming Language :: Python :: 3.11",
-    ],
     packages=find_packages(
         include=[
             "pylibwholegraph",
@@ -70,8 +56,6 @@ setup(
         "pylibwholegraph": ["torch_cpp_ext/*.cpp", "torch_cpp_ext/*.h"],
     },
     include_package_data=True,
-    python_requires=">=3.6",
-    license="Apache",
     cmdclass=cmdclass,
     zip_safe=False,
 )
