@@ -35,12 +35,7 @@ build:
     - SCCACHE_S3_USE_SSL
     - SCCACHE_S3_NO_CREDENTIALS
   ignore_run_exports_from:
-    {% if cuda_major == "11" %}
-    - {{ compiler('cuda11') }} ={{ cuda_version }}
-    {% else %}
     - {{ compiler('cuda') }}
-    {% endif %}
-    - cuda-version ={{ cuda_version }}
 
 requirements:
   build:
@@ -54,29 +49,22 @@ requirements:
     - cuda-version ={{ cuda_version }}
     - cmake {{ cmake_version }}
     - ninja
-    - nccl
-    - cython
-    - libwholegraph ={{ version }}
-    - scikit-build {{ scikit_build_version }}
     - doxygen =1.8.20
     - sysroot_{{ target_platform }} {{ sysroot_version }}
   host:
     - cuda-version ={{ cuda_version }}
+    {% if cuda_major == "11" %}
+    - cudatoolkit
+    {% endif %}
+    - cython
     - libwholegraph ={{ version }}
-    - nanobind >=0.2.0
     - python
     - scikit-build {{ scikit_build_version }}
   run:
-    - {{ compiler('c') }}
-    - {{ compiler('cxx') }}
+    - {{ pin_compatible('cuda-version', max_pin='x', min_pin='x') }}
     {% if cuda_major == "11" %}
-    - {{ compiler('cuda11') }} ={{ cuda_version }}
-    {% else %}
-    - {{ compiler('cuda') }}
+    - cudatoolkit
     {% endif %}
-    - cuda-version ={{ cuda_version }}
-    - cmake {{ cmake_version }}
-    - ninja
     - libwholegraph ={{ version }}
     - python
 
