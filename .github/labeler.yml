@@ -1,0 +1,37 @@
+# https://github.com/actions/labeler#common-examples
+# Adapted from https://github.com/rapidsai/wholegraph/blob/main/.github/CODEOWNERS
+# Labels culled from https://github.com/rapidsai/cugraph/labels
+
+python:
+  - 'python/**'
+  - 'notebooks/**'
+
+benchmarks:
+  - 'benchmarks/**'
+
+doc:
+  - 'docs/**'
+  - '**/*.md'
+  - 'datasets/**'
+  - 'notebooks/**'
+  - '**/*.txt'
+  - '**/*.rst'
+  - '**/*.ipynb'
+  - '**/*.pdf'
+  - '**/*.png'
+
+datasets:
+  - 'datasets/**'
+
+WholeGraph:
+  - 'cpp/**'
+
+CMake:
+  - '**/CMakeLists.txt'
+  - '**/cmake/**'
+
+ci:
+   - 'ci/**'
+
+conda:
+  - 'conda/**'
