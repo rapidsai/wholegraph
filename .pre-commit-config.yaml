@@ -36,7 +36,11 @@ repos:
       - id: copyright-check
         name: copyright-check
         entry: python3 ./scripts/checks/copyright.py --update-current-year
-        #entry: python3 ./scripts/checks/copyright.py --git-modified-only --update-current-year
         language: python
         pass_filenames: false
         additional_dependencies: [gitpython]
+  - repo: https://github.com/rapidsai/dependency-file-generator
+    rev: v1.5.1
+    hooks:
+      - id: rapids-dependency-file-generator
+        args: ["--clean"]
