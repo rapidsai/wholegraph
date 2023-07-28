@@ -46,10 +46,10 @@ sed_runner 's/'"branch-.*\/RAPIDS.cmake"'/'"branch-${NEXT_SHORT_TAG}\/RAPIDS.cma
 sed_runner 's/'"RAPIDS_VERSION \".*\")"'/'"RAPIDS_VERSION \"${NEXT_SHORT_TAG}\")"'/g' cpp/CMakeLists.txt
 
 # Python CMakeLists updates
-sed_runner 's/'"RAPIDS_VERSION .*)"'/'"RAPIDS_VERSION ${NEXT_FULL_TAG})"'/g' python/pylibwholegraph/CMakeLists.txt
+sed_runner '/set(RAPIDS_VERSION/ s/".*"/'\"${NEXT_SHORT_TAG}\"'/g' python/pylibwholegraph/CMakeLists.txt
 
 # Python setup.py updates
-sed_runner 's/'version=".*"'/'version="${NEXT_FULL_TAG}"'/g' python/pylibwholegraph/setup.py
+sed_runner 's/'version=\".*\"'/'version=\"${NEXT_FULL_TAG}\"'/g' python/pylibwholegraph/setup.py
 
 
 # RTD update
@@ -85,7 +85,7 @@ for DEP in "${DEPENDENCIES[@]}"; do
 done
 
 # Doxyfile update
-sed_runner "s|PROJECT_NUMBER[[:space:]]*=.*|PROJECT_NUMBER=${NEXT_SHORT_TAG}|" cpp/Doxyfile
+sed_runner "/^PROJECT_NUMBER/ s|=.*|= ${NEXT_SHORT_TAG}|" cpp/Doxyfile
 
 
 # CI files
