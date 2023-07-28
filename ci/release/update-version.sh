@@ -30,9 +30,14 @@ CURRENT_SHORT_TAG=${CURRENT_MAJOR}.${CURRENT_MINOR}
 NEXT_MAJOR=$(echo $NEXT_FULL_TAG | awk '{split($0, a, "."); print a[1]}')
 NEXT_MINOR=$(echo $NEXT_FULL_TAG | awk '{split($0, a, "."); print a[2]}')
 NEXT_SHORT_TAG=${NEXT_MAJOR}.${NEXT_MINOR}
-NEXT_UCX_PY_VERSION="$(curl -sL https://version.gpuci.io/rapids/${NEXT_SHORT_TAG})"
+NEXT_UCX_PY_VERSION="$(curl -sL https://version.gpuci.io/rapids/${NEXT_SHORT_TAG}).*"
 
-echo "Preparing release $CURRENT_TAG => $NEXT_FULL_TAG and short tag => $CURRENT_SHORT_TAG"
+# Need to distutils-normalize the versions for some use cases
+CURRENT_SHORT_TAG_PEP440=$(python -c "from setuptools.extern import packaging; print(packaging.version.Version('${CURRENT_SHORT_TAG}'))")
+NEXT_SHORT_TAG_PEP440=$(python -c "from setuptools.extern import packaging; print(packaging.version.Version('${NEXT_SHORT_TAG}'))")
+echo "current is ${CURRENT_SHORT_TAG_PEP440}, next is ${NEXT_SHORT_TAG_PEP440}"
+
+echo "Preparing release $CURRENT_TAG => $NEXT_FULL_TAG"
 
 # Inplace sed replace; workaround for Linux and Mac
 function sed_runner() {
@@ -48,10 +53,6 @@ sed_runner 's/'"RAPIDS_VERSION \".*\")"'/'"RAPIDS_VERSION \"${NEXT_SHORT_TAG}\")
 # Python CMakeLists updates
 sed_runner '/set(RAPIDS_VERSION/ s/".*"/'\"${NEXT_SHORT_TAG}\"'/g' python/pylibwholegraph/CMakeLists.txt
 
-# Python setup.py updates
-sed_runner 's/'version=\".*\"'/'version=\"${NEXT_FULL_TAG}\"'/g' python/pylibwholegraph/setup.py
-
-
 # RTD update
 sed_runner 's/version = .*/version = '"'${NEXT_SHORT_TAG}'"'/g' docs/wholegraph/source/conf.py
 sed_runner 's/release = .*/release = '"'${NEXT_FULL_TAG}'"'/g' docs/wholegraph/source/conf.py
@@ -61,9 +62,6 @@ sed_runner "s/__version__ = .*/__version__ = \"${NEXT_FULL_TAG}\"/g" python/pyli
 
 # Python pyproject.toml updates
 sed_runner "s/^version = .*/version = \"${NEXT_FULL_TAG}\"/g" python/pylibwholegraph/pyproject.toml
-
-# Need to distutils-normalize the original version
-NEXT_SHORT_TAG_PEP440=$(python -c "from setuptools.extern import packaging; print(packaging.version.Version('${NEXT_SHORT_TAG}'))")
 
 DEPENDENCIES=(
   libraft
