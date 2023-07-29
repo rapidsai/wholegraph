@@ -73,6 +73,7 @@ jobs:
       branch: ${{ inputs.branch }}
       sha: ${{ inputs.sha }}
       date: ${{ inputs.date }}
+      script: ci/build_wheel.sh
   wheel-publish-pylibwholegraph:
     needs: wheel-build-pylibwholegraph
     secrets: inherit
