@@ -105,7 +105,7 @@ typedef struct WholeGraphCSRWeightedSampleWithoutReplacementTestParam {
 
   wholememory_memory_type_t memory_type                 = WHOLEMEMORY_MT_CHUNKED;
   wholememory_memory_location_t memory_location         = WHOLEMEMORY_ML_DEVICE;
-  int64_t max_sample_count                              = 50;
+  int64_t max_sample_count                              = 10;
   int64_t center_node_count                             = 512;
   int64_t graph_node_count                              = 9703LL;
   int64_t graph_edge_count                              = 104323L;
@@ -369,7 +369,13 @@ TEST_P(WholeGraphCSRWeightedSampleWithoutReplacementParameterTests, WeightedSamp
         random_seed);
 
       EXPECT_EQ(total_sample_count, host_total_sample_count);
-
+      wholegraph_ops::testing::segment_sort_output(
+        host_ref_output_sample_offset,
+        output_sample_offset_desc,
+        host_ref_output_dest_nodes,
+        wholememory_create_array_desc(host_total_sample_count, 0, csr_col_ptr_desc.dtype),
+        host_ref_output_global_edge_id,
+        wholememory_create_array_desc(host_total_sample_count, 0, WHOLEMEMORY_DT_INT64));
       wholegraph_ops::testing::host_check_two_array_same(host_output_sample_offset,
                                                          output_sample_offset_desc,
                                                          host_ref_output_sample_offset,
@@ -440,6 +446,12 @@ INSTANTIATE_TEST_SUITE_P(WholeGraphCSRWeightedSampleWithoutReplacementOpTests,
                                              .set_center_node_count(35)
                                              .set_graph_node_count(23289)
                                              .set_graph_edge_couont(689403),
+                                              WholeGraphCSRWeightedSampleWithoutReplacementTestParam()
+                                             .set_memory_type(WHOLEMEMORY_MT_CONTINUOUS)
+                                             .set_max_sample_count(300)
+                                             .set_center_node_count(256)
+                                             .set_graph_node_count(23200)
+                                             .set_graph_edge_couont(68940300),
                                            WholeGraphCSRWeightedSampleWithoutReplacementTestParam()
                                              .set_memory_type(WHOLEMEMORY_MT_CHUNKED)
                                              .set_center_node_type(WHOLEMEMORY_DT_INT64)));
