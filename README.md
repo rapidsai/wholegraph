@@ -1,42 +1,24 @@
 # WholeGraph
 
 WholeGraph is developed to help train large-scale Graph Neural Networks(GNN).
+WholeGraph provides underlying storage structure called WholeMemory.
+WholeMemory is a Tensor like storage and provide multi-GPU support.
+It is optimized for NVLink systems like DGX A100 servers.
+By working together with cuGraph, cuGraph-Ops, cuGraph-DGL, cuGraph-PyG,
+and upstream DGL and PyG, it will be easy to build GNN applications.
 
-The software stack of WholeGraph shown below:
-
-![WholeGraph](docs/imgs/whole_graph_stack.png)
-
-Based on CUDA and NVIDIA's hardware, a multi-GPU storage called [WholeMemory](docs/WholeMemoryIntroduction.md) is implemented.
-WholeMemory is used to support both graph structure and feature embedding storage.
-Based on the storage, WholeGraph Ops are built to support GNN applications, including sampling ops, embedding ops and some GNN layer ops
-On the other hand, sampled subgraph from WholeGraph can also be converted to support PyG or DGL layers.
-So, GNN applications can utilize ops from WholeGraph and other GNN frameworks.
-
-## How to Use
-
-### Environment
-
-#### Hardware
-
-It is suggested to use NVLink systems, like DGX-A100 or similar systems.
-
-#### Software
-
-It is recommended to use our [Dockerfile](Dockerfile)
-
-### Compile
-
-To compile WholeGraph, from source directory:
-
-```shell script
-mkdir build
-cd build
-cmake ../
-make -j
-```
-
-Or you can build release version by replacing `cmake ../` by `cmake -DCMAKE_BUILD_TYPE=Release ..`, which has slightly better performance.
-
-### Examples
-
-Checkout [GNN example](docs/GNNExample.md) for more details. 
+## Table of content
+- Installation
+  - [Getting WholeGraph Packages](./docs/wholegraph/source/installation/getting_wholegraph.md)
+  - [Building from Source](./docs/wholegraph/source/installation/source_build.md)
+- General
+  - [WholeGraph Introduction](./docs/wholegraph/source/basics/wholegraph_intro.md)
+- Packages
+  - libwholegraph (C/CUDA)
+  - pylibwholegraph
+- API Docs
+  - Python
+  - C
+- Reference
+  - [RAPIDS](https://rapids.ai)
+  - [cuGraph](https://github.com/rapidsai/cugraph)
