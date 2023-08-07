@@ -14,7 +14,9 @@
  * limitations under the License.
  */
 #pragma once
+#include <cstdlib>
 #include <cub/device/device_radix_sort.cuh>
+#include <cub/device/device_segmented_sort.cuh>
 #include <driver_types.h>
 #include <raft/matrix/select_k.cuh>
 #include <random>
@@ -55,72 +57,29 @@ __device__ __forceinline__ float gen_key_from_weight(const WeightType weight, PC
   return logk;
 }
 
-template <typename T, typename IdxT>
-__device__ __host__ void set_buf_pointers(T* buf1,
-                                          IdxT* idx_buf1,
-                                          T* buf2,
-                                          IdxT* idx_buf2,
-                                          int pass,
-                                          const T*& in_buf,
-                                          const IdxT*& in_idx_buf,
-                                          T*& out_buf,
-                                          IdxT*& out_idx_buf)
-{
-  if (pass == 0) {
-    in_buf      = buf1;
-    in_idx_buf  = nullptr;
-    out_buf     = nullptr;
-    out_idx_buf = nullptr;
-
-  } else if (pass % 2 == 0) {
-    in_buf      = buf2;
-    in_idx_buf  = idx_buf2;
-    out_buf     = buf1;
-    out_idx_buf = idx_buf1;
-  } else {
-    in_buf      = buf1;
-    in_idx_buf  = idx_buf1;
-    out_buf     = buf2;
-    out_idx_buf = idx_buf2;
-  }
-}
-
 template <typename IdType,
-          typename LocalIdType,
           typename WeightType,
           typename WeightKeyType,
           typename NeighborIdxType,
           typename WMIdType,
           typename WMOffsetType,
           typename WMWeightType,
-          unsigned int BLOCK_SIZE,
-          int BitsPerPass,
-          bool NeedRandom = true>
-__launch_bounds__(BLOCK_SIZE) __global__
-  void weighted_sample_without_replacement_large_raft_radix_kernel(
-    wholememory_gref_t wm_csr_row_ptr,
-    wholememory_array_description_t wm_csr_row_ptr_desc,
-    wholememory_gref_t wm_csr_col_ptr,
-    wholememory_array_description_t wm_csr_col_ptr_desc,
-    wholememory_gref_t wm_csr_weight_ptr,
-    wholememory_array_description_t wm_csr_weight_ptr_desc,
-    const IdType* input_nodes,
-    const int input_node_count,
-    const int max_sample_count,
-    unsigned long long random_seed,
-    const int* sample_offset,
-    wholememory_array_description_t sample_offset_desc,
-    const int* target_neighbor_offset,
-    WMIdType* output,
-    LocalIdType* src_lid,
-    int64_t* out_edge_gid,
-    WeightKeyType* weight_keys_buff0,
-    NeighborIdxType* local_idx_buff0,
-    WeightKeyType* weight_keys_buff1,
-    NeighborIdxType* local_idx_buff1,
-    WeightKeyType* weight_keys_out,
-    NeighborIdxType* local_idx_out,
-    const bool select_min = false)
+          unsigned int BLOCK_SIZE>
+__launch_bounds__(BLOCK_SIZE) __global__ void generate_weighted_keys_and_idxs_kernel(
+  wholememory_gref_t wm_csr_row_ptr,
+  wholememory_array_description_t wm_csr_row_ptr_desc,
+  wholememory_gref_t wm_csr_col_ptr,
+  wholememory_array_description_t wm_csr_col_ptr_desc,
+  wholememory_gref_t wm_csr_weight_ptr,
+  wholememory_array_description_t wm_csr_weight_ptr_desc,
+  const IdType* input_nodes,
+  const int input_node_count,
+  const int max_sample_count,
+  unsigned long long random_seed,
+  const int* target_neighbor_offset,
+  WeightKeyType* output_weighted_keys,
+  NeighborIdxType* output_idxs,
+  bool need_random = true)
 {
   int input_idx = blockIdx.x;
   if (input_idx >= input_node_count) return;
@@ -132,11 +91,57 @@ __launch_bounds__(BLOCK_SIZE) __global__
   int64_t start      = csr_row_ptr_gen[nid];
   int64_t end        = csr_row_ptr_gen[nid + 1];
   int neighbor_count = (int)(end - start);
-  int offset         = sample_offset[input_idx];
+  if (neighbor_count <= max_sample_count) { need_random = false; }
+
+  PCGenerator rng(random_seed, (uint64_t)gidx, (uint64_t)0);
+  int output_offset = target_neighbor_offset[input_idx];
+  output_weighted_keys += output_offset;
+  output_idxs += output_offset;
+  for (int id = threadIdx.x; id < neighbor_count; id += BLOCK_SIZE) {
+    WeightType thread_weight = csr_weight_ptr_gen[start + id];
+    output_weighted_keys[id] =
+      need_random ? static_cast<WeightKeyType>(gen_key_from_weight(thread_weight, rng))
+                  : (static_cast<WeightKeyType>(thread_weight));
+    output_idxs[id] = static_cast<NeighborIdxType>(id);
+  }
+}
+
+template <typename IdType,
+          typename LocalIdType,
+          typename NeighborIdxType,
+          typename WMIdType,
+          typename WMOffsetType,
+          int BLOCK_SIZE>
+__launch_bounds__(BLOCK_SIZE) __global__
+  void weighted_sample_select_k_kernel(wholememory_gref_t wm_csr_row_ptr,
+                                       wholememory_array_description_t wm_csr_row_ptr_desc,
+                                       wholememory_gref_t wm_csr_col_ptr,
+                                       wholememory_array_description_t wm_csr_col_ptr_desc,
+                                       const IdType* input_nodes,
+                                       const int input_node_count,
+                                       const int max_sample_count,
+                                       const int* sample_offset,
+                                       wholememory_array_description_t sample_offset_desc,
+                                       const NeighborIdxType* sorted_idxs,
+                                       const int* target_neighbor_offset,
+                                       WMIdType* output,
+                                       LocalIdType* src_lid,
+                                       int64_t* out_edge_gid)
+{
+  int input_idx = blockIdx.x;
+  if (input_idx >= input_node_count) return;
+  wholememory::device_reference<WMOffsetType> csr_row_ptr_gen(wm_csr_row_ptr);
+  wholememory::device_reference<WMIdType> csr_col_ptr_gen(wm_csr_col_ptr);
+  IdType nid         = input_nodes[input_idx];
+  int64_t start      = csr_row_ptr_gen[nid];
+  int64_t end        = csr_row_ptr_gen[nid + 1];
+  int neighbor_count = (int)(end - start);
+
+  int offset = sample_offset[input_idx];
+
   if (neighbor_count <= max_sample_count) {
     for (int sample_id = threadIdx.x; sample_id < neighbor_count; sample_id += BLOCK_SIZE) {
-      int neighbor_idx           = sample_id;
-      int original_neighbor_idx  = neighbor_idx;
+      int original_neighbor_idx  = sample_id;
       IdType gid                 = csr_col_ptr_gen[start + original_neighbor_idx];
       output[offset + sample_id] = gid;
       if (src_lid) src_lid[offset + sample_id] = (LocalIdType)input_idx;
@@ -145,99 +150,9 @@ __launch_bounds__(BLOCK_SIZE) __global__
     }
     return;
   }
-
-  PCGenerator rng(random_seed, (uint64_t)gidx, (uint64_t)0);
-  int buff_offset = target_neighbor_offset[input_idx];
-  weight_keys_buff0 += buff_offset;
-  local_idx_buff0 += buff_offset;
-  weight_keys_buff1 += buff_offset;
-  local_idx_buff1 += buff_offset;
-  weight_keys_out += input_idx * max_sample_count;
-  local_idx_out += input_idx * max_sample_count;
-
-  for (int id = threadIdx.x; id < neighbor_count; id += BLOCK_SIZE) {
-    WeightType thread_weight = csr_weight_ptr_gen[start + id];
-    weight_keys_buff0[id]    = NeedRandom
-                                 ? static_cast<WeightKeyType>(gen_key_from_weight(thread_weight, rng))
-                                 : (static_cast<WeightKeyType>(thread_weight));
-    local_idx_buff0[id]      = id;
-  }
-
-  constexpr int num_buckets =
-    raft::matrix::detail::select::radix::impl::calc_num_buckets<BitsPerPass>();
-  __shared__ raft::matrix::detail::select::radix::impl::Counter<WeightKeyType, NeighborIdxType>
-    counter;
-  __shared__ NeighborIdxType histogram[num_buckets];
-  if (threadIdx.x == 0) {
-    counter.k              = max_sample_count;
-    counter.len            = neighbor_count;
-    counter.previous_len   = neighbor_count;
-    counter.kth_value_bits = 0;
-    counter.out_cnt        = 0;
-    counter.out_back_cnt   = 0;
-  }
-  __syncthreads();
-  const WeightKeyType* in_buf       = nullptr;
-  const NeighborIdxType* in_idx_buf = nullptr;
-  WeightKeyType* out_buf            = nullptr;
-  NeighborIdxType* out_idx_buf      = nullptr;
-  constexpr int num_passes =
-    raft::matrix::detail::select::radix::impl::calc_num_passes<WeightKeyType, BitsPerPass>();
-  for (int pass = 0; pass < num_passes; ++pass) {
-    set_buf_pointers(weight_keys_buff0,
-                     local_idx_buff0,
-                     weight_keys_buff1,
-                     local_idx_buff1,
-                     pass,
-                     in_buf,
-                     in_idx_buf,
-                     out_buf,
-                     out_idx_buf);
-    NeighborIdxType current_len = counter.len;
-    NeighborIdxType current_k   = counter.k;
-    raft::matrix::detail::select::radix::impl::
-      filter_and_histogram_for_one_block<WeightKeyType, NeighborIdxType, BitsPerPass>(
-        in_buf,
-        in_idx_buf,
-        out_buf,
-        out_idx_buf,
-        weight_keys_out,
-        local_idx_out,
-        &counter,
-        histogram,
-        select_min,
-        pass);
-    __syncthreads();
-
-    raft::matrix::detail::select::radix::impl::scan<NeighborIdxType, BitsPerPass, BLOCK_SIZE>(
-      histogram);
-    __syncthreads();
-
-    raft::matrix::detail::select::radix::impl::
-      choose_bucket<WeightKeyType, NeighborIdxType, BitsPerPass>(
-        &counter, histogram, current_k, pass);
-    if (threadIdx.x == 0) { counter.previous_len = current_len; }
-    __syncthreads();
-
-    if (counter.len == counter.k || pass == num_passes - 1) {
-      raft::matrix::detail::select::radix::impl::
-        last_filter<WeightKeyType, NeighborIdxType, BitsPerPass>(
-          pass == 0 ? weight_keys_buff0 : out_buf,
-          pass == 0 ? local_idx_buff0 : out_idx_buf,
-          weight_keys_out,
-          local_idx_out,
-          current_len,
-          max_sample_count,
-          &counter,
-          select_min,
-          pass);
-      break;
-    }
-  }
-  // topk  idx in local_idx_out
-  __syncthreads();
+  int neighbor_offset = target_neighbor_offset[input_idx];
   for (int sample_id = threadIdx.x; sample_id < max_sample_count; sample_id += BLOCK_SIZE) {
-    int original_neighbor_idx  = local_idx_out[sample_id];
+    int original_neighbor_idx  = sorted_idxs[neighbor_offset + sample_id];
     IdType gid                 = csr_col_ptr_gen[start + original_neighbor_idx];
     output[offset + sample_id] = gid;
     if (src_lid) src_lid[offset + sample_id] = (LocalIdType)input_idx;
@@ -583,7 +498,6 @@ void wholegraph_csr_weighted_sample_without_replacement_func(
                            tmp_neighbor_counts_mem_pointer,
                            tmp_neighbor_counts_mem_pointer + center_node_count + 1,
                            tmp_neighbor_counts_mem_pointer);
-    int* tmp_neighbor_counts_offset = tmp_neighbor_counts_mem_pointer;
     int target_neighbor_counts;
     WM_CUDA_CHECK(cudaMemcpyAsync(&target_neighbor_counts,
                                   ((int*)tmp_neighbor_counts_mem_pointer) + center_node_count,
@@ -600,34 +514,24 @@ void wholegraph_csr_weighted_sample_without_replacement_func(
     WeightType* tmp_weights_buffer1_mem_pointer =
       (WeightType*)gen_weights_buffer1_tmh.device_malloc(target_neighbor_counts,
                                                          wm_csr_weight_ptr_desc.dtype);
-    wholememory_ops::temp_memory_handle gen_weights_buffer_out_tmh(p_env_fns);
-    WeightType* tmp_weights_buffer_out_mem_pointer =
-      (WeightType*)gen_weights_buffer_out_tmh.device_malloc(center_node_count * max_sample_count,
-                                                            wm_csr_weight_ptr_desc.dtype);
 
-    auto local_idx_dtype = wholememory_dtype_t::WHOLEMEMORY_DT_INT;
+    auto neighbor_idx_dtype = wholememory_dtype_t::WHOLEMEMORY_DT_INT;
     wholememory_ops::temp_memory_handle local_idx_buffer0_tmh(p_env_fns);
     int* local_idx_buffer0_mem_pointer = static_cast<int*>(
-      local_idx_buffer0_tmh.device_malloc(target_neighbor_counts, local_idx_dtype));
+      local_idx_buffer0_tmh.device_malloc(target_neighbor_counts, neighbor_idx_dtype));
     wholememory_ops::temp_memory_handle local_idx_buffer1_tmh(p_env_fns);
     int* local_idx_buffer1_mem_pointer = static_cast<int*>(
-      local_idx_buffer1_tmh.device_malloc(target_neighbor_counts, local_idx_dtype));
-    wholememory_ops::temp_memory_handle local_idx_buffer_out_tmh(p_env_fns);
-    int* local_idx_buffer_out_mem_pointer =
-      static_cast<int*>(local_idx_buffer_out_tmh.device_malloc(center_node_count * max_sample_count,
-                                                               local_idx_dtype));
-    constexpr int BLOCK_SIZE  = 256;
-    constexpr int BitsPerPass = 8;
-    weighted_sample_without_replacement_large_raft_radix_kernel<IdType,
-                                                                int,
-                                                                WeightType,
-                                                                WeightType,
-                                                                int,
-                                                                WMIdType,
-                                                                int64_t,
-                                                                WeightType,
-                                                                BLOCK_SIZE,
-                                                                BitsPerPass>
+      local_idx_buffer1_tmh.device_malloc(target_neighbor_counts, neighbor_idx_dtype));
+
+    constexpr int BLOCK_SIZE = 256;
+    generate_weighted_keys_and_idxs_kernel<IdType,
+                                           WeightType,
+                                           WeightType,
+                                           int,
+                                           WMIdType,
+                                           int64_t,
+                                           WeightType,
+                                           BLOCK_SIZE>
       <<<center_node_count, BLOCK_SIZE, 0, stream>>>(wm_csr_row_ptr,
                                                      wm_csr_row_ptr_desc,
                                                      wm_csr_col_ptr,
@@ -638,19 +542,54 @@ void wholegraph_csr_weighted_sample_without_replacement_func(
                                                      center_node_count,
                                                      max_sample_count,
                                                      random_seed,
-                                                     (const int*)output_sample_offset,
-                                                     output_sample_offset_desc,
-                                                     tmp_neighbor_counts_offset,
-                                                     (WMIdType*)output_dest_node_ptr,
-                                                     (int*)output_center_localid_ptr,
-                                                     (int64_t*)output_edge_gid_ptr,
+                                                     tmp_neighbor_counts_mem_pointer,
                                                      tmp_weights_buffer0_mem_pointer,
                                                      local_idx_buffer0_mem_pointer,
-                                                     tmp_weights_buffer1_mem_pointer,
-                                                     local_idx_buffer1_mem_pointer,
-                                                     tmp_weights_buffer_out_mem_pointer,
-                                                     local_idx_buffer_out_mem_pointer,
-                                                     false);
+                                                     true);
+    cub::DoubleBuffer<WeightType> weighted_key_double_buffer{tmp_weights_buffer0_mem_pointer,
+                                                             tmp_weights_buffer1_mem_pointer};
+    cub::DoubleBuffer<int> neighbor_idx_double_buffer{local_idx_buffer0_mem_pointer,
+                                                      local_idx_buffer1_mem_pointer};
+    void* d_temp_storage      = nullptr;
+    size_t temp_storage_bytes = 0;
+
+    WM_CUDA_CHECK(cub::DeviceSegmentedSort::SortPairsDescending(d_temp_storage,
+                                                                temp_storage_bytes,
+                                                                weighted_key_double_buffer,
+                                                                neighbor_idx_double_buffer,
+                                                                target_neighbor_counts,
+                                                                center_node_count,
+                                                                tmp_neighbor_counts_mem_pointer,
+                                                                tmp_neighbor_counts_mem_pointer + 1,
+                                                                stream));
+    wholememory_ops::temp_memory_handle segment_sort_storge_tmp(p_env_fns);
+    d_temp_storage = segment_sort_storge_tmp.device_malloc(temp_storage_bytes, WHOLEMEMORY_DT_INT8);
+
+    WM_CUDA_CHECK(cub::DeviceSegmentedSort::SortPairsDescending(d_temp_storage,
+                                                                temp_storage_bytes,
+                                                                weighted_key_double_buffer,
+                                                                neighbor_idx_double_buffer,
+                                                                target_neighbor_counts,
+                                                                center_node_count,
+                                                                tmp_neighbor_counts_mem_pointer,
+                                                                tmp_neighbor_counts_mem_pointer + 1,
+                                                                stream));
+
+    weighted_sample_select_k_kernel<IdType, int, int, WMIdType, int64_t, BLOCK_SIZE>
+      <<<center_node_count, BLOCK_SIZE, 0, stream>>>(wm_csr_row_ptr,
+                                                     wm_csr_row_ptr_desc,
+                                                     wm_csr_col_ptr,
+                                                     wm_csr_col_ptr_desc,
+                                                     (const IdType*)center_nodes,
+                                                     center_node_count,
+                                                     max_sample_count,
+                                                     static_cast<const int*>(output_sample_offset),
+                                                     output_sample_offset_desc,
+                                                     neighbor_idx_double_buffer.Current(),
+                                                     tmp_neighbor_counts_mem_pointer,
+                                                     output_dest_node_ptr,
+                                                     output_center_localid_ptr,
+                                                     output_edge_gid_ptr);
 
     WM_CUDA_CHECK(cudaGetLastError());
     WM_CUDA_CHECK(cudaStreamSynchronize(stream));
