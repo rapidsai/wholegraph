@@ -20,7 +20,7 @@
 
 #include <stdint.h>
 
-#include "wholegraph_ops//block_radix_topk.cuh"
+#include "wholegraph_ops/block_topk_with_raft.cuh"
 
 namespace wholememory_ops {
 
@@ -157,8 +157,7 @@ class CacheSetUpdater {
   static constexpr int kTopKRegisterCount = 4;
   static constexpr int kCacheSetSize      = CacheLineInfo::kCacheSetSize;
   static constexpr int kScaledCounterBits = 14;
-  using BlockTopK =
-    wholegraph_ops::BlockRadixTopKRegister<int64_t, kCacheSetSize, kTopKRegisterCount, true, int>;
+  using BlockTopK = wholegraph_ops::BlockTopkRaftWarpSort<int64_t, kCacheSetSize, kTopKRegisterCount, kCacheSetSize, false, int>;
   struct TempStorage : BlockTopK::TempStorage {};
   /**
    * From all invalid CacheSet, recompute lids to cache, and update cache_line_info.
@@ -287,8 +286,7 @@ class CacheSetUpdater {
       candidate_local_id_[1]  = cached_local_id;
     }
     BlockTopK(temp_storage)
-      .radixTopKToStriped(
-        candidate_lfu_count_, candidate_local_id_, kCacheSetSize, kCacheSetSize * 2);
+      .TopKToStriped(candidate_lfu_count_, candidate_local_id_, kCacheSetSize, kCacheSetSize * 2);
     // printf("[TopK merge dump] threadIdx.x=%d, lfu_count=%ld, lid=%d\n", threadIdx.x,
     // candidate_lfu_count_[0], candidate_local_id_[0]);
     match_flag     = WarpMatchLocalIDPairSync(candidate_local_id_[0], cached_local_id);
@@ -391,7 +389,7 @@ class CacheSetUpdater {
     int has_local_id_count           = (cached_local_id != -1) ? __popc(local_id_match_mask) : 0;
     if (StrideIdx == kTopKRegisterCount - 1) {
       BlockTopK(temp_storage)
-        .radixTopKToStriped(
+        .TopKToStriped(
           candidate_lfu_count_, candidate_local_id_, min(kCacheSetSize, valid_count), valid_count);
       valid_count = min(valid_count, kCacheSetSize);
     }
