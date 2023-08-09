@@ -1,0 +1,289 @@
+# Dependency list for https://github.com/rapidsai/dependency-file-generator
+files:
+  all:
+    output: [conda]
+    matrix:
+      cuda: ["11.8", "12.0"]
+      arch: [x86_64]
+    includes:
+      - checks
+      - build
+      - cudatoolkit
+      - py_version
+      - run
+      - test_python
+      - docs
+      - clang_tools
+  test_cpp:
+    output: none
+    includes:
+      - cudatoolkit
+  test_python:
+    output: none
+    includes:
+      - cudatoolkit
+      - py_version
+      - test_python
+  checks:
+    output: none
+    includes:
+      - checks
+      - py_version
+  docs:
+    output: none
+    includes:
+      - cudatoolkit
+      - docs
+      - py_version
+      - pytorch_cpu
+  clang_tidy:
+    output: none
+    includes:
+      - build
+      - cudatoolkit
+      - py_version
+      - run
+      - pytorch_cpu
+      - clang_tools
+  py_build_pylibwholegraph:
+    output: pyproject
+    pyproject_dir: python/pylibwholegraph
+    extras:
+      table: build-system
+    includes:
+      - python_build_wheel
+channels:
+  - rapidsai
+  - rapidsai-nightly
+  - pytorch
+  - conda-forge
+  - nvidia
+dependencies:
+  build:
+    common:
+      - output_types: [conda, requirements]
+        packages:
+          - ninja
+      - output_types: conda
+        packages:
+          - c-compiler
+          - cmake>=3.23.1,!=3.25.0
+          - cudnn=8.4
+          - nccl
+          - cxx-compiler
+          - nanobind>=0.2.0
+          - cython
+          - doxygen=1.8.20
+          - scikit-build
+    specific:
+      - output_types: conda
+        matrices:
+          - matrix:
+              arch: x86_64
+            packages:
+              - gcc_linux-64=11.*
+              - sysroot_linux-64=2.17
+          - matrix:
+              arch: aarch64
+            packages:
+              - gcc_linux-aarch64=11.*
+              - sysroot_linux-aarch64=2.17
+      - output_types: conda
+        matrices:
+          - matrix:
+              arch: x86_64
+              cuda: "11.8"
+            packages:
+              - nvcc_linux-64=11.8
+          - matrix:
+              arch: x86_64
+              cuda: "11.5"
+            packages:
+              - nvcc_linux-64=11.5
+          - matrix:
+              arch: aarch64
+              cuda: "11.8"
+            packages:
+              - nvcc_linux-aarch64=11.8
+          - matrix:
+              cuda: "12.0"
+            packages:
+              - cuda-version=12.0
+              - cuda-nvcc
+  cudatoolkit:
+    specific:
+      - output_types: conda
+        matrices:
+          - matrix:
+              cuda: "11.2"
+            packages:
+              - cudatoolkit=11.2
+              - cuda-nvtx=11.4 # oldest available
+          - matrix:
+              cuda: "11.4"
+            packages:
+              - cudatoolkit=11.4
+              - cuda-nvtx=11.4 # oldest available
+          - matrix:
+              cuda: "11.5"
+            packages:
+              - cudatoolkit=11.5
+              - cuda-nvtx=11.5
+          - matrix:
+              cuda: "11.8"
+            packages:
+              - cudatoolkit=11.8
+              - cuda-nvtx=11.8
+          - matrix:
+              cuda: "12.0"
+            packages:
+              - cuda-version=12.0
+              - cuda-cudart-dev
+              - cuda-nvtx
+  checks:
+    common:
+      - output_types: [conda, requirements]
+        packages:
+          - pre-commit
+  py_version:
+    specific:
+      - output_types: conda
+        matrices:
+          - matrix:
+              py: "3.9"
+            packages:
+              - python=3.9
+          - matrix:
+              py: "3.10"
+            packages:
+              - python=3.10
+          - matrix:
+            packages:
+              - python>=3.9,<3.11
+  run:
+    common:
+      - output_types: [conda, requirements]
+        packages:
+          - libraft-headers==23.8.*
+          - librmm==23.8.*
+  test_cpp:
+    common:
+      - output_types: [conda, requirements]
+        packages:
+          - nccl
+  test_python:
+    common:
+      - output_types: [conda, requirements]
+        packages:
+          - c-compiler
+          - cxx-compiler
+          - ninja
+          - numpy>=1.17
+          - pytest
+          - pytest-forked
+          - pytest-xdist
+          - nccl
+    specific:
+      - output_types: [conda, requirements]
+        matrices:
+          - matrix:
+              arch: x86_64
+              cuda: "11.2"
+            packages:
+              # It's impossible to create this environment with pyg because
+              # the pyg package has an explicit dependency on cudatoolkit=11.*
+              # and there simply isn't any build for cudatoolkit=11.2.
+              # Note that the packages for CUDA 11.2/11.4 environments are the
+              # ones from conda-forge (built only against CUDA 11.2) and
+              # *not* the pytorch channel. For CUDA 11.5/11.8 environments,
+              # we're using packages from the pytorch channel.
+              - pytorch=1.11.0=*cuda112*
+          - matrix:
+              arch: x86_64
+              cuda: "11.4"
+            packages:
+              # It's impossible to create this environment with pyg because
+              # the pyg package has an explicit dependency on cudatoolkit=11.*
+              # and there simply isn't any build for cudatoolkit=11.4.
+              # There is also no build of pytorch for CUDA 11.4 but the 11.2
+              # build should work in practice and doesn't require any
+              # cudatoolkit version explicitly.
+              - pytorch=1.11.0=*cuda112*
+          - matrix:
+              arch: x86_64
+              cuda: "11.5"
+            packages:
+              # This environment "just works" for both pytorch and pyg, but only
+              # with older pytorch versions since the newest ones aren't built
+              # against 11.5 anymore.
+              - pytorch=1.11.0=*cuda11.5*
+          - matrix:
+              arch: x86_64
+              cuda: "11.8"
+            packages:
+              # Since CUDA 11.6, pytorch switched to using the `cuda-*` packages
+              # as dependencies for its official conda package. These are only
+              # available from the nvidia channel at the moment, and this will
+              # probably continue once conda-forge has added these new packages
+              # since conda-forge will only add this from CUDA 12.0 onwards,
+              # at least in the near-term.
+              # Our own RAPIDS packages are dependent on the `cudatoolkit`
+              # package from conda-forge though, which means that we have to
+              # install both `cudatoolkit` version 11.8 and the `cuda-*` packages
+              # version 11.8 here.
+              # Starting with Pytorch 2.0, this works well though, since Pytorch
+              # has largely reduced its dependencies, so only part of the CUDA
+              # toolkit needs to be duplicated this way.
+              # If conda-forge supports the new cuda-* packages for CUDA 11.8
+              # at some point, then we can fully support/properly specify
+              # this environment.
+              - pytorch=2.0.0
+              - pytorch-cuda=11.8
+          - matrix:
+              arch: aarch64
+              cuda: "11.8"
+            packages:
+              - pytorch=2.0.0
+              - pytorch-cuda=11.8
+          - matrix:
+            packages:
+  docs:
+    common:
+      - output_types: [conda, requirements]
+        packages:
+          - breathe
+          - doxygen=1.8.20
+          - graphviz
+          - ipython
+          - ipykernel
+          - nbsphinx
+          - numpydoc
+          - pydata-sphinx-theme
+          - recommonmark
+          - sphinx<6
+          - sphinx-copybutton
+          - sphinx-markdown-tables
+          - sphinxcontrib-websupport
+  pytorch_cpu:
+    common:
+      - output_types: [conda, requirements]
+        packages:
+          - pytorch=2.0.0
+          - cpuonly
+  clang_tools:
+    common:
+      - output_types: [conda, requirements]
+        packages:
+          - clangxx=16.0.0
+          - clang-tools=16.0.0
+          - gitpython
+  python_build_wheel:
+    common:
+      - output_types: [pyproject]
+        packages:
+          - cmake>=3.26.4
+          - cython>=0.29,<0.30
+          - ninja
+          - setuptools
+          - scikit-build>=0.13.1
+          - wheel

@@ -1,5 +1,7 @@
 ## Common
 __pycache__
+build*/
+.pytest_cache/
 *.pyc
 *.a
 *.o
@@ -14,6 +16,9 @@ __pycache__
 *~
 DartConfiguration.tcl
 .DS_Store
+*.egg-info
+*.egg
+env.yaml
 
 # Unit test / coverage reports
 htmlcov/
@@ -69,14 +74,16 @@ cmake-build-debug/
 ## Doxygen
 cpp/doxygen/html
 
-
 # Sphinx docs & build artifacts
 docs/wholegraph/source/api_docs/api/*
 
 # others
-local_scripts/
-build
-*pyc
-compile_commands.json
-docker_run.bash
-.devcontainer
+.conda/
+.conda-bld/
+.ipynb_checkpoints/
+test-results/
+_skbuild/
+cpp/.idea/
+cpp/cmake-build-debug/
+pylibwholegraph/.idea/
+pylibwholegraph/cmake-build-debug/

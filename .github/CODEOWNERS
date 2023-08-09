@@ -1,0 +1,30 @@
+# https://docs.github.com/en/github/creating-cloning-and-archiving-repositories/about-code-owners
+# Order matters - match of highest importance goes last (last match wins)
+
+#doc code owners
+datasets/          @rapidsai/wholegraph-doc-codeowners
+notebooks/         @rapidsai/wholegraph-doc-codeowners
+docs/              @rapidsai/wholegraph-doc-codeowners
+**/*.txt           @rapidsai/wholegraph-doc-codeowners
+**/*.md            @rapidsai/wholegraph-doc-codeowners
+**/*.rst           @rapidsai/wholegraph-doc-codeowners
+**/*.ipynb         @rapidsai/wholegraph-doc-codeowners
+**/*.pdf           @rapidsai/wholegraph-doc-codeowners
+**/*.png           @rapidsai/wholegraph-doc-codeowners
+
+#cpp code owners
+cpp/               @rapidsai/wholegraph-cpp-codeowners
+
+#python code owners
+python/            @rapidsai/wholegraph-python-codeowners
+
+#cmake code owners
+**/CMakeLists.txt  @rapidsai/wholegraph-cmake-codeowners
+**/cmake/          @rapidsai/wholegraph-cmake-codeowners
+
+#build/ops code owners
+.github/           @rapidsai/ops-codeowners
+ci/                @rapidsai/ops-codeowners
+conda/             @rapidsai/ops-codeowners
+**/Dockerfile      @rapidsai/ops-codeowners
+**/.dockerignore   @rapidsai/ops-codeowners
