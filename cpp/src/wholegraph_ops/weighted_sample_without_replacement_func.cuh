@@ -18,6 +18,8 @@
 #include <random>
 #include <thrust/scan.h>
 
+#include <raft/random/rng_state.hpp>
+#include <raft/random/rng_device.cuh>
 #include <raft/util/integer_utils.hpp>
 #include <wholememory/device_reference.cuh>
 #include <wholememory/env_func_ptrs.h>
@@ -25,7 +27,6 @@
 #include <wholememory/tensor_description.h>
 
 #include "wholememory_ops/output_memory_handle.hpp"
-#include "wholememory_ops/raft_random.cuh"
 #include "wholememory_ops/temp_memory_handle.hpp"
 #include "wholememory_ops/thrust_allocator.hpp"
 
@@ -37,9 +38,11 @@
 namespace wholegraph_ops {
 
 template <typename WeightType>
-__device__ __forceinline__ float gen_key_from_weight(const WeightType weight, PCGenerator& rng)
+__device__ __forceinline__ float gen_key_from_weight(const WeightType weight, raft::random::detail::PCGenerator& rng)
 {
-  float u              = -rng.next_float(1.0f, 0.5f);
+  float u = 0.0;
+  rng.next(u);
+  u = -(0.5 + 0.5*u);
   uint64_t random_num2 = 0;
   int seed_count       = -1;
   do {
@@ -73,7 +76,7 @@ __launch_bounds__(BLOCK_SIZE) __global__ void weighted_sample_without_replacemen
   const IdType* input_nodes,
   const int input_node_count,
   const int max_sample_count,
-  unsigned long long random_seed,
+  raft::random::detail::DeviceState<raft::random::detail::PCGenerator> rngstate,
   const int* sample_offset,
   wholememory_array_description_t sample_offset_desc,
   const int* target_neighbor_offset,
@@ -109,7 +112,7 @@ __launch_bounds__(BLOCK_SIZE) __global__ void weighted_sample_without_replacemen
     return;
   }
 
-  PCGenerator rng(random_seed, (uint64_t)gidx, (uint64_t)0);
+  raft::random::detail::PCGenerator rng(rngstate, (uint64_t)gidx);
   for (int id = threadIdx.x; id < neighbor_count; id += BLOCK_SIZE) {
     WeightType thread_weight = csr_weight_ptr_gen[start + id];
     weight_keys_local_buff[id] =
@@ -240,7 +243,7 @@ __launch_bounds__(BLOCK_SIZE) __global__ void weighted_sample_without_replacemen
   const IdType* input_nodes,
   const int input_node_count,
   const int max_sample_count,
-  unsigned long long random_seed,
+  raft::random::detail::DeviceState<raft::random::detail::PCGenerator> rngstate,
   const int* sample_offset,
   wholememory_array_description_t sample_offset_desc,
   WMIdType* output,
@@ -272,7 +275,7 @@ __launch_bounds__(BLOCK_SIZE) __global__ void weighted_sample_without_replacemen
     }
     return;
   } else {
-    PCGenerator rng(random_seed, (uint64_t)gidx, (uint64_t)0);
+    raft::random::detail::PCGenerator rng(rngstate, (uint64_t)gidx);
 
     float weight_keys[ITEMS_PER_THREAD];
     int neighbor_idxs[ITEMS_PER_THREAD];
@@ -443,6 +446,8 @@ void wholegraph_csr_weighted_sample_without_replacement_func(
       (int64_t*)gen_output_edge_gid_buffer_mh.device_malloc(count, WHOLEMEMORY_DT_INT64);
   }
 
+  raft::random::RngState _rngstate(random_seed, 0, raft::random::GeneratorType::GenPC);
+  raft::random::detail::DeviceState <raft::random::detail::PCGenerator> rngstate(_rngstate);
   if (max_sample_count > sample_count_threshold) {
     wholememory_ops::wm_thrust_allocator tmp_thrust_allocator(p_env_fns);
     thrust::exclusive_scan(thrust::cuda::par(tmp_thrust_allocator).on(stream),
@@ -480,7 +485,7 @@ void wholegraph_csr_weighted_sample_without_replacement_func(
                                                      (const IdType*)center_nodes,
                                                      center_node_count,
                                                      max_sample_count,
-                                                     random_seed,
+                                                     rngstate,
                                                      (const int*)output_sample_offset,
                                                      output_sample_offset_desc,
                                                      tmp_neighbor_counts_offset,
@@ -522,7 +527,7 @@ void wholegraph_csr_weighted_sample_without_replacement_func(
                                             const IdType*,
                                             const int,
                                             const int,
-                                            unsigned long long,
+                                            raft::random::detail::DeviceState<raft::random::detail::PCGenerator>,
                                             const int*,
                                             wholememory_array_description_t,
                                             WMIdType*,
@@ -592,7 +597,7 @@ void wholegraph_csr_weighted_sample_without_replacement_func(
     (const IdType*)center_nodes,
     center_node_count,
     max_sample_count,
-    random_seed,
+    rngstate,
     (const int*)output_sample_offset,
     output_sample_offset_desc,
     (WMIdType*)output_dest_node_ptr,

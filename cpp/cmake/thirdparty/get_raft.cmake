@@ -57,7 +57,7 @@ endfunction()
 # CPM_raft_SOURCE=/path/to/local/raft
 find_and_configure_raft(VERSION    ${WHOLEGRAPH_MIN_VERSION_raft}
                         FORK       rapidsai
-                        PINNED_TAG branch-${WHOLEGRAPH_BRANCH_VERSION_raft}
+                        PINNED_TAG pull-request/1568
 
                         # When PINNED_TAG above doesn't match wholegraph,
                         # force local raft clone in build directory
