@@ -446,7 +446,7 @@ INSTANTIATE_TEST_SUITE_P(WholeGraphCSRWeightedSampleWithoutReplacementOpTests,
                                              .set_center_node_count(35)
                                              .set_graph_node_count(23289)
                                              .set_graph_edge_couont(689403),
-                                              WholeGraphCSRWeightedSampleWithoutReplacementTestParam()
+                                           WholeGraphCSRWeightedSampleWithoutReplacementTestParam()
                                              .set_memory_type(WHOLEMEMORY_MT_CONTINUOUS)
                                              .set_max_sample_count(300)
                                              .set_center_node_count(256)

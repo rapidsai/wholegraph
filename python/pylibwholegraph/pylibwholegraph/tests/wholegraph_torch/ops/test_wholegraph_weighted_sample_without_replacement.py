@@ -46,8 +46,7 @@ def host_weighted_sample_without_replacement_func(
     output_center_localid_tensor = torch.empty((total_sample_count,), dtype=torch.int32)
     output_edge_gid_tensor = torch.empty((total_sample_count,), dtype=torch.int64)
     center_nodes_count = center_nodes.size(0)
-    block_size = 128 if max_sample_count <=256 else 256
-
+    block_size = 128 if max_sample_count <= 256 else 256
 
     for i in range(center_nodes_count):
         node_id = center_nodes[i]
@@ -66,23 +65,25 @@ def host_weighted_sample_without_replacement_func(
             edge_weight_corresponding_ids = torch.tensor([], dtype=col_id_dtype)
             for j in range(block_size):
                 local_gidx = gidx + j
-                local_edge_weights = torch.tensor( [],dtype=csr_weight_dtype
-                )
+                local_edge_weights = torch.tensor([], dtype=csr_weight_dtype)
                 generated_edge_weight_count = 0
-                for id in range(j,neighbor_count,block_size):
+                for id in range(j, neighbor_count, block_size):
                     local_edge_weights = torch.cat(
-                    (
-                        local_edge_weights,
-                         torch.tensor([host_csr_weight_ptr[start + id]], dtype=csr_weight_dtype),
-                     )
+                        (
+                            local_edge_weights,
+                            torch.tensor(
+                                [host_csr_weight_ptr[start + id]],
+                                dtype=csr_weight_dtype,
+                            ),
+                        )
                     )
                     generated_edge_weight_count += 1
                     edge_weight_corresponding_ids = torch.cat(
-                            (
-                                edge_weight_corresponding_ids,
-                                torch.tensor([id], dtype=col_id_dtype),
-                            )
+                        (
+                            edge_weight_corresponding_ids,
+                            torch.tensor([id], dtype=col_id_dtype),
                         )
+                    )
                 random_values = (
                     wg_ops.generate_exponential_distribution_negative_float_cpu(
                         random_seed, local_gidx, generated_edge_weight_count

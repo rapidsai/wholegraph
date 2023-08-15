@@ -151,7 +151,6 @@ class CacheLineInfo {
   uint32_t lfu_count_;
 };
 
-
 template <typename NodeIDT>
 class CacheSetUpdater {
  public:
@@ -160,13 +159,12 @@ class CacheSetUpdater {
   static constexpr int kScaledCounterBits = 14;
 
  private:
-
   using warp_bq_t =
     raft::matrix::detail::select::warpsort::warp_sort_immediate<kCacheSetSize, false, int64_t, int>;
 
   static constexpr int WARP_SIZE  = 32;
   static constexpr int BLOCK_SIZE = kCacheSetSize;
-  static_assert(kCacheSetSize == WARP_SIZE,"only support CacheSetSize==32,and BLOCK_SIZE==32\n");
+  static_assert(kCacheSetSize == WARP_SIZE, "only support CacheSetSize==32,and BLOCK_SIZE==32\n");
 
  public:
   struct TempStorage {
@@ -242,7 +240,7 @@ class CacheSetUpdater {
     //        candidate_local_id_,
     //        has_local_id_count);
     int64_t candidate_lfu_count0 = -1;
-    int candidate_local_id0  = -1;
+    int candidate_local_id0      = -1;
     unsigned int match_flag;
     // match_flag = WarpMatchLocalIDPairSync(candidate_local_id_[0], cached_local_id);
     int64_t estimated_lfu_count = cache_line_info.LfuCountSync();
@@ -348,15 +346,14 @@ class CacheSetUpdater {
                                                TempStorage& temp_storage,
                                                int cached_local_id)
   {
-
     warp_bq_t warp_queue(kCacheSetSize);
     const int per_thread_lim = id_count + raft::laneId();
 
     int has_local_id_count = 0;
     for (int idx = threadIdx.x; idx < per_thread_lim; idx += BLOCK_SIZE) {
-      int local_id            = -1;
+      int local_id                = -1;
       int64_t candidate_lfu_count = -1;
-      int candidate_local_id  = -1;
+      int candidate_local_id      = -1;
       if (idx < id_count) {
         local_id            = gids != nullptr ? gids[idx] - cache_set_start_id : idx;
         candidate_lfu_count = cache_set_coverage_counter[local_id];
@@ -380,7 +377,6 @@ class CacheSetUpdater {
       candidate_local_id_  = temp_storage.store_values[threadIdx.x];
     }
     __syncthreads();
-
 
     return has_local_id_count;
   }
