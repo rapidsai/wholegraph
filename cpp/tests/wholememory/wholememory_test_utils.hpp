@@ -15,8 +15,6 @@
  */
 #pragma once
 
-#include <gtest/gtest.h>
-
 #include "parallel_utils.hpp"
 #include "wholememory/communicator.hpp"
 
@@ -25,13 +23,12 @@ wholememory_comm_t create_communicator_by_pipes(const std::vector<std::array<int
                                                 int world_size)
 {
   wholememory_unique_id_t unique_id;
-  if (rank == 0) { EXPECT_EQ(wholememory::create_unique_id(&unique_id), WHOLEMEMORY_SUCCESS); }
+  if (rank == 0) { WHOLEMEMORY_CHECK(wholememory::create_unique_id(&unique_id) == WHOLEMEMORY_SUCCESS); }
 
   PipeBroadcast(rank, world_size, 0, pipes, &unique_id);
 
   wholememory_comm_t wm_comm;
-  EXPECT_EQ(wholememory::create_communicator(&wm_comm, unique_id, rank, world_size),
-            WHOLEMEMORY_SUCCESS);
+  WHOLEMEMORY_CHECK(wholememory::create_communicator(&wm_comm, unique_id, rank, world_size) == WHOLEMEMORY_SUCCESS);
   return wm_comm;
 }
 
@@ -40,12 +37,12 @@ wholememory_comm_t create_group_communicator_by_pipes(const std::vector<std::arr
                                                       int world_size,
                                                       int group_count)
 {
-  EXPECT_EQ(world_size % group_count, 0);
+  WHOLEMEMORY_CHECK(world_size % group_count == 0);
   int group_size = world_size / group_count;
   int group_rank = rank % group_size;
   wholememory_unique_id_t unique_id;
   if (group_rank == 0) {
-    EXPECT_EQ(wholememory::create_unique_id(&unique_id), WHOLEMEMORY_SUCCESS);
+    WHOLEMEMORY_CHECK(wholememory::create_unique_id(&unique_id) == WHOLEMEMORY_SUCCESS);
   }
 
   wholememory_unique_id_t comm_unique_id;
@@ -56,7 +53,6 @@ wholememory_comm_t create_group_communicator_by_pipes(const std::vector<std::arr
   }
 
   wholememory_comm_t wm_comm;
-  EXPECT_EQ(wholememory::create_communicator(&wm_comm, unique_id, group_rank, group_size),
-            WHOLEMEMORY_SUCCESS);
+  WHOLEMEMORY_CHECK(wholememory::create_communicator(&wm_comm, unique_id, group_rank, group_size) == WHOLEMEMORY_SUCCESS);
   return wm_comm;
 }

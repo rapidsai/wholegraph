@@ -33,7 +33,6 @@ function(ConfigureBench)
     PRIVATE wholegraph
             raft::raft
             rmm::rmm
-            GTest::gtest
             pthread
   )
 
@@ -64,7 +63,8 @@ endfunction()
 if(BUILD_BENCHMARKS) 
   ConfigureBench(
     NAME GATHER_SCATTER_BENCH 
-    PATH wholememory_ops/gather_scatter_bench.cu ../../tests/wholememory_ops/embedding_test_utils.cu
+    PATH wholememory_ops/gather_scatter_bench.cu 
+         common/wholegraph_benchmark.cpp
   )
 
 endif()

@@ -32,8 +32,6 @@
 #include "wholememory/initialize.hpp"
 
 #include "../../tests/wholememory/wholememory_test_utils.hpp"
-#include "../../tests/wholememory_ops/embedding_test_utils.hpp"
-
 namespace wholegraph::bench::gather_scatter{
 
 typedef struct GatherScatterBenchParam {
@@ -225,15 +223,15 @@ std::string get_memory_location_string(wholememory_memory_location_t memory_loca
 
 void gather_scatter_benchmark(GatherScatterBenchParam &params) {
   int g_dev_count = ForkGetDeviceCount(); 
-  EXPECT_GE(g_dev_count, 1);
+  WHOLEMEMORY_CHECK_NOTHROW(g_dev_count >= 1);
   std::vector<std::array<int, 2>> pipes;
   CreatePipes(&pipes, g_dev_count);
   MultiProcessRun(
     g_dev_count,
     [&params, &pipes](int world_rank, int world_size) {
-      wholememory_init(0);
+      WHOLEMEMORY_CHECK_NOTHROW(wholememory_init(0) == WHOLEMEMORY_SUCCESS);
 
-      cudaSetDevice(world_rank);
+      WM_CUDA_CHECK_NO_THROW(cudaSetDevice(world_rank));
 
       wholememory_comm_t wm_comm = create_communicator_by_pipes(pipes, world_rank, world_size);
 
@@ -243,146 +241,103 @@ void gather_scatter_benchmark(GatherScatterBenchParam &params) {
       std::string test_type = params.get_test_type();
       size_t embedding_entry_size = params.get_embedding_granularity();
       wholememory_handle_t embedding_handle;
-      wholememory_malloc(&embedding_handle,
+      WHOLEMEMORY_CHECK_NOTHROW(wholememory_malloc(&embedding_handle,
                                    params.get_embedding_table_size(),
                                    wm_comm,
                                    params.get_memory_type(),
                                    params.get_memory_location(),
-                                   embedding_entry_size);
+                                   embedding_entry_size) == WHOLEMEMORY_SUCCESS);
 
       cudaStream_t stream;
-      cudaStreamCreate(&stream);
+      WM_CUDA_CHECK_NO_THROW(cudaStreamCreate(&stream));
 
       void *dev_indices = nullptr, *dev_gather_buffer = nullptr;
       void *host_indices = nullptr;
       size_t gather_buffer_size  = params.get_gather_size();
       size_t indices_buffer_size = wholememory_get_memory_size_from_array(&indices_desc);
 
-      cudaMallocHost(&host_indices, indices_buffer_size);
-      cudaMalloc(&dev_indices, indices_buffer_size);
-      cudaMalloc(&dev_gather_buffer, gather_buffer_size);
+      WM_CUDA_CHECK_NO_THROW(cudaMallocHost(&host_indices, indices_buffer_size));
+      WM_CUDA_CHECK_NO_THROW(cudaMalloc(&dev_indices, indices_buffer_size));
+      WM_CUDA_CHECK_NO_THROW(cudaMalloc(&dev_gather_buffer, gather_buffer_size));
 
-      wholememory_ops::testing::device_random_init_local_embedding_table(
-        embedding_handle, embedding_desc, stream);
-      wholememory_ops::testing::host_random_init_indices(
+      wholegraph::bench::host_random_init_integer_indices(
         host_indices, indices_desc, embedding_desc.sizes[0]);
-      cudaMemcpyAsync(dev_indices,
+      WM_CUDA_CHECK_NO_THROW(cudaMemcpyAsync(dev_indices,
                                 host_indices,
                                 wholememory_get_memory_size_from_array(&indices_desc),
                                 cudaMemcpyHostToDevice,
-                                stream);
-      cudaStreamSynchronize(stream);
-      wholememory_communicator_barrier(wm_comm);
+                                stream));
+      WM_CUDA_CHECK_NO_THROW(cudaStreamSynchronize(stream));
+      WHOLEMEMORY_CHECK_NOTHROW(wholememory_communicator_barrier(wm_comm) == WHOLEMEMORY_SUCCESS);
 
       wholememory_tensor_t embedding_tensor;
       wholememory_tensor_description_t embedding_tensor_desc;
       wholememory_copy_matrix_desc_to_tensor(&embedding_tensor_desc, &embedding_desc);
-      wholememory_make_tensor_from_handle(
-                  &embedding_tensor, embedding_handle, &embedding_tensor_desc);
+      WHOLEMEMORY_CHECK_NOTHROW(wholememory_make_tensor_from_handle(
+                  &embedding_tensor, embedding_handle, &embedding_tensor_desc) == WHOLEMEMORY_SUCCESS);
 
       wholememory_tensor_t indices_tensor, output_tensor;
       wholememory_tensor_description_t indices_tensor_desc, output_tensor_desc;
       wholememory_copy_array_desc_to_tensor(&indices_tensor_desc, &indices_desc);
       wholememory_copy_matrix_desc_to_tensor(&output_tensor_desc, &output_desc);
-      wholememory_make_tensor_from_pointer(&indices_tensor, dev_indices, &indices_tensor_desc);
-      wholememory_make_tensor_from_pointer(
-                  &output_tensor, dev_gather_buffer, &output_tensor_desc);
-      cudaStreamSynchronize(stream);
-      wholememory_communicator_barrier(wm_comm);
+      WHOLEMEMORY_CHECK_NOTHROW(wholememory_make_tensor_from_pointer(&indices_tensor, dev_indices, &indices_tensor_desc) == WHOLEMEMORY_SUCCESS);
+      WHOLEMEMORY_CHECK_NOTHROW(wholememory_make_tensor_from_pointer(
+                  &output_tensor, dev_gather_buffer, &output_tensor_desc) == WHOLEMEMORY_SUCCESS);
+      WM_CUDA_CHECK_NO_THROW(cudaStreamSynchronize(stream));
+      WHOLEMEMORY_CHECK_NOTHROW(wholememory_communicator_barrier(wm_comm) == WHOLEMEMORY_SUCCESS);
 
-      for (int i = 0; i < 10; i++) {
-        if (test_type.compare("gather") == 0) {
-          wholememory_gather(embedding_tensor,
-                             indices_tensor,
-                             output_tensor,
-                             wholememory::get_default_env_func(),
-                             stream);
-        }
-        else if (test_type.compare("scatter") == 0) {
-          wholememory_scatter(output_tensor,
-                              indices_tensor,
-                              embedding_tensor,
-                              wholememory::get_default_env_func(),
-                              stream);
-        }
-      }
-      cudaStreamSynchronize(stream);
-      cudaDeviceSynchronize();
-      wholememory_communicator_barrier(wm_comm);
+      const auto barrier_fn = [&wm_comm]() -> void { WHOLEMEMORY_CHECK_NOTHROW(wholememory_communicator_barrier(wm_comm) == WHOLEMEMORY_SUCCESS); };
 
-      int loop_count = params.get_loop_count();
-      struct timeval tv_s, tv_e;
-      if (test_type.compare("gather") == 0) {
-        gettimeofday(&tv_s, nullptr);
-        for (int i = 0; i < loop_count; i++) {
-          wholememory_gather(embedding_tensor,
-                            indices_tensor,
-                            output_tensor,
-                            wholememory::get_default_env_func(),
-                            stream);
-        }
-        cudaStreamSynchronize(stream);
-        gettimeofday(&tv_e, nullptr);
-      }
-      else if (test_type.compare("scatter") == 0) {
-          gettimeofday(&tv_s, nullptr);
-          for (int i = 0; i < loop_count; i++) {
-          wholememory_scatter(output_tensor,
-                                      indices_tensor,
-                                      embedding_tensor,
-                                      wholememory::get_default_env_func(),
-                                      stream);
-          }
-          cudaStreamSynchronize(stream);
-          gettimeofday(&tv_e, nullptr);
-      }
-      else {
-        throw std::invalid_argument("Invalid test type");
-      }
-      int time_us = TIME_DIFF_US(tv_s, tv_e);
-      double bw = gather_buffer_size / time_us / 1e3 * loop_count;
-      wholememory_communicator_barrier(wm_comm);
-
-      std::vector<double> recv_vec(world_size);
-      wm_comm->host_allgather(&bw, recv_vec.data(), 1, WHOLEMEMORY_DT_DOUBLE);
-      
-      double min_bw, max_bw, avg_bw;
-      min_bw = max_bw = recv_vec[0];
-      avg_bw = 0.0;
-      for (int i = 0; i < world_size; i++) {
-          min_bw = std::min(min_bw, recv_vec[i]);
-          max_bw = std::max(max_bw, recv_vec[i]);
-          avg_bw += recv_vec[i];
-      }
-      avg_bw /= world_size;
       double emb_size_mb = (double)params.get_embedding_table_size()/1024.0/1024.0;
       double gather_size_mb = (double)params.get_gather_size()/1024.0/1024.0;
       if (world_rank == 0) {
-        printf("%s, world_size=%d, memoryType=%s, memoryLocation=%s, elt_size=%ld, embeddingDim=%ld, embeddingTableSize=%.2lf MB, gatherSize=%.2lf MB, minBW=%.2lf GB/s, maxBW=%.2lf GB/s, "
-            "avgBW=%.2lf GB/s\n",
-            test_type.c_str(), world_size, get_memory_type_string(params.get_memory_type()).c_str(), get_memory_location_string(params.get_memory_location()).c_str(), wholememory_dtype_get_element_size(params.get_embedding_type()), params.get_embedding_dim(), emb_size_mb, gather_size_mb, min_bw, max_bw,
-            avg_bw);
+        printf("%s, world_size=%d, memoryType=%s, memoryLocation=%s, elt_size=%ld, embeddingDim=%ld, embeddingTableSize=%.2lf MB, gatherSize=%.2lf MB\n",
+            test_type.c_str(), world_size, get_memory_type_string(params.get_memory_type()).c_str(), get_memory_location_string(params.get_memory_location()).c_str(), wholememory_dtype_get_element_size(params.get_embedding_type()), params.get_embedding_dim(), emb_size_mb, gather_size_mb);
       }
 
-      wholememory_destroy_tensor(indices_tensor);
-      wholememory_destroy_tensor(output_tensor);
+      PerformanceMeter meter;
+      meter.SetRunCount(100).AddMetrics("Bandwidth", "GB/s",  gather_buffer_size / 1000.0 / 1000.0 / 1000.0, false).SetMaxRunSeconds(1000).SetRunCount(params.get_loop_count());
 
-      cudaFreeHost(host_indices);
-      cudaFree(dev_indices);
-      cudaFree(dev_gather_buffer);
+      if (test_type.compare("gather") == 0) {
+        MultiProcessMeasurePerformance([&]{ wholememory_gather(embedding_tensor,
+                                                              indices_tensor,
+                                                              output_tensor,
+                                                              wholememory::get_default_env_func(),
+                                                              stream);}, wm_comm, meter, barrier_fn);
+        
+      }
+      else if (test_type.compare("scatter") == 0) {
+        MultiProcessMeasurePerformance([&]{
+                                      wholememory_scatter(output_tensor,
+                                      indices_tensor,
+                                      embedding_tensor,
+                                      wholememory::get_default_env_func(),
+                                      stream);}, wm_comm, meter, barrier_fn);
+      }
+      else {
+        printf("Invalid test function, should be: gather or scatter\n");
+        exit(EXIT_FAILURE);
+      }
 
-      wholememory_destroy_tensor(embedding_tensor);
+      WHOLEMEMORY_CHECK_NOTHROW(wholememory_destroy_tensor(indices_tensor) == WHOLEMEMORY_SUCCESS);
+      WHOLEMEMORY_CHECK_NOTHROW(wholememory_destroy_tensor(output_tensor) == WHOLEMEMORY_SUCCESS);
 
-      wholememory_free(embedding_handle);
+      WM_CUDA_CHECK_NO_THROW(cudaFreeHost(host_indices));
+      WM_CUDA_CHECK_NO_THROW(cudaFree(dev_indices));
+      WM_CUDA_CHECK_NO_THROW(cudaFree(dev_gather_buffer));
 
-      wholememory::destroy_all_communicators();
+      WHOLEMEMORY_CHECK_NOTHROW(wholememory_destroy_tensor(embedding_tensor) == WHOLEMEMORY_SUCCESS);
 
-      wholememory_finalize();
+      WHOLEMEMORY_CHECK_NOTHROW(wholememory_free(embedding_handle) == WHOLEMEMORY_SUCCESS);
+
+      WHOLEMEMORY_CHECK_NOTHROW(wholememory::destroy_all_communicators() == WHOLEMEMORY_SUCCESS);
+
+      WHOLEMEMORY_CHECK_NOTHROW(wholememory_finalize() == WHOLEMEMORY_SUCCESS);
     },
     true);
 }
 
-}  // namespace wholegraph::bench::gather_catter
+}  // namespace wholegraph::bench::gather_scatter
 
 int main(int argc, char** argv) {
     wholegraph::bench::gather_scatter::GatherScatterBenchParam params;
@@ -439,60 +394,40 @@ int main(int argc, char** argv) {
             params.set_memory_location(static_cast<wholememory_memory_location_t>(val));
             break;
         case 'e':
-            try {
-                long long val = std::stoll(optarg);
-                if (val < 0) {
-                    throw std::invalid_argument("Negative value");
-                }
-                params.set_embedding_table_size(val);
+            val = std::stoll(optarg);
+            if (val < 0) {
+              printf("Negative value, invalid argument for option -e\n");
+              printf(usage, argv[0]);
+              exit(EXIT_FAILURE);
             }
-            catch (std::exception& e) {
-                printf("Invalid argument for option -e\n");
-                printf(usage, argv[0]);
-                exit(EXIT_FAILURE);
-            }
+            params.set_embedding_table_size(val);
             break;
         case 'g':
-            try {
-                long long val = std::stoll(optarg);
-                if (val < 0) {
-                    throw std::invalid_argument("Negative value");
-                }
-                params.set_gather_size(val);
+            val = std::stoll(optarg);
+            if (val < 0) {
+              printf("Negative value, invalid argument for option -g\n");
+              printf(usage, argv[0]);
+              exit(EXIT_FAILURE);
             }
-            catch (std::exception& e) {
-                printf("Invalid argument for option -g\n");
-                printf(usage, argv[0]);
-                exit(EXIT_FAILURE);
-            }
+            params.set_gather_size(val);
             break;
         case 'd':
-            try {
-                int val = std::stoll(optarg);
+                val = std::stoll(optarg);
                 if (val < 0) {
-                    throw std::invalid_argument("Negative value");
+                  printf("Negative value, invalid argument for option -d\n");
+                  printf(usage, argv[0]);
+                  exit(EXIT_FAILURE);
                 }
                 params.set_embedding_dim(val);
-            }
-            catch (std::exception& e) {
-                printf("Invalid argument for option -d\n");
-                printf(usage, argv[0]);
-                exit(EXIT_FAILURE);
-            }
             break;
         case 'c':
-            try {
-                int val = std::stoi(optarg);
-                if (val < 0) {
-                    throw std::invalid_argument("Negative value");
-                }
-                params.set_loop_count(val);
+            val = std::stoi(optarg);
+            if (val < 0) {
+              printf("Negative value, invalid argument for option -c\n");
+              printf(usage, argv[0]);
+              exit(EXIT_FAILURE);
             }
-            catch (std::exception& e) {
-                printf("Invalid argument for option -c\n");
-                printf(usage, argv[0]);
-                exit(EXIT_FAILURE);
-            }
+            params.set_loop_count(val);
             break;
         case 'f':
             if (strcmp(optarg, "gather") == 0) {
