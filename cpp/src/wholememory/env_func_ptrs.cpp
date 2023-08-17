@@ -228,16 +228,6 @@ void* HostChunkedMemoryPool::MallocFnImpl(size_t size) { return malloc(size); }
 void HostChunkedMemoryPool::FreeFnImpl(void* ptr) { free(ptr); }
 class CachedAllocator {
  public:
-  CachedAllocator()
-  {
-    device_chunked_mem_pools_.resize(kMaxSupportedDeviceCount);
-    for (int i = 0; i < kMaxSupportedDeviceCount; i++) {
-      device_chunked_mem_pools_[i] = std::make_unique<DeviceChunkedMemoryPool>(i);
-    }
-    pinned_chunked_mem_pool_ = std::make_unique<PinnedChunkedMemoryPool>();
-    host_chunked_mem_pool_   = std::make_unique<HostChunkedMemoryPool>();
-  }
-  ~CachedAllocator() { DropCaches(); }
   void* MallocHost(size_t size);
   void* MallocDevice(size_t size);
   void* MallocPinned(size_t size);
@@ -248,6 +238,17 @@ class CachedAllocator {
   static CachedAllocator* GetInst();
 
  private:
+  CachedAllocator()
+  {
+    device_chunked_mem_pools_.resize(kMaxSupportedDeviceCount);
+    for (int i = 0; i < kMaxSupportedDeviceCount; i++) {
+      device_chunked_mem_pools_[i] = std::make_unique<DeviceChunkedMemoryPool>(i);
+    }
+    pinned_chunked_mem_pool_ = std::make_unique<PinnedChunkedMemoryPool>();
+    host_chunked_mem_pool_   = std::make_unique<HostChunkedMemoryPool>();
+  }
+  ~CachedAllocator() {}
+  
   static CachedAllocator ca_inst_;
   std::vector<std::unique_ptr<DeviceChunkedMemoryPool>> device_chunked_mem_pools_;
   std::unique_ptr<PinnedChunkedMemoryPool> pinned_chunked_mem_pool_;
@@ -362,8 +363,6 @@ static wholememory_env_func_t cached_env_func = {
     .global_context = nullptr,
   }};
 
-// static CachedAllocator* p_cached_allocators[K_MAX_DEVICE_COUNT] = {nullptr};
-// wholememory_env_func_t* get_cached_env_func() { WHOLEMEMORY_FAIL_NOTHROW("Not implemented."); }
 wholememory_env_func_t* get_cached_env_func() { return &cached_env_func; }
 
 void drop_cached_env_func() { CachedAllocator::GetInst()->DropCaches(); }
