@@ -1,11 +1,11 @@
 #include "wholegraph_benchmark.hpp"
 
+#include "wholememory/communicator.hpp"
 #include <cstdint>
 #include <experimental/functional>
 #include <experimental/random>
-#include <wholememory/wholememory.h>
 #include <wholememory/tensor_description.h>
-#include "wholememory/communicator.hpp"
+#include <wholememory/wholememory.h>
 
 #include <functional>
 #include <string>
@@ -13,11 +13,11 @@
 
 namespace wholegraph::bench {
 
-
 template <typename IndexT>
 void host_get_random_integer_indices(void* indices,
-                             wholememory_array_description_t indice_desc,
-                             int64_t max_indices) {
+                                     wholememory_array_description_t indice_desc,
+                                     int64_t max_indices)
+{
   IndexT* indices_ptr = static_cast<IndexT*>(indices);
   std::experimental::reseed();
   for (int64_t i = 0; i < indice_desc.size; i++) {
@@ -27,8 +27,9 @@ void host_get_random_integer_indices(void* indices,
 }
 
 void host_random_init_integer_indices(void* indices,
-                              wholememory_array_description_t indices_desc,
-                              int64_t max_indices) {
+                                      wholememory_array_description_t indices_desc,
+                                      int64_t max_indices)
+{
   if (indices_desc.dtype == WHOLEMEMORY_DT_INT) {
     host_get_random_integer_indices<int>(indices, indices_desc, max_indices);
   } else {
@@ -37,12 +38,13 @@ void host_random_init_integer_indices(void* indices,
 }
 
 void SingleProcessMeasurePerformance(std::function<void()> cuda_fn,
-                        const PerformanceMeter& meter,
-                        std::function<void(cudaError_t)> check_fn) {
+                                     const PerformanceMeter& meter,
+                                     std::function<void(cudaError_t)> check_fn)
+{
   struct timeval tv_warmup_s;
   gettimeofday(&tv_warmup_s, nullptr);
-  int64_t target_warmup_time = 1000LL*1000LL*meter.warmup_seconds;
-  while(true) {
+  int64_t target_warmup_time = 1000LL * 1000LL * meter.warmup_seconds;
+  while (true) {
     struct timeval tv_warmup_c;
     gettimeofday(&tv_warmup_c, nullptr);
     int64_t time_warmup = TIME_DIFF_US(tv_warmup_s, tv_warmup_c);
@@ -52,7 +54,7 @@ void SingleProcessMeasurePerformance(std::function<void()> cuda_fn,
   }
   check_fn(cudaDeviceSynchronize());
   struct timeval tv_run_s, tv_run_e;
-  int64_t max_run_us = 1000LL*1000LL*meter.max_run_seconds;
+  int64_t max_run_us = 1000LL * 1000LL * meter.max_run_seconds;
   gettimeofday(&tv_run_s, nullptr);
   int real_run_count = 0;
   for (int i = 0; i < meter.run_count; i++) {
@@ -62,9 +64,7 @@ void SingleProcessMeasurePerformance(std::function<void()> cuda_fn,
     gettimeofday(&tv_run_c, nullptr);
     int64_t time_run_used = TIME_DIFF_US(tv_run_s, tv_run_c);
     if (time_run_used >= max_run_us || real_run_count >= meter.run_count) break;
-    if (meter.sync) {
-      check_fn(cudaDeviceSynchronize());
-    }
+    if (meter.sync) { check_fn(cudaDeviceSynchronize()); }
   }
   check_fn(cudaDeviceSynchronize());
   gettimeofday(&tv_run_e, nullptr);
@@ -82,21 +82,25 @@ void SingleProcessMeasurePerformance(std::function<void()> cuda_fn,
       metric_value /= single_run_time_us;
       metric_value *= 1e6;
     }
-    fprintf(stderr, "== Metric: %20s: %10.2f %8s\n",
-            meter.metrics_[i].name.c_str(), metric_value, meter.metrics_[i].unit.c_str());
+    fprintf(stderr,
+            "== Metric: %20s: %10.2f %8s\n",
+            meter.metrics_[i].name.c_str(),
+            metric_value,
+            meter.metrics_[i].unit.c_str());
   }
 }
 
-void MultiProcessMeasurePerformance(std::function<void()> run_fn, 
+void MultiProcessMeasurePerformance(std::function<void()> run_fn,
                                     wholememory_comm_t& wm_comm,
-                                    const PerformanceMeter& meter, 
-                                    const std::function<void()>& barrier_fn) {
+                                    const PerformanceMeter& meter,
+                                    const std::function<void()>& barrier_fn)
+{
   barrier_fn();
-  //warm up
+  // warm up
   struct timeval tv_warmup_s;
   gettimeofday(&tv_warmup_s, nullptr);
-  int64_t target_warmup_time = 1000LL*1000LL*meter.warmup_seconds;
-  while(true) {
+  int64_t target_warmup_time = 1000LL * 1000LL * meter.warmup_seconds;
+  while (true) {
     struct timeval tv_warmup_c;
     gettimeofday(&tv_warmup_c, nullptr);
     int64_t time_warmup = TIME_DIFF_US(tv_warmup_s, tv_warmup_c);
@@ -107,9 +111,9 @@ void MultiProcessMeasurePerformance(std::function<void()> run_fn,
   WHOLEMEMORY_CHECK_NOTHROW(cudaDeviceSynchronize() == cudaSuccess);
   barrier_fn();
 
-  //run
+  // run
   struct timeval tv_run_s, tv_run_e;
-  int64_t max_run_us = 1000LL*1000LL*meter.max_run_seconds;
+  int64_t max_run_us = 1000LL * 1000LL * meter.max_run_seconds;
   gettimeofday(&tv_run_s, nullptr);
   int real_run_count = 0;
   for (int i = 0; i < meter.run_count; i++) {
@@ -119,9 +123,7 @@ void MultiProcessMeasurePerformance(std::function<void()> run_fn,
     gettimeofday(&tv_run_c, nullptr);
     int64_t time_run_used = TIME_DIFF_US(tv_run_s, tv_run_c);
     if (time_run_used >= max_run_us || real_run_count >= meter.run_count) break;
-    if (meter.sync) {
-      WHOLEMEMORY_CHECK_NOTHROW(cudaDeviceSynchronize() == cudaSuccess);
-    }
+    if (meter.sync) { WHOLEMEMORY_CHECK_NOTHROW(cudaDeviceSynchronize() == cudaSuccess); }
   }
   WHOLEMEMORY_CHECK_NOTHROW(cudaDeviceSynchronize() == cudaSuccess);
   gettimeofday(&tv_run_e, nullptr);
@@ -144,19 +146,25 @@ void MultiProcessMeasurePerformance(std::function<void()> run_fn,
     wm_comm->host_allgather(&metric_value, recv_vec.data(), 1, WHOLEMEMORY_DT_DOUBLE);
     double min_metric, max_metric, avg_metric;
     min_metric = max_metric = recv_vec[0];
-    avg_metric = 0.0;
+    avg_metric              = 0.0;
     for (int j = 0; j < wm_comm->world_size; j++) {
-        min_metric = std::min(min_metric, recv_vec[j]);
-        max_metric = std::max(max_metric, recv_vec[j]);
-        avg_metric += recv_vec[j];
+      min_metric = std::min(min_metric, recv_vec[j]);
+      max_metric = std::max(max_metric, recv_vec[j]);
+      avg_metric += recv_vec[j];
     }
     avg_metric /= wm_comm->world_size;
     if (wm_comm->world_rank == 0) {
-        fprintf(stderr, "== Metric: %20s:  min=%.2lf %s,, max=%.2lf %s,, avg=%.2lf %s\n",
-           meter.metrics_[i].name.c_str(), min_metric, meter.metrics_[i].unit.c_str(), max_metric, meter.metrics_[i].unit.c_str(), avg_metric, meter.metrics_[i].unit.c_str());
+      fprintf(stderr,
+              "== Metric: %20s:  min=%.2lf %s,, max=%.2lf %s,, avg=%.2lf %s\n",
+              meter.metrics_[i].name.c_str(),
+              min_metric,
+              meter.metrics_[i].unit.c_str(),
+              max_metric,
+              meter.metrics_[i].unit.c_str(),
+              avg_metric,
+              meter.metrics_[i].unit.c_str());
     }
   }
 }
 
-
-} // namespace wholegraph::bench
+}  // namespace wholegraph::bench

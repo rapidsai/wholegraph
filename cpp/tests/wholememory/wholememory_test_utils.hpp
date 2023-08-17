@@ -23,12 +23,15 @@ wholememory_comm_t create_communicator_by_pipes(const std::vector<std::array<int
                                                 int world_size)
 {
   wholememory_unique_id_t unique_id;
-  if (rank == 0) { WHOLEMEMORY_CHECK(wholememory::create_unique_id(&unique_id) == WHOLEMEMORY_SUCCESS); }
+  if (rank == 0) {
+    WHOLEMEMORY_CHECK(wholememory::create_unique_id(&unique_id) == WHOLEMEMORY_SUCCESS);
+  }
 
   PipeBroadcast(rank, world_size, 0, pipes, &unique_id);
 
   wholememory_comm_t wm_comm;
-  WHOLEMEMORY_CHECK(wholememory::create_communicator(&wm_comm, unique_id, rank, world_size) == WHOLEMEMORY_SUCCESS);
+  WHOLEMEMORY_CHECK(wholememory::create_communicator(&wm_comm, unique_id, rank, world_size) ==
+                    WHOLEMEMORY_SUCCESS);
   return wm_comm;
 }
 
@@ -53,6 +56,7 @@ wholememory_comm_t create_group_communicator_by_pipes(const std::vector<std::arr
   }
 
   wholememory_comm_t wm_comm;
-  WHOLEMEMORY_CHECK(wholememory::create_communicator(&wm_comm, unique_id, group_rank, group_size) == WHOLEMEMORY_SUCCESS);
+  WHOLEMEMORY_CHECK(wholememory::create_communicator(&wm_comm, unique_id, group_rank, group_size) ==
+                    WHOLEMEMORY_SUCCESS);
   return wm_comm;
 }
