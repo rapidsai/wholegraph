@@ -248,8 +248,8 @@ class CachedAllocator {
     host_chunked_mem_pool_   = std::make_unique<HostChunkedMemoryPool>();
   }
   ~CachedAllocator() {}
-  CachedAllocator(const CachedAllocator& ca);
-  const CachedAllocator& operator=(const CachedAllocator& ca);
+  CachedAllocator(const CachedAllocator& ca) = delete;
+  const CachedAllocator& operator=(const CachedAllocator& ca) = delete;
 
   static CachedAllocator ca_inst_;
   std::vector<std::unique_ptr<DeviceChunkedMemoryPool>> device_chunked_mem_pools_;
