@@ -121,6 +121,7 @@ class ChunkedMemoryPool {
 };
 static size_t GetChunkIndex(size_t size)
 {
+  if (size == 0) return 0;
   int power           = 0;
   size_t shifted_size = size;
   while (shifted_size) {
@@ -128,9 +129,9 @@ static size_t GetChunkIndex(size_t size)
     power++;
   }
   if ((size & (size - 1)) == 0) {
-    return power;
+    return power - 1;
   } else {
-    return power + 1;
+    return power;
   }
 }
 ChunkedMemoryPool::ChunkedMemoryPool()
@@ -306,6 +307,8 @@ void* cached_malloc_func(wholememory_tensor_description_t* tensor_description,
   auto* default_memory_context = static_cast<default_memory_context_t*>(memory_context);
   void* ptr                    = nullptr;
   CachedAllocator* cached_inst = CachedAllocator::GetInst();
+  int devid;
+  WM_CUDA_CHECK(cudaGetDevice((&devid)));
   try {
     if (memory_allocation_type == WHOLEMEMORY_MA_HOST) {
       ptr = cached_inst->MallocHost(wholememory_get_memory_size_from_tensor(tensor_description));
