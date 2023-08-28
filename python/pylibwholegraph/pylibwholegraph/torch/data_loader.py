@@ -81,7 +81,6 @@ def get_train_dataloader(
         batch_size=batch_size,
         num_workers=num_workers,
         pin_memory=True,
-        prefetch_factor=8 if num_workers > 0 else None,
         persistent_workers=True if num_workers > 0 else None,
         sampler=train_sampler,
     )
