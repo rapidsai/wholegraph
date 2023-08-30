@@ -497,7 +497,9 @@ class global_mapped_host_wholememory_impl : public wholememory_impl {
       nullptr, alloc_strategy_.total_alloc_size, PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0);
     WHOLEMEMORY_CHECK(mmap_ptr != (void*)-1);
 #endif
-    memset(mmap_ptr, 0, alloc_strategy_.total_alloc_size);
+    memset(static_cast<char*>(mmap_ptr) + rank_partition_strategy_.local_mem_offset,
+           0,
+           rank_partition_strategy_.local_mem_size);
     WM_CUDA_CHECK_NO_THROW(
       cudaHostRegister(mmap_ptr, alloc_strategy_.total_alloc_size, cudaHostRegisterDefault));
 #ifndef USE_SYSTEMV_SHM
