@@ -212,6 +212,8 @@ if hasArg clean; then
     find ${REPODIR}/python/pylibwholegraph -name "*.cpython*.so" -type f -delete
 
     # remove docs build
+    rm -rf ${REPODIR}/cpp/html
+    rm -rf ${REPODIR}/cpp/xml
     cd ${REPODIR}/docs/wholegraph
     make BUILDDIR=${DOCS_BUILD_DIR} clean
     rm -rf ${REPODIR}/docs/wholegraph/_xml
@@ -303,13 +305,13 @@ if hasArg docs; then
               ${CMAKE_GENERATOR_OPTION} \
               ${CMAKE_VERBOSE_OPTION}
     fi
-    cd ${LIBWHOLEGRAPH_BUILD_DIR}
+    cd ${REPODIR}/cpp
     cmake --build "${LIBWHOLEGRAPH_BUILD_DIR}" -j${PARALLEL_LEVEL} --target doxygen ${VERBOSE_FLAG}
     mkdir -p ${REPODIR}/docs/wholegraph/_html/doxygen_docs/libwholegraph/html
-    mv ${LIBWHOLEGRAPH_BUILD_DIR}/html/* ${REPODIR}/docs/wholegraph/_html/doxygen_docs/libwholegraph/html
+    mv ${REPODIR}/cpp/html/* ${REPODIR}/docs/wholegraph/_html/doxygen_docs/libwholegraph/html
     mkdir -p ${REPODIR}/docs/wholegraph/_xml
     # _xml is used for sphinx breathe project
-    mv ${LIBWHOLEGRAPH_BUILD_DIR}/xml/* "${REPODIR}/docs/wholegraph/_xml"
+    mv ${REPODIR}/cpp/xml/* "${REPODIR}/docs/wholegraph/_xml"
     cd ${REPODIR}/docs/wholegraph
     PYTHONPATH=${REPODIR}/python/pylibwholegraph:${PYTHONPATH} make BUILDDIR=${DOCS_BUILD_DIR} html
     mv ${REPODIR}/docs/wholegraph/_html/doxygen_docs ${REPODIR}/docs/wholegraph/${DOCS_BUILD_DIR}/html/
