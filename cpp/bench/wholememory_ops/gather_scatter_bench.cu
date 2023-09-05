@@ -220,11 +220,12 @@ void gather_scatter_benchmark(GatherScatterBenchParam& params)
       wholememory_tensor_t embedding_tensor;
       wholememory_tensor_description_t embedding_tensor_desc;
       wholememory_copy_matrix_desc_to_tensor(&embedding_tensor_desc, &embedding_desc);
-      WHOLEMEMORY_CHECK_NOTHROW(wholememory_create_tensor(&embedding_tensor, 
+      WHOLEMEMORY_CHECK_NOTHROW(wholememory_create_tensor(&embedding_tensor,
                                                           &embedding_tensor_desc,
-                                                          wm_comm, 
+                                                          wm_comm,
                                                           params.get_memory_type(),
-                                                          params.get_memory_location()) == WHOLEMEMORY_SUCCESS);
+                                                          params.get_memory_location()) ==
+                                WHOLEMEMORY_SUCCESS);
 
       cudaStream_t stream;
       WM_CUDA_CHECK_NO_THROW(cudaStreamCreate(&stream));
