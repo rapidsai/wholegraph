@@ -100,13 +100,6 @@ struct PerformanceMeter {
   std::string name;
 };
 
-void SingleProcessMeasurePerformance(
-  std::function<void()> cuda_fn,
-  const PerformanceMeter& meter,
-  std::function<void(cudaError_t)> check_fn = [](cudaError_t e) {
-    WHOLEMEMORY_CHECK_NOTHROW(e == cudaSuccess);
-  });
-
 void MultiProcessMeasurePerformance(std::function<void()> run_fn,
                                     wholememory_comm_t& wm_comm,
                                     const PerformanceMeter& meter,

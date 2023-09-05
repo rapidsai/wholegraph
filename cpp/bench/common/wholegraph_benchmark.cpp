@@ -37,59 +37,6 @@ void host_random_init_integer_indices(void* indices,
   }
 }
 
-void SingleProcessMeasurePerformance(std::function<void()> cuda_fn,
-                                     const PerformanceMeter& meter,
-                                     std::function<void(cudaError_t)> check_fn)
-{
-  struct timeval tv_warmup_s;
-  gettimeofday(&tv_warmup_s, nullptr);
-  int64_t target_warmup_time = 1000LL * 1000LL * meter.warmup_seconds;
-  while (true) {
-    struct timeval tv_warmup_c;
-    gettimeofday(&tv_warmup_c, nullptr);
-    int64_t time_warmup = TIME_DIFF_US(tv_warmup_s, tv_warmup_c);
-    if (time_warmup >= target_warmup_time) break;
-    cuda_fn();
-    check_fn(cudaDeviceSynchronize());
-  }
-  check_fn(cudaDeviceSynchronize());
-  struct timeval tv_run_s, tv_run_e;
-  int64_t max_run_us = 1000LL * 1000LL * meter.max_run_seconds;
-  gettimeofday(&tv_run_s, nullptr);
-  int real_run_count = 0;
-  for (int i = 0; i < meter.run_count; i++) {
-    cuda_fn();
-    real_run_count++;
-    struct timeval tv_run_c;
-    gettimeofday(&tv_run_c, nullptr);
-    int64_t time_run_used = TIME_DIFF_US(tv_run_s, tv_run_c);
-    if (time_run_used >= max_run_us || real_run_count >= meter.run_count) break;
-    if (meter.sync) { check_fn(cudaDeviceSynchronize()); }
-  }
-  check_fn(cudaDeviceSynchronize());
-  gettimeofday(&tv_run_e, nullptr);
-  int64_t real_time_used_us = TIME_DIFF_US(tv_run_s, tv_run_e);
-  double single_run_time_us = real_time_used_us;
-  single_run_time_us /= real_run_count;
-
-  fprintf(stderr, "%s single run time %.2f us\n", meter.name.c_str(), single_run_time_us);
-  for (size_t i = 0; i < meter.metrics_.size(); i++) {
-    double metric_value = meter.metrics_[i].value;
-    if (meter.metrics_[i].invert) {
-      metric_value *= single_run_time_us;
-      metric_value /= 1e6;
-    } else {
-      metric_value /= single_run_time_us;
-      metric_value *= 1e6;
-    }
-    fprintf(stderr,
-            "== Metric: %20s: %10.2f %8s\n",
-            meter.metrics_[i].name.c_str(),
-            metric_value,
-            meter.metrics_[i].unit.c_str());
-  }
-}
-
 void MultiProcessMeasurePerformance(std::function<void()> run_fn,
                                     wholememory_comm_t& wm_comm,
                                     const PerformanceMeter& meter,

@@ -216,13 +216,15 @@ void gather_scatter_benchmark(GatherScatterBenchParam& params)
       auto output_desc            = params.get_output_desc();
       std::string test_type       = params.get_test_type();
       size_t embedding_entry_size = params.get_embedding_granularity();
-      wholememory_handle_t embedding_handle;
-      WHOLEMEMORY_CHECK_NOTHROW(wholememory_malloc(&embedding_handle,
-                                                   params.get_embedding_table_size(),
-                                                   wm_comm,
-                                                   params.get_memory_type(),
-                                                   params.get_memory_location(),
-                                                   embedding_entry_size) == WHOLEMEMORY_SUCCESS);
+
+      wholememory_tensor_t embedding_tensor;
+      wholememory_tensor_description_t embedding_tensor_desc;
+      wholememory_copy_matrix_desc_to_tensor(&embedding_tensor_desc, &embedding_desc);
+      WHOLEMEMORY_CHECK_NOTHROW(wholememory_create_tensor(&embedding_tensor, 
+                                                          &embedding_tensor_desc,
+                                                          wm_comm, 
+                                                          params.get_memory_type(),
+                                                          params.get_memory_location()) == WHOLEMEMORY_SUCCESS);
 
       cudaStream_t stream;
       WM_CUDA_CHECK_NO_THROW(cudaStreamCreate(&stream));
@@ -245,13 +247,6 @@ void gather_scatter_benchmark(GatherScatterBenchParam& params)
                                              stream));
       WM_CUDA_CHECK_NO_THROW(cudaStreamSynchronize(stream));
       WHOLEMEMORY_CHECK_NOTHROW(wholememory_communicator_barrier(wm_comm) == WHOLEMEMORY_SUCCESS);
-
-      wholememory_tensor_t embedding_tensor;
-      wholememory_tensor_description_t embedding_tensor_desc;
-      wholememory_copy_matrix_desc_to_tensor(&embedding_tensor_desc, &embedding_desc);
-      WHOLEMEMORY_CHECK_NOTHROW(wholememory_make_tensor_from_handle(
-                                  &embedding_tensor, embedding_handle, &embedding_tensor_desc) ==
-                                WHOLEMEMORY_SUCCESS);
 
       wholememory_tensor_t indices_tensor, output_tensor;
       wholememory_tensor_description_t indices_tensor_desc, output_tensor_desc;
@@ -331,8 +326,6 @@ void gather_scatter_benchmark(GatherScatterBenchParam& params)
 
       WHOLEMEMORY_CHECK_NOTHROW(wholememory_destroy_tensor(embedding_tensor) ==
                                 WHOLEMEMORY_SUCCESS);
-
-      WHOLEMEMORY_CHECK_NOTHROW(wholememory_free(embedding_handle) == WHOLEMEMORY_SUCCESS);
 
       WHOLEMEMORY_CHECK_NOTHROW(wholememory::destroy_all_communicators() == WHOLEMEMORY_SUCCESS);
 
