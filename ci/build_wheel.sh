@@ -21,9 +21,8 @@ PACKAGE_CUDA_SUFFIX="-${RAPIDS_PY_CUDA_SUFFIX}"
 
 # Patch project metadata files to include the CUDA version suffix and version override.
 pyproject_file="${package_dir}/pyproject.toml"
-internal_pyproject_file="${package_dir}_internal/pyproject.toml"
 
-sed -i "s/^version = .*/version = \"${version_override}\"/g" ${pyproject_file} ${internal_pyproject_file}
+sed -i "s/^version = .*/version = \"${version_override}\"/g" ${pyproject_file}
 sed -i "s/name = \"${package_name}\"/name = \"${package_name}${PACKAGE_CUDA_SUFFIX}\"/g" ${pyproject_file}
 
 # For nightlies we want to ensure that we're pulling in alphas as well. The
