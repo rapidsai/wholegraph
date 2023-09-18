@@ -150,26 +150,19 @@ def create_sub_graph(
         return edge_index
     elif framework_name == "dgl":
         if add_self_loop:
-            self_loop_ids = torch.arange(
-                0,
-                target_gid_1.numel(),
-                dtype=edge_data[0].dtype,
-                device=target_gid.device,
-            )
-            block = dgl.create_block(
+            csr_row_ptr, csr_col_ind = add_csr_self_loop(csr_row_ptr, csr_col_ind)
+        block = dgl.create_block(
+            (
+                'csc',
                 (
-                    torch.cat([edge_data[0], self_loop_ids]),
-                    torch.cat([edge_data[1], self_loop_ids]),
+                    csr_row_ptr,
+                    csr_col_ind,
+                    torch.empty(0, dtype=torch.int),
                 ),
-                num_src_nodes=target_gid.size(0),
-                num_dst_nodes=target_gid_1.size(0),
-            )
-        else:
-            block = dgl.create_block(
-                (edge_data[0], edge_data[1]),
-                num_src_nodes=target_gid.size(0),
-                num_dst_nodes=target_gid_1.size(0),
-            )
+            ),
+            num_src_nodes=target_gid.size(0),
+            num_dst_nodes=target_gid_1.size(0),
+        )
         return block
     elif framework_name == "cugraph":
         if add_self_loop:
@@ -224,9 +217,11 @@ class HomoGNNModel(torch.nn.Module):
         self.gather_fn = WholeMemoryEmbeddingModule(self.node_embedding)
         self.dropout = options.dropout
         self.max_neighbors = parse_max_neighbors(options.layernum, options.neighbors)
+        self.max_inference_neighbors = parse_max_neighbors(options.layernum, options.inferencesample)
 
     def forward(self, ids):
         global framework_name
+        max_neighbors = self.max_neighbors if self.training else self.max_inference_neighbors
         ids = ids.to(self.graph_structure.csr_col_ind.dtype).cuda()
         (
             target_gids,
@@ -234,7 +229,7 @@ class HomoGNNModel(torch.nn.Module):
             csr_row_ptrs,
             csr_col_inds,
         ) = self.graph_structure.multilayer_sample_without_replacement(
-            ids, self.max_neighbors
+            ids, max_neighbors
         )
         x_feat = self.gather_fn(target_gids[0])
         for i in range(self.num_layer):
@@ -245,7 +240,7 @@ class HomoGNNModel(torch.nn.Module):
                 edge_indice[i],
                 csr_row_ptrs[i],
                 csr_col_inds[i],
-                self.max_neighbors[i],
+                max_neighbors[self.num_layer - 1 - i],
                 self.add_self_loop,
             )
             x_feat = layer_forward(
