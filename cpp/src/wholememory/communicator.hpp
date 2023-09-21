@@ -213,6 +213,9 @@ struct wholememory_comm_ {
 
   std::mutex mu;
   std::map<int, wholememory_handle_t> wholememory_map;
+#ifdef WITH_NVSHMEM_SUPPORT
+  bool bind_to_nvshmem=false;
+#endif
 } __attribute__((aligned(64)));
 
 template <typename TypeT>
@@ -272,5 +275,12 @@ bool is_intranode_communicator(wholememory_comm_t comm) noexcept;
 std::string get_temporary_directory_path(wholememory_comm_t comm);
 
 std::string get_shm_prefix(wholememory_comm_t comm);
+
+#ifdef WITH_NVSHMEM_SUPPORT
+wholememory_error_code_t init_nvshmem_with_comm(wholememory_comm_t comm) noexcept; 
+
+wholememory_error_code_t finalize_nvshmem(wholememory_comm_t comm) noexcept;
+
+#endif 
 
 }  // namespace wholememory

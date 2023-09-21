@@ -132,7 +132,12 @@ TEST_P(WholeMemoryScatterParameterTests, ScatterTest)
     EXPECT_EQ(cudaSetDevice(world_rank), cudaSuccess);
 
     wholememory_comm_t wm_comm = create_communicator_by_pipes(pipes, world_rank, world_size);
+#ifdef WITH_NVSHMEM_SUPPORT
 
+    if (params.memory_type == WHOLEMEMORY_MT_NVSHMEM) {
+      EXPECT_EQ(wholememory_init_nvshmem_with_comm(wm_comm), WHOLEMEMORY_SUCCESS);
+    }
+#endif
     wholememory_handle_t embedding_handle;
     auto embedding_desc         = params.get_embedding_desc();
     auto indices_desc           = params.get_indices_desc();
@@ -254,6 +259,12 @@ TEST_P(WholeMemoryScatterParameterTests, ScatterTest)
 
     EXPECT_EQ(wholememory_free(embedding_handle), WHOLEMEMORY_SUCCESS);
 
+#ifdef WITH_NVSHMEM_SUPPORT
+
+    if (params.memory_type == WHOLEMEMORY_MT_NVSHMEM) {
+      EXPECT_EQ(wholememory_finalize_nvshmem(wm_comm), WHOLEMEMORY_SUCCESS);
+    }
+#endif
     EXPECT_EQ(wholememory::destroy_all_communicators(), WHOLEMEMORY_SUCCESS);
 
     EXPECT_EQ(wholememory_finalize(), WHOLEMEMORY_SUCCESS);
@@ -375,4 +386,37 @@ INSTANTIATE_TEST_SUITE_P(
       .set_embedding_type(WHOLEMEMORY_DT_HALF)
       .set_embedding_stride(33),
 #endif
-    WholeMemoryScatterTestParam().set_memory_type(WHOLEMEMORY_MT_DISTRIBUTED)));
+    WholeMemoryScatterTestParam().set_memory_type(WHOLEMEMORY_MT_DISTRIBUTED)
+#ifdef WITH_NVSHMEM_SUPPORT
+      ,
+    WholeMemoryScatterTestParam().set_memory_type(WHOLEMEMORY_MT_NVSHMEM),
+    WholeMemoryScatterTestParam().set_memory_type(WHOLEMEMORY_MT_NVSHMEM).set_indices_count(0),
+    WholeMemoryScatterTestParam().set_memory_type(WHOLEMEMORY_MT_NVSHMEM).set_embedding_dim(128),
+    WholeMemoryScatterTestParam()
+      .set_memory_type(WHOLEMEMORY_MT_NVSHMEM)
+      .set_embedding_dim(11)
+      .set_indices_count(100005),
+    WholeMemoryScatterTestParam().set_memory_type(WHOLEMEMORY_MT_NVSHMEM).set_embedding_dim(127),
+    WholeMemoryScatterTestParam().set_memory_type(WHOLEMEMORY_MT_NVSHMEM).set_embedding_dim(129),
+    WholeMemoryScatterTestParam().set_memory_type(WHOLEMEMORY_MT_NVSHMEM).set_embedding_dim(513),
+    WholeMemoryScatterTestParam()
+      .set_memory_type(WHOLEMEMORY_MT_NVSHMEM)
+      .set_embedding_type(WHOLEMEMORY_DT_HALF),
+    WholeMemoryScatterTestParam()
+      .set_memory_type(WHOLEMEMORY_MT_NVSHMEM)
+      .set_embedding_type(WHOLEMEMORY_DT_HALF),
+    WholeMemoryScatterTestParam()
+      .set_memory_type(WHOLEMEMORY_MT_NVSHMEM)
+      .set_embedding_type(WHOLEMEMORY_DT_HALF)
+      .set_input_type(WHOLEMEMORY_DT_HALF),
+    WholeMemoryScatterTestParam()
+      .set_memory_type(WHOLEMEMORY_MT_NVSHMEM)
+      .set_indices_type(WHOLEMEMORY_DT_INT64),
+    WholeMemoryScatterTestParam().set_memory_type(WHOLEMEMORY_MT_NVSHMEM).set_embedding_stride(33),
+    WholeMemoryScatterTestParam().set_memory_type(WHOLEMEMORY_MT_NVSHMEM).set_input_stride(33),
+    WholeMemoryScatterTestParam()
+      .set_memory_type(WHOLEMEMORY_MT_NVSHMEM)
+      .set_embedding_type(WHOLEMEMORY_DT_HALF)
+      .set_embedding_stride(33)
+#endif
+      ));

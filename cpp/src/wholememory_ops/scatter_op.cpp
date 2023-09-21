@@ -89,6 +89,20 @@ wholememory_error_code_t wholememory_scatter(wholememory_tensor_t input_tensor,
       static_cast<cudaStream_t>(stream));
   }
 
+#ifdef WITH_NVSHMEM_SUPPORT
+  if (has_handle && memory_type == WHOLEMEMORY_MT_NVSHMEM) {
+    return wholememory_ops::wholememory_scatter_nvshmem(
+      input,
+      input_desc,
+      indices,
+      indices_desc,
+      wholememory_tensor_get_memory_handle(wholememory_tensor),
+      matrix_description,
+      p_env_fns,
+      static_cast<cudaStream_t>(stream));
+  }
+#endif
+
   WHOLEMEMORY_EXPECTS_NOTHROW(!has_handle || memory_type == WHOLEMEMORY_MT_CHUNKED ||
                                 memory_type == WHOLEMEMORY_MT_CONTINUOUS,
                               "Memory type not supported.");

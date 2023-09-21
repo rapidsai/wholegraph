@@ -30,6 +30,13 @@
 #include "memory_handle.hpp"
 #include "wholememory/nccl_comms.hpp"
 
+#ifdef WITH_NVSHMEM_SUPPORT
+
+#include "nvshmem.h"
+#include "nvshmemx.h"
+
+#endif
+
 wholememory_comm_::wholememory_comm_(ncclComm_t nccl_comm,
                                      int num_ranks,
                                      int rank,
@@ -346,6 +353,10 @@ namespace wholememory {
 static std::mutex comm_mu;
 static std::map<int, wholememory_comm_t> communicator_map;
 
+#ifdef WITH_NVSHMEM_SUPPORT
+static bool nvshmem_has_initalized = false;
+#endif
+
 enum wm_comm_op : int32_t {
   WM_COMM_OP_STARTING = 0xEEC0EE,
   WM_COMM_OP_EXCHANGE_ID,
@@ -635,6 +646,11 @@ wholememory_error_code_t destroy_communicator_locked(wholememory_comm_t comm) no
     if (communicator_map.find(comm->comm_id) == communicator_map.end()) {
       return WHOLEMEMORY_INVALID_INPUT;
     }
+#ifdef WITH_NVSHMEM_SUPPORT
+
+    WHOLEMEMORY_EXPECTS(comm->bind_to_nvshmem == false,
+                        "Please finalize nvshmem before destroy the communicator.");
+#endif
     destroy_all_wholememory(comm);
     WM_COMM_CHECK_ALL_SAME(comm, WM_COMM_OP_DESTROY_COMM);
     communicator_map.erase(comm->comm_id);
@@ -707,4 +723,111 @@ bool is_intranode_communicator(wholememory_comm_t comm) noexcept
   return comm->intra_node_rank_num == comm->world_size;
 }
 
+#ifdef WITH_NVSHMEM_SUPPORT
+wholememory_error_code_t init_nvshmem_with_comm(wholememory_comm_t comm) noexcept
+{
+  try {
+    std::unique_lock<std::mutex> mlock(comm_mu);
+    WHOLEMEMORY_CHECK(comm != nullptr);
+
+    WM_COMM_CHECK_ALL_SAME(comm, nvshmem_has_initalized);
+
+    WHOLEMEMORY_EXPECTS(nvshmem_has_initalized == false,
+                        "A wholememory_comm_t has been used to init nvshmem. To init nvshmem with "
+                        "other wholememory_coomm_t, call finalize_nvshmem first.");
+    WHOLEMEMORY_EXPECTS(comm->bind_to_nvshmem == false,
+                        "The wholememory_comm has been used to init nvshmem.");
+
+    auto set_env_if_not_exist = [](std::string_view env_name, std::string_view value) {
+      if (getenv(env_name.data()) == nullptr || strcmp(getenv(env_name.data()), "") == 0) {
+        setenv(env_name.data(), value.data(), 1);
+      }
+      if (strcmp(getenv(env_name.data()), value.data()) != 0) {
+        WHOLEMEMORY_WARN("When using wholegraph, the environment variable %s is best set to %s",
+                         env_name.data(),
+                         value.data());
+      }
+    };
+    set_env_if_not_exist("NVSHMEM_BOOTSTRAP", "mpi");
+    set_env_if_not_exist("NVSHMEM_BOOTSTRAP_MPI_PLUGIN", "libnvshmem_wholememory_bootstrap.so");
+    nvshmemx_init_attr_t attr;
+    attr.mpi_comm = &comm;
+    nvshmemx_init_attr(NVSHMEMX_INIT_WITH_MPI_COMM, &attr);
+    WHOLEMEMORY_CHECK(nvshmem_my_pe() == comm->world_rank);
+    WHOLEMEMORY_CHECK(nvshmem_n_pes() == comm->world_size);
+    nvshmem_has_initalized = true;
+    comm->bind_to_nvshmem  = true;
+
+    return WHOLEMEMORY_SUCCESS;
+
+  } catch (const wholememory::logic_error& wle) {
+    WHOLEMEMORY_FAIL_NOTHROW("%s", wle.what());
+  } catch (const wholememory::cuda_error& wce) {
+    WHOLEMEMORY_FAIL_NOTHROW("%s", wce.what());
+  } catch (const raft::exception& re) {
+    WHOLEMEMORY_FAIL_NOTHROW("%s", re.what());
+  } catch (...) {
+    WHOLEMEMORY_FAIL_NOTHROW("Unknown exception.");
+  }
+}
+void destroy_wholememory_with_nvshmem_comm(wholememory_comm_t comm) noexcept
+{
+  try {
+    std::unique_lock<std::mutex> mlock(comm->mu);
+    WM_COMM_CHECK_ALL_SAME(comm, WM_COMM_OP_DESTROY_ALL_HANDLES);
+    WM_COMM_CHECK_ALL_SAME(comm, comm->wholememory_map.size());
+    for (auto id_wm = comm->wholememory_map.begin(); id_wm != comm->wholememory_map.end();) {
+      // while
+      if (wholememory_get_memory_type(id_wm->second) != WHOLEMEMORY_MT_NVSHMEM) {
+        id_wm++;
+        continue;
+      }
+      if (wholememory_get_memory_type(id_wm->second) == WHOLEMEMORY_MT_NVSHMEM) {
+        destroy_wholememory_with_comm_locked(id_wm->second);
+        id_wm = comm->wholememory_map.begin();
+      }
+    }
+  } catch (const wholememory::logic_error& wle) {
+    WHOLEMEMORY_FAIL_NOTHROW("%s", wle.what());
+  } catch (const wholememory::cuda_error& wce) {
+    WHOLEMEMORY_FAIL_NOTHROW("%s", wce.what());
+  } catch (const raft::exception& re) {
+    WHOLEMEMORY_FAIL_NOTHROW("%s", re.what());
+  } catch (...) {
+    WHOLEMEMORY_FAIL_NOTHROW("Unknown exception.");
+  }
+}
+
+wholememory_error_code_t finalize_nvshmem(wholememory_comm_t comm) noexcept
+{
+  try {
+    std::unique_lock<std::mutex> mlock(comm_mu);
+    WHOLEMEMORY_CHECK(comm != nullptr);
+
+    WM_COMM_CHECK_ALL_SAME(comm, nvshmem_has_initalized);
+    WHOLEMEMORY_EXPECTS(comm->bind_to_nvshmem == true,
+                        "The wholememory_comm_t must be the one previously used to init nvshmem.");
+    WHOLEMEMORY_EXPECTS(
+      nvshmem_has_initalized == true,
+      "To call finalize_nvshmem,please use wholememory_comm_t to init nvshmem first.");
+    destroy_wholememory_with_nvshmem_comm(comm);
+    // destroy all memory allocated by nvshmem
+    nvshmem_finalize();
+    nvshmemi_is_nvshmem_bootstrapped = false;  // so we can bootstrap again.
+    nvshmem_has_initalized           = false;
+    comm->bind_to_nvshmem            = false;
+    return WHOLEMEMORY_SUCCESS;
+
+  } catch (const wholememory::logic_error& wle) {
+    WHOLEMEMORY_FAIL_NOTHROW("%s", wle.what());
+  } catch (const wholememory::cuda_error& wce) {
+    WHOLEMEMORY_FAIL_NOTHROW("%s", wce.what());
+  } catch (const raft::exception& re) {
+    WHOLEMEMORY_FAIL_NOTHROW("%s", re.what());
+  } catch (...) {
+    WHOLEMEMORY_FAIL_NOTHROW("Unknown exception.");
+  }
+}
+
+#endif
 }  // namespace wholememory

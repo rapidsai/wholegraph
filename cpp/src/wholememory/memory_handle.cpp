@@ -33,6 +33,13 @@
 #include "integer_utils.hpp"
 #include "logger.hpp"
 
+#ifdef WITH_NVSHMEM_SUPPORT
+
+#include "nvshmem.h"
+#include "nvshmemx.h"
+
+#endif
+
 namespace wholememory {
 
 enum wm_memory_op : int32_t {
@@ -1120,6 +1127,139 @@ class chunked_device_wholememory_impl : public wholememory_impl {
   wholememory_gref_t gref_;
 };
 
+#ifdef WITH_NVSHMEM_SUPPORT
+class nvshmem_device_wholememory_impl : public wholememory_impl {
+ public:
+  nvshmem_device_wholememory_impl(wholememory_handle_t wholememory_handle,
+                                  size_t total_size,
+                                  wholememory_comm_t comm,
+                                  wholememory_memory_type_t memory_type,
+                                  wholememory_memory_location_t memory_location,
+                                  size_t data_granularity)
+    : wholememory_impl(
+        wholememory_handle, total_size, comm, memory_type, memory_location, data_granularity)
+  {
+    WHOLEMEMORY_CHECK(type_ == WHOLEMEMORY_MT_NVSHMEM);
+    WHOLEMEMORY_CHECK(location_ == WHOLEMEMORY_ML_DEVICE);
+  }
+
+  void create_memory() override
+  {
+    each_rank_same_chunk_strategy();
+    generate_rank_partition_strategy();
+    nvshmem_malloc_device_memory();
+    register_nvshmem_device_memory();
+  }
+
+  void destroy_memory() noexcept override
+  {
+    unregister_nvshmem_device_memory();
+    nvshmem_free_device_memory();
+  }
+  // [[nodiscard]] wholememory_gref_t get_global_reference() const noexcept override { return gref_;
+  // }
+
+  bool contains_pointer(const void* ptr) const override
+  {
+    uint64_t int_ptr = reinterpret_cast<uint64_t>(ptr);
+    size_t acc_size  = 0;
+
+    // we should only handle address that can be accessed by p2p.
+    // TODO: here return true ? // or print warning info ...
+    for (int i = 0; i < comm_->world_size; i++) {
+      size_t mem_size_of_this_rank_and_after = total_size_ - acc_size;
+      size_t mem_size_for_current_rank =
+        std::min(mem_size_of_this_rank_and_after, rank_partition_strategy_.partition_mem_stride);
+      acc_size += mem_size_for_current_rank;
+      uint64_t int_start_ptr =
+        reinterpret_cast<uint64_t>(nvshmem_ptr(nvshmem_memory_handle_.local_alloc_mem_ptr, i));
+      if (int_start_ptr == 0) continue;
+      if (int_ptr >= int_start_ptr && int_ptr < int_start_ptr + mem_size_for_current_rank) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  bool get_rank_memory(void** rank_memory_ptr,
+                       size_t* rank_memory_size,
+                       size_t* rank_memory_offset,
+                       int rank) const noexcept override
+  {
+    size_t mem_size, mem_start;
+    get_rank_partition_info(&mem_size, &mem_start, rank);
+    void* peer_ptr = nvshmem_ptr(nvshmem_memory_handle_.local_alloc_mem_ptr, rank);
+    if (peer_ptr == nullptr) return false;
+
+    if (rank_memory_ptr != nullptr) *rank_memory_ptr = peer_ptr;
+    if (rank_memory_size != nullptr) *rank_memory_size = mem_size;
+    if (rank_memory_offset != nullptr) *rank_memory_offset = mem_start;
+    return true;
+  }
+
+ protected:
+  void register_nvshmem_device_memory()
+  {
+    std::unique_lock<std::mutex> vma_lock(wholememory_vma_mu);
+    size_t acc_size = 0;
+    for (int i = 0; i < comm_->world_size; i++) {
+      size_t mem_size_of_this_rank_and_after = total_size_ - acc_size;
+      size_t mem_size_for_current_rank =
+        std::min(mem_size_of_this_rank_and_after, rank_partition_strategy_.partition_mem_stride);
+      if (mem_size_for_current_rank > 0) {
+        void* ptr = nvshmem_ptr(nvshmem_memory_handle_.local_alloc_mem_ptr, i);
+        if (ptr != nullptr) {
+          register_wholememory_vma_range_locked(ptr, mem_size_for_current_rank, handle_);
+        }
+      }
+      acc_size += mem_size_for_current_rank;
+    }
+  }
+  void unregister_nvshmem_device_memory()
+  {
+    std::unique_lock<std::mutex> vma_lock(wholememory_vma_mu);
+    size_t acc_size = 0;
+    for (int i = 0; i < comm_->world_size; i++) {
+      size_t mem_size_of_this_rank_and_after = total_size_ - acc_size;
+      size_t mem_size_for_current_rank =
+        std::min(mem_size_of_this_rank_and_after, rank_partition_strategy_.partition_mem_stride);
+      if (mem_size_for_current_rank > 0) {
+        void* ptr = nvshmem_ptr(nvshmem_memory_handle_.local_alloc_mem_ptr, i);
+        if (ptr != nullptr) {
+          unregister_wholememory_vma_range_locked(ptr, mem_size_for_current_rank, handle_);
+        }
+      }
+      acc_size += mem_size_for_current_rank;
+    }
+  }
+  void nvshmem_malloc_device_memory()
+  {
+    WHOLEMEMORY_EXPECTS(
+      comm_->bind_to_nvshmem == true,
+      "nvshmem_malloc_device_memory  should be called with the comm which used to init nvshmem.");
+    size_t alloc_size                          = alloc_strategy_.local_alloc_size;
+    nvshmem_memory_handle_.local_alloc_mem_ptr = nvshmem_malloc(alloc_size);
+    // TODO: use nvshmem_malloc_aligment(); // alloc_strategy_alignment
+    // gref_.is_nvshmem                = true;
+    // gref_.stride                    = rank_partition_strategy_.partition_mem_stride;
+    local_partition_memory_pointer_ = nvshmem_memory_handle_.local_alloc_mem_ptr;
+  }
+
+  void nvshmem_free_device_memory()
+  {
+    if (nvshmem_memory_handle_.local_alloc_mem_ptr) {
+      nvshmem_free(nvshmem_memory_handle_.local_alloc_mem_ptr);
+
+      nvshmem_memory_handle_.local_alloc_mem_ptr = nullptr;
+    }
+  }
+
+  struct nvshmem_memory_handle {
+    void* local_alloc_mem_ptr = nullptr;
+  } nvshmem_memory_handle_;
+};
+#endif
+
 void wholememory_impl::generate_rank_partition_strategy()
 {
   size_t data_slot_count      = total_size_ / data_granularity_;
@@ -1278,6 +1418,11 @@ wholememory_error_code_t create_wholememory(wholememory_handle_t* wholememory_ha
     } else if (memory_type == WHOLEMEMORY_MT_CHUNKED) {
       whole_memory_handle->impl = new chunked_device_wholememory_impl(
         whole_memory_handle, total_size, comm, memory_type, memory_location, data_granularity);
+#ifdef WITH_NVSHMEM_SUPPORT
+    } else if (memory_type == WHOLEMEMORY_MT_NVSHMEM) {
+      whole_memory_handle->impl = new nvshmem_device_wholememory_impl(
+        whole_memory_handle, total_size, comm, memory_type, memory_location, data_granularity);
+#endif
     } else {
       WHOLEMEMORY_FATAL("Unsupported memory_type (%d) and memory_location (%d).",
                         (int)memory_type,

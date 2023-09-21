@@ -61,6 +61,10 @@ enum wholememory_memory_type_t {
   WHOLEMEMORY_MT_CONTINUOUS,  /*!< Memory from all ranks are mapped in continuous address space */
   WHOLEMEMORY_MT_CHUNKED,     /*!< Memory from all ranks are mapped in chunked address space */
   WHOLEMEMORY_MT_DISTRIBUTED, /*!< Memory from other ranks are not mapped. */
+#ifdef WITH_NVSHMEM_SUPPORT
+  WHOLEMEMORY_MT_NVSHMEM,
+#endif
+
 };
 
 /**
@@ -345,6 +349,13 @@ wholememory_error_code_t wholememory_store_to_file(wholememory_handle_t wholemem
                                                    size_t memory_entry_stride,
                                                    size_t file_entry_size,
                                                    const char* local_file_name);
+
+#ifdef WITH_NVSHMEM_SUPPORT
+
+wholememory_error_code_t wholememory_init_nvshmem_with_comm(wholememory_comm_t comm);
+
+wholememory_error_code_t wholememory_finalize_nvshmem(wholememory_comm_t comm);
+#endif
 
 #ifdef __cplusplus
 }

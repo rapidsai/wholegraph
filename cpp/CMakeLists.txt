@@ -55,7 +55,7 @@ option(BUILD_SHARED_LIBS "Build libwholegraph shared libraries" ON)
 option(CMAKE_CUDA_LINEINFO "Enable the -lineinfo option for nvcc (useful for cuda-memcheck / profiler" OFF)
 option(BUILD_TESTS "Configure CMake to build tests" ON)
 option(CUDA_STATIC_RUNTIME "Statically link the CUDA toolkit runtime and libraries" OFF)
-
+option(NVSHMEM_SUPPORT "Enable nvshmem integration" ON)
 ##############################################################################
 # - Set options based on user defined one  -----------------------------------
 set(_ctk_static_suffix "")
@@ -132,6 +132,10 @@ rapids_cpm_init()
 
 include(./cmake/thirdparty/get_raft.cmake)
 include(./cmake/thirdparty/get_nccl.cmake)
+if(NVSHMEM_SUPPORT)
+  include(./cmake/thirdparty/get_nvshmem.cmake)
+endif()
+
 
 file(GLOB WHOLEGRAPH_SOURCES
         "src/*.cpp"
@@ -159,6 +163,7 @@ set_target_properties(wholegraph
         CUDA_STANDARD_REQUIRED ON
         POSITION_INDEPENDENT_CODE ON
         INTERFACE_POSITION_INDEPENDENT_CODE ON
+        CUDA_SEPARABLE_COMPILATION ON
         )
 
 target_compile_options(wholegraph
@@ -195,6 +200,12 @@ PRIVATE
     NCCL::NCCL
 )
 
+if(NVSHMEM_SUPPORT)
+  target_compile_definitions(wholegraph PRIVATE WITH_NVSHMEM_SUPPORT)
+  target_link_libraries(wholegraph PRIVATE nvshmem_host nvshmem_device)
+endif()
+
+
 # optionally build tests
 if(BUILD_TESTS AND CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
     include(./cmake/thirdparty/get_gtest.cmake)
@@ -202,6 +213,21 @@ if(BUILD_TESTS AND CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
 
     add_subdirectory(tests)
 endif()
+
+if(NVSHMEM_SUPPORT)
+  add_library(nvshmem_wholememory_bootstrap SHARED)
+  target_sources(nvshmem_wholememory_bootstrap PRIVATE src/nvshmem_plugins/nvshmem_wholememory_bootstrap.cpp)
+  target_link_libraries(nvshmem_wholememory_bootstrap PRIVATE wholegraph nvshmem_host )
+  target_include_directories(nvshmem_wholememory_bootstrap
+                             PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+get_target_property(NVSHMEM_LIBRARY_OUTPUT_DIR nvshmem LIBRARY_OUTPUT_DIRECTORY)
+
+add_custom_command(TARGET nvshmem_wholememory_bootstrap POST_BUILD
+                   COMMAND ${CMAKE_COMMAND} -E copy_directory ${NVSHMEM_LIBRARY_OUTPUT_DIR}
+                   ${CMAKE_BINARY_DIR}/nvshmem_lib)
+
+endif()
+
 
 ##############################################################################
 # - code checker -------------------------------------------------------------

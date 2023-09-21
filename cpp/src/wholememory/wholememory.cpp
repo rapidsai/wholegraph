@@ -207,6 +207,20 @@ wholememory_error_code_t wholememory_load_from_hdfs_file(wholememory_handle_t wh
   return WHOLEMEMORY_NOT_IMPLEMENTED;
 }
 
+#ifdef WITH_NVSHMEM_SUPPORT
+
+wholememory_error_code_t wholememory_init_nvshmem_with_comm(wholememory_comm_t comm)
+{
+  return wholememory::init_nvshmem_with_comm(comm);
+}
+
+wholememory_error_code_t wholememory_finalize_nvshmem(wholememory_comm_t comm)
+{
+  return wholememory::finalize_nvshmem(comm);
+}
+
+#endif
+
 #ifdef __cplusplus
 }
 #endif
