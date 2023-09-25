@@ -40,7 +40,6 @@ def convert_papers100m_dataset(args):
         print(f"creating directory {args.convert_dir}...")
         os.makedirs(args.convert_dir)
     print("saving idx and labels...")
-    import pickle
     with open(
         os.path.join(args.convert_dir, 'ogbn_papers100M_data_and_label.pkl'), "wb"
     ) as f:
