@@ -34,21 +34,8 @@ rapids-mamba-retry install \
 rapids-logger "Build Doxygen docs"
 pushd cpp
 doxygen Doxyfile
-mkdir -p ../docs/wholegraph/_xml
-# xml is tarred up to s3 and used in cugraph
 mkdir -p "${RAPIDS_DOCS_DIR}/libwholegraph/xml_tar"
 tar -czf "${RAPIDS_DOCS_DIR}/libwholegraph/xml_tar"/xml.tar.gz -C xml .
-# _xml is used for sphinx breathe project
-mv xml/* "../docs/wholegraph/_xml"
-popd
-
-rapids-logger "Build Sphinx docs"
-pushd docs/wholegraph
-sphinx-build -b dirhtml ./source _html
-sphinx-build -b text ./source _text
-mkdir -p "${RAPIDS_DOCS_DIR}/wholegraph/"{html,txt}
-mv _html/* "${RAPIDS_DOCS_DIR}/wholegraph/html"
-mv _text/* "${RAPIDS_DOCS_DIR}/wholegraph/txt"
 popd
 
 rapids-logger "Output temp dir: ${RAPIDS_DOCS_DIR}"
