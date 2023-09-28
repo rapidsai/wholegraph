@@ -34,8 +34,6 @@ rapids-mamba-retry install \
 rapids-logger "Build Doxygen docs"
 pushd cpp
 doxygen Doxyfile
-mkdir -p ../docs/wholegraph/_html/doxygen_docs/libwholegraph/html
-mv html/* ../docs/wholegraph/_html/doxygen_docs/libwholegraph/html
 mkdir -p ../docs/wholegraph/_xml
 # xml is tarred up to s3 and used in cugraph
 mkdir -p "${RAPIDS_DOCS_DIR}/libwholegraph/xml_tar"
