@@ -506,7 +506,7 @@ void wholegraph_csr_unweighted_sample_without_replacement_cpu(
 template <typename DataType>
 void check_value_same(void* value, void* ref, int64_t size)
 {
-  int64_t diff_count;
+  int64_t diff_count = 0;
 
   DataType* value_ptr = static_cast<DataType*>(value);
   DataType* ref_ptr   = static_cast<DataType*>(ref);
@@ -601,22 +601,8 @@ void host_weighted_sample_without_replacement(
 
   int64_t center_nodes_count = center_node_desc.size;
 
-  const int block_sizes[4]       = {128, 256, 256, 512};
-  const int items_per_threads[4] = {4, 4, 8, 8};
-  auto choose_fun_idx            = [](int max_sample_count) {
-    if (max_sample_count <= 128) {
-      // return (max_sample_count - 1) / 32;
-      return 0;
-    }
-    if (max_sample_count <= 256) { return 1; }
-    if (max_sample_count <= 512) { return 2; }
-    return 3;
-  };
-  int func_idx = choose_fun_idx(max_sample_count);
-
-  int block_size       = block_sizes[func_idx];
-  int items_per_thread = items_per_threads[func_idx];
-
+  int block_size = 128;
+  if (max_sample_count > 256) { block_size = 256; }
   for (int64_t i = 0; i < center_nodes_count; i++) {
     int output_id          = output_sample_offset_ptr[i];
     int output_local_id    = 0;
@@ -645,27 +631,29 @@ void host_weighted_sample_without_replacement(
       };
       std::priority_queue<std::pair<int, WeightType>, std::vector<std::pair<int, WeightType>>, cmp>
         small_heap;
+
+      auto consume_fun = [&](int id, raft::random::detail::PCGenerator& rng) {
+        WeightType edge_weight = csr_weight_ptr[start + id];
+        WeightType weight      = host_gen_key_from_weight(edge_weight, rng);
+        process_count++;
+        if (process_count <= max_sample_count) {
+          small_heap.push(std::make_pair(id, weight));
+        } else {
+          std::pair<int, WeightType> small_heap_top_ele = small_heap.top();
+          if (small_heap_top_ele.second < weight) {
+            small_heap.pop();
+            small_heap.push(std::make_pair(id, weight));
+          }
+        }
+      };
+
       for (int j = 0; j < block_size; j++) {
         int local_gidx = gidx + j;
         raft::random::RngState _rngstate(random_seed, 0, raft::random::GeneratorType::GenPC);
         raft::random::detail::DeviceState <raft::random::detail::PCGenerator> rngstate(_rngstate);
         raft::random::detail::PCGenerator rng(rngstate, (uint64_t)local_gidx);
-        for (int k = 0; k < items_per_thread; k++) {
-          int id = k * block_size + j;
-          if (id < neighbor_count) {
-            WeightType edge_weight = csr_weight_ptr[start + id];
-            WeightType weight      = host_gen_key_from_weight(edge_weight, rng);
-            process_count++;
-            if (process_count < max_sample_count) {
-              small_heap.push(std::make_pair(id, weight));
-            } else {
-              std::pair<int, WeightType> small_heap_top_ele = small_heap.top();
-              if (small_heap_top_ele.second < weight) {
-                small_heap.pop();
-                small_heap.push(std::make_pair(id, weight));
-              }
-            }
-          }
+        for (int id = j; id < neighbor_count; id += block_size) {
+          if (id < neighbor_count) { consume_fun(id, rng); }
         }
       }
 

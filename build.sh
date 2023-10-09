@@ -25,7 +25,6 @@ VALIDARGS="
     pylibwholegraph
     tests
     benchmarks
-    docs
     -v
     -g
     -n
@@ -46,7 +45,6 @@ HELP="$0 [<target> ...] [<flag> ...]
    pylibwholegraph          - build the pylibwholegraph Python package.
    tests                    - build the C++ (OPG) tests.
    benchmarks               - build benchmarks.
-   docs                     - build the docs
  and <flag> is:
    -v                          - verbose build mode
    -g                          - build for debug
@@ -83,7 +81,6 @@ BUILD_TYPE=Release
 BUILD_ALL_GPU_ARCH=0
 INSTALL_TARGET="--target install"
 PYTHON=${PYTHON:-python}
-DOCS_BUILD_DIR=build
 
 # Set defaults for vars that may not have been defined externally
 #  FIXME: if INSTALL_PREFIX is not set, check PREFIX, then check
@@ -210,12 +207,6 @@ if hasArg clean; then
     done
     # remove any left-over cpython shared libraries
     find ${REPODIR}/python/pylibwholegraph -name "*.cpython*.so" -type f -delete
-
-    # remove docs build
-    cd ${REPODIR}/docs/wholegraph
-    make BUILDDIR=${DOCS_BUILD_DIR} clean
-    rm -rf ${REPODIR}/docs/wholegraph/_xml
-    rm -rf ${REPODIR}/docs/wholegraph/_html
 fi
 
 if hasArg tests; then
@@ -289,28 +280,4 @@ if buildAll || hasArg pylibwholegraph; then
            -DCMAKE_BUILD_TYPE=${BUILD_TYPE} \
             ${EXTRA_CMAKE_ARGS}
     fi
-fi
-
-################################################################################
-# Build the docs
-if hasArg docs; then
-    if [ ! -d ${LIBWHOLEGRAPH_BUILD_DIR} ]; then
-        mkdir -p ${LIBWHOLEGRAPH_BUILD_DIR}
-        cd ${LIBWHOLEGRAPH_BUILD_DIR}
-        cmake -B "${LIBWHOLEGRAPH_BUILD_DIR}" -S "${REPODIR}/cpp" \
-              -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX} \
-              -DCMAKE_BUILD_TYPE=${BUILD_TYPE} \
-              ${CMAKE_GENERATOR_OPTION} \
-              ${CMAKE_VERBOSE_OPTION}
-    fi
-    cd ${LIBWHOLEGRAPH_BUILD_DIR}
-    cmake --build "${LIBWHOLEGRAPH_BUILD_DIR}" -j${PARALLEL_LEVEL} --target doxygen ${VERBOSE_FLAG}
-    mkdir -p ${REPODIR}/docs/wholegraph/_html/doxygen_docs/libwholegraph/html
-    mv ${LIBWHOLEGRAPH_BUILD_DIR}/html/* ${REPODIR}/docs/wholegraph/_html/doxygen_docs/libwholegraph/html
-    mkdir -p ${REPODIR}/docs/wholegraph/_xml
-    # _xml is used for sphinx breathe project
-    mv ${LIBWHOLEGRAPH_BUILD_DIR}/xml/* "${REPODIR}/docs/wholegraph/_xml"
-    cd ${REPODIR}/docs/wholegraph
-    PYTHONPATH=${REPODIR}/python/pylibwholegraph:${PYTHONPATH} make BUILDDIR=${DOCS_BUILD_DIR} html
-    mv ${REPODIR}/docs/wholegraph/_html/doxygen_docs ${REPODIR}/docs/wholegraph/${DOCS_BUILD_DIR}/html/
 fi

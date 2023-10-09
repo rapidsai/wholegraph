@@ -24,7 +24,7 @@ requires = [
 
 [project]
 name = "pylibwholegraph"
-version = "23.08.00"
+version = "23.12.00"
 description = "pylibwholegraph - GPU Graph Storage for GNN feature and graph structure"
 authors = [
     { name = "NVIDIA Corporation" },
@@ -33,6 +33,7 @@ license = { text = "Apache 2.0" }
 requires-python = ">=3.6"
 classifiers = [
     "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python",
     "Programming Language :: Python :: 3.6",
     "Programming Language :: Python :: 3.7",
@@ -41,3 +42,6 @@ classifiers = [
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
 ]
+
+[tool.setuptools]
+license-files = ["LICENSE"]
