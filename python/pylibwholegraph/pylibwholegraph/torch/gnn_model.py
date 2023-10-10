@@ -231,7 +231,7 @@ class HomoGNNModel(torch.nn.Module):
         ) = self.graph_structure.multilayer_sample_without_replacement(
             ids, max_neighbors
         )
-        x_feat = self.gather_fn(target_gids[0])
+        x_feat = self.gather_fn(target_gids[0], force_dtype=torch.float32)
         for i in range(self.num_layer):
             x_target_feat = x_feat[: target_gids[i + 1].numel()]
             sub_graph = create_sub_graph(
