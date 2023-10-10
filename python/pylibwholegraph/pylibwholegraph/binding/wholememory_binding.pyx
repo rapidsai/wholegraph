@@ -60,6 +60,7 @@ cdef extern from "wholememory/wholememory.h":
         WHOLEMEMORY_MT_CONTINUOUS           "WHOLEMEMORY_MT_CONTINUOUS"
         WHOLEMEMORY_MT_CHUNKED              "WHOLEMEMORY_MT_CHUNKED"
         WHOLEMEMORY_MT_DISTRIBUTED          "WHOLEMEMORY_MT_DISTRIBUTED"
+        WHOLEMEMORY_MT_NVSHMEM              "WHOLEMEMORY_MT_NVSHMEM"
 
     ctypedef enum wholememory_memory_location_t:
         WHOLEMEMORY_ML_NONE                 "WHOLEMEMORY_ML_NONE"
@@ -156,7 +157,9 @@ cdef extern from "wholememory/wholememory.h":
                                                             size_t memory_entry_stride,
                                                             size_t file_entry_size,
                                                             const char *local_file_name)
+    cdef wholememory_error_code_t wholememory_init_nvshmem_with_comm(wholememory_comm_t comm)
 
+    cdef wholememory_error_code_t wholememory_finalize_nvshmem(wholememory_comm_t comm)
 
 cpdef enum WholeMemoryErrorCode:
     Success = WHOLEMEMORY_SUCCESS
@@ -174,6 +177,7 @@ cpdef enum WholeMemoryMemoryType:
     MtContinuous = WHOLEMEMORY_MT_CONTINUOUS
     MtChunked = WHOLEMEMORY_MT_CHUNKED
     MtDistributed = WHOLEMEMORY_MT_DISTRIBUTED
+    MtNVSHMEM = WHOLEMEMORY_MT_NVSHMEM
 
 cpdef enum WholeMemoryMemoryLocation:
     MlNone = WHOLEMEMORY_ML_NONE
@@ -1552,6 +1556,13 @@ def create_communicator(PyWholeMemoryUniqueID py_uid, int world_rank, int world_
 
 def destroy_communicator(PyWholeMemoryComm py_comm):
     check_wholememory_error_code(wholememory_destroy_communicator(py_comm.comm_id))
+
+
+def init_nvshmem_with_communicator(PyWholeMemoryComm py_comm):
+    check_wholememory_error_code(wholememory_init_nvshmem_with_comm(py_comm.comm_id))
+
+def finalize_nvshmem_with_communicator(PyWholeMemoryComm py_comm):
+    check_wholememory_error_code(wholememory_finalize_nvshmem(py_comm.comm_id))
 
 def determine_partition_plan(int64_t entry_count,
                              int world_size):

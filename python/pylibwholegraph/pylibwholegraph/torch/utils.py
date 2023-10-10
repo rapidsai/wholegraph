@@ -92,6 +92,8 @@ def str_to_wmb_wholememory_memory_type(str_wmb_type: str):
         return wmb.WholeMemoryMemoryType.MtChunked
     elif str_wmb_type == "distributed":
         return wmb.WholeMemoryMemoryType.MtDistributed
+    elif str_wmb_type == "nvshmem":
+        return wmb.WholeMemoryMemoryType.MtNVSHMEM
     else:
         raise ValueError(
             "WholeMemory type %s not supported, should be (continuous, chunked, distributed)"

@@ -158,6 +158,12 @@ def routine_func(world_rank: int, world_size: int):
                 wm_comm, dt, mt, ml, embedding_count, embedding_dim, indice_count, True
             )
             # scatter_gather_test_cast(wm_comm, dt, mt, ml, embedding_count, embedding_dim, indice_count, False)
+
+    mt = wmb.WholeMemoryMemoryType.MtNVSHMEM
+    ml = wmb.WholeMemoryMemoryLocation.MlDevice
+    wmb.init_nvshmem_with_communicator(wm_comm)
+    scatter_gather_test_cast(wm_comm, dt, mt, ml, embedding_count, embedding_dim, indice_count, True)
+    wmb.finalize_nvshmem_with_communicator(wm_comm)
     wmb.finalize()
 
 

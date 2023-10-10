@@ -55,7 +55,7 @@ option(BUILD_SHARED_LIBS "Build libwholegraph shared libraries" ON)
 option(CMAKE_CUDA_LINEINFO "Enable the -lineinfo option for nvcc (useful for cuda-memcheck / profiler" OFF)
 option(BUILD_TESTS "Configure CMake to build tests" ON)
 option(CUDA_STATIC_RUNTIME "Statically link the CUDA toolkit runtime and libraries" OFF)
-option(NVSHMEM_SUPPORT "Enable nvshmem integration" ON)
+option(BUILD_WITH_NVSHMEM "Enable nvshmem integration" ON)
 ##############################################################################
 # - Set options based on user defined one  -----------------------------------
 set(_ctk_static_suffix "")
@@ -132,7 +132,7 @@ rapids_cpm_init()
 
 include(./cmake/thirdparty/get_raft.cmake)
 include(./cmake/thirdparty/get_nccl.cmake)
-if(NVSHMEM_SUPPORT)
+if(BUILD_WITH_NVSHMEM)
   include(./cmake/thirdparty/get_nvshmem.cmake)
 endif()
 
@@ -163,7 +163,6 @@ set_target_properties(wholegraph
         CUDA_STANDARD_REQUIRED ON
         POSITION_INDEPENDENT_CODE ON
         INTERFACE_POSITION_INDEPENDENT_CODE ON
-        CUDA_SEPARABLE_COMPILATION ON
         )
 
 target_compile_options(wholegraph
@@ -200,7 +199,12 @@ PRIVATE
     NCCL::NCCL
 )
 
-if(NVSHMEM_SUPPORT)
+if(BUILD_WITH_NVSHMEM)
+        set_source_files_properties("src/wholememory_ops/gather_op_impl_nvshmem.cu" "src/wholememory_ops/scatter_op_impl.nvshmem.cu"
+        PROPERTIES
+        # CUDA_SEPARABLE_COMPILATION ON
+        COMPILE_FLAGS "-rdc=true"
+        )
   target_compile_definitions(wholegraph PRIVATE WITH_NVSHMEM_SUPPORT)
   target_link_libraries(wholegraph PRIVATE nvshmem_host nvshmem_device)
 endif()
@@ -214,7 +218,7 @@ if(BUILD_TESTS AND CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
     add_subdirectory(tests)
 endif()
 
-if(NVSHMEM_SUPPORT)
+if(BUILD_WITH_NVSHMEM)
   add_library(nvshmem_wholememory_bootstrap SHARED)
   target_sources(nvshmem_wholememory_bootstrap PRIVATE src/nvshmem_plugins/nvshmem_wholememory_bootstrap.cpp)
   target_link_libraries(nvshmem_wholememory_bootstrap PRIVATE wholegraph nvshmem_host )

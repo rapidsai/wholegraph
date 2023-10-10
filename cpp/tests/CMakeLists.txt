@@ -23,11 +23,11 @@ function(ConfigureTestInternal TEST_NAME)
     add_executable(${TEST_NAME} ${ARGN})
     target_include_directories(${TEST_NAME} PRIVATE "$<BUILD_INTERFACE:${WHOLEGRAPH_SOURCE_DIR}>/src")
     target_link_libraries(${TEST_NAME} PRIVATE GTest::gmock GTest::gtest GTest::gmock_main GTest::gtest_main
-            wholegraph raft::raft rmm::rmm pthread) 
-    if(NVSHMEM_SUPPORT)
+            wholegraph raft::raft rmm::rmm pthread)
+    if(BUILD_WITH_NVSHMEM)
             target_compile_definitions(${TEST_NAME} PRIVATE WITH_NVSHMEM_SUPPORT)
     endif()
-          
+
     set_target_properties(
             ${TEST_NAME}
             PROPERTIES POSITION_INDEPENDENT_CODE ON

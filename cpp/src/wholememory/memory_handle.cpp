@@ -1418,11 +1418,16 @@ wholememory_error_code_t create_wholememory(wholememory_handle_t* wholememory_ha
     } else if (memory_type == WHOLEMEMORY_MT_CHUNKED) {
       whole_memory_handle->impl = new chunked_device_wholememory_impl(
         whole_memory_handle, total_size, comm, memory_type, memory_location, data_granularity);
-#ifdef WITH_NVSHMEM_SUPPORT
     } else if (memory_type == WHOLEMEMORY_MT_NVSHMEM) {
+#ifdef WITH_NVSHMEM_SUPPORT
       whole_memory_handle->impl = new nvshmem_device_wholememory_impl(
         whole_memory_handle, total_size, comm, memory_type, memory_location, data_granularity);
+#else
+      WHOLEMEMORY_ERROR(
+        "NVSHMEM support is not enabled for embedding store backend. To enable NVSHMEM \
+     support, please add the following compiler flag when building: -DWITH_NVSHMEM_SUPPORT.");
 #endif
+
     } else {
       WHOLEMEMORY_FATAL("Unsupported memory_type (%d) and memory_location (%d).",
                         (int)memory_type,

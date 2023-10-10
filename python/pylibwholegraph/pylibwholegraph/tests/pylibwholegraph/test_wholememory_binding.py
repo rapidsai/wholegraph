@@ -53,7 +53,7 @@ def single_test_case(wm_comm, mt, ml, malloc_size, granularity):
     if mt == wmb.WholeMemoryMemoryType.MtDistributed or (
         mt == wmb.WholeMemoryMemoryType.MtChunked
         and ml == wmb.WholeMemoryMemoryLocation.MlDevice
-    ):
+    ) or mt == wmb.WholeMemoryMemoryType.MtNVSHMEM:
         with pytest.raises(ValueError):
             global_tensor, _ = h.get_global_flatten_tensor(
                 torch_import_from_dlpack, tensor_data_type, view_device, view_device_id
@@ -111,6 +111,13 @@ def routine_func(world_rank: int, world_size: int):
             wmb.WholeMemoryMemoryLocation.MlDevice,
         ]:
             single_test_case(wm_comm, mt, ml, malloc_size, granularity)
+
+    mt = wmb.WholeMemoryMemoryType.MtNVSHMEM
+    ml = wmb.WholeMemoryMemoryLocation.MlDevice
+    wmb.init_nvshmem_with_communicator(wm_comm)
+    single_test_case(wm_comm, mt, ml, malloc_size, granularity)
+    wmb.finalize_nvshmem_with_communicator(wm_comm)
+
     wmb.finalize()
 
 

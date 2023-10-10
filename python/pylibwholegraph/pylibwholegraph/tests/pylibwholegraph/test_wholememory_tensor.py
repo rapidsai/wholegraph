@@ -107,6 +107,13 @@ def routine_func(world_rank: int, world_size: int):
         ]:
             array_test_case(wm_comm, dt, mt, ml, single_array_size)
             matrix_test_case(wm_comm, dt, mt, ml, single_matrix_size)
+    mt = wmb.WholeMemoryMemoryType.MtNVSHMEM
+    ml = wmb.WholeMemoryMemoryLocation.MlDevice
+    wmb.init_nvshmem_with_communicator(wm_comm)
+
+    array_test_case(wm_comm, dt, mt, ml, single_array_size)
+    matrix_test_case(wm_comm, dt, mt, ml, single_matrix_size)
+    wmb.finalize_nvshmem_with_communicator(wm_comm)
     wmb.finalize()
 
 
