@@ -22,7 +22,7 @@ rapids-logger "Begin py build"
 # TODO: Remove `--no-test` flags once importing on a CPU
 # node works correctly
 rapids-logger "Begin pylibwholegraph build"
-rapids-mamba-retry mambabuild \
+rapids-conda-retry mambabuild \
   --no-test \
   --channel "${CPP_CHANNEL}" \
   conda/recipes/pylibwholegraph

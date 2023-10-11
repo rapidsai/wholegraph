@@ -148,7 +148,7 @@ void host_get_csr_add_self_loop(int* host_csr_row_ptr,
 {
   for (int64_t row_id = 0; row_id < csr_row_ptr_array_desc.size - 1; row_id++) {
     int start                                   = host_csr_row_ptr[row_id];
-    int end                                     = host_csr_col_ptr[row_id + 1];
+    int end                                     = host_csr_row_ptr[row_id + 1];
     host_ref_output_csr_row_ptr[row_id]         = start + row_id;
     host_ref_output_csr_col_ptr[start + row_id] = row_id;
     for (int64_t j = start; j < end; j++) {
