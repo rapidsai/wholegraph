@@ -15,6 +15,8 @@ from .comm import (
     WholeMemoryCommunicator,
     create_group_communicator,
     destroy_communicator,
+    init_nvshmem_with_comm,
+    finalize_nvshmem_with_comm,
 )
 from .comm import (
     get_global_communicator,

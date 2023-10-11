@@ -163,6 +163,7 @@ def create_builtin_cache_policy(
         embedding_memory_type != "continuous"
         and embedding_memory_type != "chunked"
         and embedding_memory_type != "distributed"
+        and embedding_memory_type != "nvshmem"
     ):
         raise ValueError(f"embedding_memory_type={embedding_memory_type} is not valid")
 
