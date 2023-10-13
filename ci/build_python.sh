@@ -13,6 +13,13 @@ PACKAGES="libwholegraph"
 
 CPP_CHANNEL=$(rapids-download-conda-from-s3 cpp)
 
+version=$(rapids-generate-version)
+git_commit=$(git rev-parse HEAD)
+export RAPIDS_PACKAGE_VERSION=${version}
+
+version_file_libwholegraph="python/libwholegraph/libwholegraph/_version.py"
+sed -i "/^__version__/ s/= .*/= ${version}/g" ${version_file_libwholegraph}
+sed -i "/^__git_commit__/ s/= .*/= \"${git_commit}\"/g" ${version_file_libwholegraph}
 rapids-mamba-retry install \
   --channel "${CPP_CHANNEL}" \
   "${PACKAGES}"
@@ -22,6 +29,9 @@ rapids-logger "Begin py build"
 # TODO: Remove `--no-test` flags once importing on a CPU
 # node works correctly
 rapids-logger "Begin pylibwholegraph build"
+version_file_pylibwholegraph="python/pylibwholegraph/pylibwholegraph/_version.py"
+sed -i "/^__version__/ s/= .*/= ${version}/g" ${version_file_pylibwholegraph}
+sed -i "/^__git_commit__/ s/= .*/= \"${git_commit}\"/g" ${version_file_pylibwholegraph}
 rapids-conda-retry mambabuild \
   --no-test \
   --channel "${CPP_CHANNEL}" \

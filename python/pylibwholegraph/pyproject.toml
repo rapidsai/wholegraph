@@ -24,7 +24,7 @@ requires = [
 
 [project]
 name = "pylibwholegraph"
-version = "23.12.00"
+dynamic = ["version"]
 description = "pylibwholegraph - GPU Graph Storage for GNN feature and graph structure"
 authors = [
     { name = "NVIDIA Corporation" },
@@ -45,3 +45,6 @@ classifiers = [
 
 [tool.setuptools]
 license-files = ["LICENSE"]
+
+[tool.setuptools.dynamic]
+version = {attr = "pylibwholegraph._version.__version__"}
