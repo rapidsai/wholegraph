@@ -17,13 +17,6 @@ version=$(rapids-generate-version)
 git_commit=$(git rev-parse HEAD)
 export RAPIDS_PACKAGE_VERSION=${version}
 
-version_file_libwholegraph="python/libwholegraph/libwholegraph/_version.py"
-sed -i "/^__version__/ s/= .*/= ${version}/g" ${version_file_libwholegraph}
-sed -i "/^__git_commit__/ s/= .*/= \"${git_commit}\"/g" ${version_file_libwholegraph}
-rapids-mamba-retry install \
-  --channel "${CPP_CHANNEL}" \
-  "${PACKAGES}"
-
 rapids-logger "Begin py build"
 
 # TODO: Remove `--no-test` flags once importing on a CPU
