@@ -35,6 +35,8 @@
 #include "nvshmem.h"
 #include "nvshmemx.h"
 
+extern bool nvshmemi_is_nvshmem_bootstrapped;
+
 #endif
 
 wholememory_comm_::wholememory_comm_(ncclComm_t nccl_comm,

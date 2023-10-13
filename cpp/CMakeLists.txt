@@ -219,16 +219,21 @@ if(BUILD_TESTS AND CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
 endif()
 
 if(BUILD_WITH_NVSHMEM)
+get_target_property(NVSHMEM_BINARY_DIR nvshmem BINARY_DIR)
   add_library(nvshmem_wholememory_bootstrap SHARED)
   target_sources(nvshmem_wholememory_bootstrap PRIVATE src/nvshmem_plugins/nvshmem_wholememory_bootstrap.cpp)
   target_link_libraries(nvshmem_wholememory_bootstrap PRIVATE wholegraph nvshmem_host )
   target_include_directories(nvshmem_wholememory_bootstrap
-                             PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+                             PRIVATE 
+                             ${CMAKE_CURRENT_SOURCE_DIR}/src
+                             ${NVSHMEM_BINARY_DIR}/include/modules/common
+                             ${NVSHMEM_BINARY_DIR}/include/modules/bootstrap
+                            )
 get_target_property(NVSHMEM_LIBRARY_OUTPUT_DIR nvshmem LIBRARY_OUTPUT_DIRECTORY)
 
 add_custom_command(TARGET nvshmem_wholememory_bootstrap POST_BUILD
                    COMMAND ${CMAKE_COMMAND} -E copy_directory ${NVSHMEM_LIBRARY_OUTPUT_DIR}
-                   ${CMAKE_BINARY_DIR}/nvshmem_lib)
+                   ${CMAKE_BINARY_DIR})
 
 endif()
 

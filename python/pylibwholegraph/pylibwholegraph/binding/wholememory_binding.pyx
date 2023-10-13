@@ -160,6 +160,8 @@ cdef extern from "wholememory/wholememory.h":
     cdef wholememory_error_code_t wholememory_init_nvshmem_with_comm(wholememory_comm_t comm)
 
     cdef wholememory_error_code_t wholememory_finalize_nvshmem(wholememory_comm_t comm)
+    
+    cdef bool wholememory_is_build_with_nvshmem()
 
 cpdef enum WholeMemoryErrorCode:
     Success = WHOLEMEMORY_SUCCESS
@@ -1559,9 +1561,13 @@ def destroy_communicator(PyWholeMemoryComm py_comm):
 
 
 def init_nvshmem_with_communicator(PyWholeMemoryComm py_comm):
+    if(wholememory_is_build_with_nvshmem()==False):
+        raise RuntimeError('libwholegraph is not build with nvshmem, please compile wholegraph with BUILD_WITH_NVSHMEM=ON')
     check_wholememory_error_code(wholememory_init_nvshmem_with_comm(py_comm.comm_id))
 
 def finalize_nvshmem_with_communicator(PyWholeMemoryComm py_comm):
+    if(wholememory_is_build_with_nvshmem()==False):
+        raise RuntimeError('libwholegraph is not build with nvshmem, please compile wholegraph with BUILD_WITH_NVSHMEM=ON')
     check_wholememory_error_code(wholememory_finalize_nvshmem(py_comm.comm_id))
 
 def determine_partition_plan(int64_t entry_count,

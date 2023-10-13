@@ -221,6 +221,16 @@ wholememory_error_code_t wholememory_finalize_nvshmem(wholememory_comm_t comm)
 
 #endif
 
+bool wholememory_is_build_with_nvshmem()
+{
+#ifdef WITH_NVSHMEM_SUPPORT
+
+  return true;
+
+#else
+  return false;
+#endif
+}
 #ifdef __cplusplus
 }
 #endif

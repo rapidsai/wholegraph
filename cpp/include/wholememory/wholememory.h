@@ -350,6 +350,9 @@ wholememory_error_code_t wholememory_store_to_file(wholememory_handle_t wholemem
 wholememory_error_code_t wholememory_init_nvshmem_with_comm(wholememory_comm_t comm);
 
 wholememory_error_code_t wholememory_finalize_nvshmem(wholememory_comm_t comm);
+
+bool wholememory_is_build_with_nvshmem();
+
 #ifdef __cplusplus
 }
 #endif

@@ -3,8 +3,8 @@
 #define __NVSHMEM_TEMPLATE__
 
 #ifdef WITH_NVSHMEM_SUPPORT
-
-#include <nvshmemx_api.h>
+#include <nvshmem.h>
+#include <nvshmemx.h>
 
 #include <cuda_fp16.h>
 

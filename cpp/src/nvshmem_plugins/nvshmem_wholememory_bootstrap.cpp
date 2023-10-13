@@ -2,10 +2,12 @@
 #include <stdbool.h>
 #include <stdlib.h>
 
-#include "nvshmem_bootstrap.h"
-#include "nvshmem_bootstrap_defines.h"
-#include "nvshmem_constants.h"
-#include "nvshmemx_error.h"
+// #include "nvshmem_bootstrap.h"
+// #include "nvshmem_bootstrap_defines.h"
+
+#include "nvshmemi_bootstrap.h"
+#include "nvshmem.h"
+#include "nvshmemx.h"
 #include "wholememory/communicator.hpp"
 #include "wholememory/initialize.hpp"
 #include "wholememory/memory_handle.hpp"
