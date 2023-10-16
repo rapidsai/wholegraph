@@ -3,7 +3,6 @@ function(find_and_configure_nvshmem)
 
 set(NVSHMEM_IBGDA_SUPPORT ON)
 set(NVSHMEM_IBDEVX_SUPPORT ON)
-set(MLX5_lib /usr/lib/x86_64-linux-gnu/libmlx5.so.1)
 
 # CPMAddPackage(NAME nvshmem
 #                 URL "https://developer.download.nvidia.cn/compute/redist/nvshmem/2.9.0/source/nvshmem_src_2.9.0-2.tar.xz")

@@ -646,7 +646,33 @@ wholememory_error_code_t device_cached_host_embedding::gather(wholememory_tensor
                                                              output_matrix_desc,
                                                              stream));
     WM_CUDA_DEBUG_SYNC_STREAM(stream);
-  } else {
+  }
+#ifdef WITH_NVSHMEM_SUPPORT
+  else if (cache_policy->cache_memory_type == WHOLEMEMORY_MT_NVSHMEM) {
+    wholememory_handle_t global_raw_handle =
+      wholememory_tensor_get_memory_handle(allocated_embedding);
+    wholememory_handle_t global_cached_handle =
+      wholememory_tensor_get_memory_handle(cache_ptr_->cache_line_data_wm_tensor_);
+    wholememory_handle_t global_cached_line_tag_handle =
+      wholememory_tensor_get_memory_handle(cache_ptr_->cache_line_tag_wm_tensor_);
+    WHOLEMEMORY_RETURN_ON_FAIL(wholememory_ops::gather_cached_nvshmem_func(
+      global_raw_handle,
+      wholememory_tensor_get_tensor_description(allocated_embedding),
+      global_cached_handle,
+      wholememory_tensor_get_tensor_description(cache_ptr_->cache_line_data_wm_tensor_),
+      global_cached_line_tag_handle,
+      wholememory_tensor_get_data_pointer(indices),
+      indice_desc,
+      wholememory_tensor_get_data_pointer(output),
+      output_desc,
+      cache_ptr_->get_cache_set_coverage(),
+      0,
+      0,
+      stream));
+
+  }
+#endif
+  else {
     wholememory_gref_t global_raw_gref, global_cached_gref, global_cached_line_tag_gref;
     WHOLEMEMORY_RETURN_ON_FAIL(
       wholememory_tensor_get_global_reference(allocated_embedding, &global_raw_gref));

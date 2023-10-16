@@ -43,11 +43,10 @@ wholememory_gref_t wholememory_create_continuous_global_reference(void* ptr);
 
 struct wholememory_nvshmem_ref_t {
   void* pointer;
-  size_t
-    stride;
+  size_t stride;
   int world_rank;
   int world_size;
-} __attribute__((aligned(32)));
+};
 
 #ifdef __cplusplus
 }

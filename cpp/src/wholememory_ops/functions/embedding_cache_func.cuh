@@ -15,6 +15,7 @@
  */
 #pragma once
 
+#include <cstdint>
 #include <cuda.h>
 #include <cuda_runtime_api.h>
 
@@ -71,6 +72,12 @@ class CacheLineInfo {
     tag_       = tag_ptr[threadIdx.x];
     lfu_count_ = count_ptr[threadIdx.x];
   }
+#ifdef WITH_NVSHMEM_SUPPORT
+  __device__ __forceinline__ void LoadTag_nvshmem(const uint16_t tag_load_value)
+  {
+    tag_ = tag_load_value;
+  }
+#endif
   __device__ __forceinline__ void StoreTag(uint16_t* tag_ptr) const { tag_ptr[threadIdx.x] = tag_; }
   __device__ __forceinline__ void StoreInfo(uint16_t* tag_ptr, uint16_t* count_ptr) const
   {

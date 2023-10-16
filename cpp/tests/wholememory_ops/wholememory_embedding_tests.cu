@@ -20,6 +20,7 @@
 #include "../wholememory/wholememory_test_utils.hpp"
 #include "embedding_test_utils.hpp"
 #include "wholememory/env_func_ptrs.hpp"
+#include "wholememory/wholememory.h"
 
 struct EmbeddingTestParams {
   EmbeddingTestParams()
@@ -186,6 +187,11 @@ TEST_P(WholeMemoryEmbeddingParameterTests, EmbeddingGatherTest)
         create_group_communicator_by_pipes(pipes, world_rank, world_size, params.cache_group_count);
     }
 
+    if (params.cache_memory_type == WHOLEMEMORY_MT_NVSHMEM ||
+        params.memory_type == WHOLEMEMORY_MT_NVSHMEM) {
+      EXPECT_EQ(wholememory_init_nvshmem_with_comm(wm_comm), WHOLEMEMORY_SUCCESS);
+    }
+
     void *dev_indices = nullptr, *dev_gather_buffer = nullptr, *dev_reference_buffer = nullptr;
     void *host_indices = nullptr, *host_gather_buffer = nullptr, *host_reference_buffer = nullptr;
     size_t gather_buffer_size = wholememory_get_memory_size_from_matrix(&params.output_description);
@@ -303,6 +309,10 @@ TEST_P(WholeMemoryEmbeddingParameterTests, EmbeddingGatherTest)
 
     EXPECT_EQ(wholememory_destroy_embedding(wm_embedding), WHOLEMEMORY_SUCCESS);
 
+    if (params.cache_memory_type == WHOLEMEMORY_MT_NVSHMEM ||
+        params.memory_type == WHOLEMEMORY_MT_NVSHMEM) {
+      EXPECT_EQ(wholememory_finalize_nvshmem(wm_comm), WHOLEMEMORY_SUCCESS);
+    }
     EXPECT_EQ(wholememory_finalize(), WHOLEMEMORY_SUCCESS);
     WHOLEMEMORY_CHECK(::testing::Test::HasFailure() == false);
   });
@@ -465,6 +475,41 @@ INSTANTIATE_TEST_SUITE_P(
       .set_entry_count((1LL << 22LL) + 131)
       .set_embedding_dim(11)
       .set_embedding_stride(12),
+#ifdef WITH_NVSHMEM_SUPPORT
+    EmbeddingTestParams().device_cache().set_cache_memory_type(WHOLEMEMORY_MT_NVSHMEM),
+    EmbeddingTestParams()
+      .device_cache()
+      .set_cache_memory_type(WHOLEMEMORY_MT_NVSHMEM)
+      .set_output_dtype(WHOLEMEMORY_DT_HALF),
+    EmbeddingTestParams()
+      .device_cache()
+      .set_memory_type(WHOLEMEMORY_MT_NVSHMEM)
+      .set_memory_location(WHOLEMEMORY_ML_DEVICE)
+      .set_cache_memory_type(WHOLEMEMORY_MT_NVSHMEM)
+      .set_cache_memory_location(WHOLEMEMORY_ML_DEVICE),
+    EmbeddingTestParams()
+      .device_cache()
+      .set_cache_memory_type(WHOLEMEMORY_MT_NVSHMEM)
+      .set_cache_memory_location(WHOLEMEMORY_ML_DEVICE)
+      .set_cache_ratio(0.002),
+    EmbeddingTestParams()
+      .device_cache()
+      .set_memory_type(WHOLEMEMORY_MT_NVSHMEM)
+      .set_memory_location(WHOLEMEMORY_ML_DEVICE)
+      .set_cache_memory_type(WHOLEMEMORY_MT_NVSHMEM)
+      .set_cache_memory_location(WHOLEMEMORY_ML_DEVICE)
+      .set_cache_ratio(0.002),
+    EmbeddingTestParams()
+      .local_cache()
+      .set_memory_type(WHOLEMEMORY_MT_NVSHMEM)
+      .set_memory_location(WHOLEMEMORY_ML_DEVICE)
+      .set_cache_ratio(0.002),
+    EmbeddingTestParams()
+      .local_cache()
+      .set_memory_type(WHOLEMEMORY_MT_NVSHMEM)
+      .set_memory_location(WHOLEMEMORY_ML_DEVICE)
+      .set_output_dtype(WHOLEMEMORY_DT_HALF),
+#endif
 
 #endif
     EmbeddingTestParams()));

@@ -201,6 +201,7 @@ PRIVATE
 
 if(BUILD_WITH_NVSHMEM)
         set_source_files_properties("src/wholememory_ops/gather_op_impl_nvshmem.cu" "src/wholememory_ops/scatter_op_impl.nvshmem.cu"
+        "src/wholememory_ops/functions/gather_cached_nvshmem_func.cu"
         PROPERTIES
         # CUDA_SEPARABLE_COMPILATION ON
         COMPILE_FLAGS "-rdc=true"

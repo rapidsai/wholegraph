@@ -51,4 +51,20 @@ wholememory_error_code_t try_gather_cached_func(
   int64_t cache_start_gid,
   cudaStream_t stream);
 
+#ifdef WITH_NVSHMEM_SUPPORT
+wholememory_error_code_t gather_cached_nvshmem_func(
+  wholememory_handle_t padded_embedding_handle,
+  wholememory_tensor_description_t* embedding_desc,
+  wholememory_handle_t cached_embedding_handle,
+  wholememory_tensor_description_t* cached_embedding_desc,
+  wholememory_handle_t cache_line_tag_handle,
+  void* indices,
+  wholememory_tensor_description_t* indices_desc,
+  void* output,
+  wholememory_tensor_description_t* output_desc,
+  int cache_set_coverage,
+  int64_t cache_start_gid,
+  int64_t raw_start_gid,
+  cudaStream_t stream);
+#endif
 }  // namespace wholememory_ops
