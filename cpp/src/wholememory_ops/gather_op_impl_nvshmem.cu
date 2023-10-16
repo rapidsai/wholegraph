@@ -19,14 +19,15 @@
 #include "wholememory_ops/thrust_allocator.hpp"
 #include <wholememory/tensor_description.h>
 
+#include "wholememory/device_reference.cuh"
+#include "wholememory/global_reference.h"
+#include "wholememory/nvshmem_template.cuh"
 #include <nvshmem.h>
 #include <nvshmemx.h>
 
-#include "wholememory/nvshmem_template.cuh"
-
 namespace wholememory_ops {
 template <typename EmbeddingT, typename IndexT, typename OutputT>
-__global__ void gather_func_with_nvshmem_kernel(void* embeding_nvshmem_ptr,
+__global__ void gather_func_with_nvshmem_kernel(wholememory_nvshmem_ref_t embeding_nvshmem_ref,
                                                 wholememory_matrix_description_t embedding_desc,
                                                 const IndexT* indices,
                                                 int64_t indice_count,
@@ -39,31 +40,30 @@ __global__ void gather_func_with_nvshmem_kernel(void* embeding_nvshmem_ptr,
   //   int64_t output_idx         = static_cast<int64_t>(blockIdx.x) * blockDim.y + threadIdx.y;
   //   IndexT embedding_table_idx = indices[output_idx];
   //   if (embedding_table_idx < 0) return;
-  int thread_idx                        = threadIdx.x;
-  int embedding_size                    = embedding_desc.sizes[1];
-  int64_t embedding_stride              = embedding_desc.stride;
-  int64_t output_stride                 = output_desc.stride;
-  EmbeddingT* embeding_nvshmem_type_ptr = static_cast<EmbeddingT*>(embeding_nvshmem_ptr);
+  int thread_idx           = threadIdx.x;
+  int embedding_size       = embedding_desc.sizes[1];
+  int64_t embedding_stride = embedding_desc.stride;
+  int64_t output_stride    = output_desc.stride;
+  wholememory::nvshmem_device_reference<EmbeddingT> embedding_nvshmem_device_ref{
+    embeding_nvshmem_ref};
   for (int64_t output_idx = static_cast<int64_t>(blockIdx.x) * blockDim.y + threadIdx.y;
        output_idx < indice_count;
        output_idx += static_cast<int64_t>(gridDim.x) * blockDim.y) {
     IndexT embedding_table_idx = indices[output_idx];
     if (embedding_table_idx < 0) continue;
-    int target_rank                   = embedding_table_idx / embedding_entry_count_per_rank;
-    int local_rank_embeding_table_idx = embedding_table_idx % embedding_entry_count_per_rank;
     OutputT* output_ptr = output + output_desc.storage_offset + output_stride * output_idx;
-    int64_t embedding_offset =
-      embedding_desc.storage_offset + local_rank_embeding_table_idx * embedding_stride;
 
+    int64_t embedding_offset =
+      embedding_desc.storage_offset + embedding_table_idx * embedding_stride;
     for (int emb_idx = thread_idx; emb_idx < embedding_size; emb_idx += blockDim.x) {
-      output_ptr[emb_idx] = convert_type<EmbeddingT, OutputT>(wholememory::nvshmem_get<EmbeddingT>(
-        embeding_nvshmem_type_ptr + embedding_offset + emb_idx, target_rank));
+      output_ptr[emb_idx] = convert_type<EmbeddingT, OutputT>(
+        embedding_nvshmem_device_ref.load(embedding_offset + emb_idx));
     }
   }
 }
 
 template <typename EmbeddingT, typename IndexT, typename OutputT>
-void nvshmem_gather_temp_func(void* embeding_nvshmem_ptr,
+void nvshmem_gather_temp_func(wholememory_nvshmem_ref_t embeding_nvshmem_ptr,
                               wholememory_matrix_description_t embedding_desc,
                               const void* indices,
                               int64_t indice_count,
@@ -106,73 +106,6 @@ void nvshmem_gather_temp_func(void* embeding_nvshmem_ptr,
                                             world_size);
 }
 
-template <typename EmbeddingT, typename OutputT>
-void nvshmem_gather_floating_int32_temp_func(void* embeding_nvshmem_ptr,
-                                             wholememory_matrix_description_t embedding_desc,
-                                             const void* indices,
-                                             int64_t indice_count,
-                                             void* output,
-                                             wholememory_matrix_description_t output_desc,
-                                             size_t embedding_entry_count_per_rank,
-                                             int world_rank,
-                                             int world_size,
-                                             cudaStream_t stream
-
-)
-{
-  nvshmem_gather_temp_func<EmbeddingT, int32_t, OutputT>(embeding_nvshmem_ptr,
-                                                         embedding_desc,
-                                                         indices,
-                                                         indice_count,
-                                                         output,
-                                                         output_desc,
-                                                         embedding_entry_count_per_rank,
-                                                         world_rank,
-                                                         world_size,
-                                                         stream);
-}
-
-/*
-
-
-REGISTER_DISPATCH_TWO_TYPES(GatherFuncNvshmemFloatingInt32,
-                            nvshmem_gather_floating_int32_temp_func,
-                            HALF_FLOAT_DOUBLE,
-                            HALF_FLOAT_DOUBLE)
-
-template <typename EmbeddingT, typename OutputT>
-void nvshmem_gather_floating_int64_temp_func(void* embeding_nvshmem_ptr,
-                                             wholememory_matrix_description_t embedding_desc,
-                                             const void* indices,
-                                             int64_t indice_count,
-                                             void* output,
-                                             wholememory_matrix_description_t output_desc,
-                                             size_t embedding_entry_count_per_rank,
-                                             int world_rank,
-                                             int world_size,
-                                             cudaStream_t stream
-
-)
-{
-  nvshmem_gather_temp_func<EmbeddingT, int64_t, OutputT>(embeding_nvshmem_ptr,
-                                                         embedding_desc,
-                                                         indices,
-                                                         indice_count,
-                                                         output,
-                                                         output_desc,
-                                                         embedding_entry_count_per_rank,
-                                                         world_rank,
-                                                         world_size,
-                                                         stream);
-}
-
-REGISTER_DISPATCH_TWO_TYPES(GatherFuncNvshmemFloatingInt64,
-                            nvshmem_gather_floating_int64_temp_func,
-                            HALF_FLOAT_DOUBLE,
-                            HALF_FLOAT_DOUBLE)
-
-
-*/
 REGISTER_DISPATCH_THREE_TYPES(
   GatherFuncNvshmem, nvshmem_gather_temp_func, ALLSINT_ALLFLOAT, SINT3264, ALLSINT_ALLFLOAT)
 
@@ -224,16 +157,15 @@ wholememory_error_code_t wholememory_gather_nvshmem(
     WHOLEMEMORY_RETURN_ON_FAIL(wholememory_communicator_get_size(&world_size, wm_comm));
     int world_rank;
     WHOLEMEMORY_RETURN_ON_FAIL(wholememory_communicator_get_rank(&world_rank, wm_comm));
-    void* embedding_nvshmem_ptr;
-    size_t local_array_size, local_array_offset;
-    WHOLEMEMORY_RETURN_ON_FAIL(wholememory_get_local_memory(
-      &embedding_nvshmem_ptr, &local_array_size, &local_array_offset, wholememory_handle));
+    wholememory_nvshmem_ref_t embedding_nvshmem_ref;
+    WHOLEMEMORY_RETURN_ON_FAIL(
+      wholememory_get_nvshmem_reference(&embedding_nvshmem_ref, wholememory_handle));
 
     DISPATCH_THREE_TYPES(wholememory_desc.dtype,
                          indice_desc.dtype,
                          output_desc.dtype,
                          GatherFuncNvshmem,
-                         embedding_nvshmem_ptr,
+                         embedding_nvshmem_ref,
                          wholememory_desc,
                          indices,
                          indice_desc.size,

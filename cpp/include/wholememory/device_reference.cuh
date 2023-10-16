@@ -16,9 +16,10 @@
 #pragma once
 
 #include <assert.h>
+#include <cstddef>
 
 #include "global_reference.h"
-
+#include "nvshmem_template.cuh"
 namespace wholememory {
 
 template <typename DataTypeT>
@@ -38,6 +39,49 @@ class device_reference {
     size_t rank = index / typed_stride_;
     return static_cast<DataTypeT**>(
       static_cast<void*>(pointer_))[rank][index - rank * typed_stride_];
+  }
+
+ private:
+  DataTypeT* pointer_;
+  size_t typed_stride_;
+};
+
+template <typename DataTypeT>
+class nvshmem_device_reference {
+ public:
+  __device__ __forceinline__ explicit nvshmem_device_reference(
+    const wholememory_nvshmem_ref_t& nvshmem_ref)
+    : pointer_(static_cast<DataTypeT*>(nvshmem_ref.pointer)),
+      typed_stride_(nvshmem_ref.stride / sizeof(DataTypeT))
+  {
+    assert(gref.stride % sizeof(DataTypeT) == 0);
+  }
+
+  __device__ nvshmem_device_reference() = delete;
+
+  __device__ __forceinline__ DataTypeT load(size_t index)
+  {
+    size_t rank = index / typed_stride_;
+
+    return nvshmem_get<DataTypeT>(pointer_ + index - rank * typed_stride_, rank);
+  }
+
+  __device__ __forceinline__ void store(size_t index, DataTypeT val)
+  {
+    size_t rank = index / typed_stride_;
+    return nvshmem_put<DataTypeT>(pointer_ + index - rank * typed_stride_, val, rank);
+  }
+
+  __device__ __forceinline__ DataTypeT* symmetric_address(size_t index)
+  {
+    size_t rank = index / typed_stride_;
+    return pointer_ + index - rank * typed_stride_;
+  }
+
+  __device__ __forceinline__ size_t dest_rank(size_t index)
+  {
+    size_t rank = index / typed_stride_;
+    return rank;
   }
 
  private:

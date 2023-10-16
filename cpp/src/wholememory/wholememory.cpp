@@ -137,6 +137,17 @@ wholememory_error_code_t wholememory_get_global_reference(wholememory_gref_t* wh
   return wholememory::get_global_reference_from_handle(wholememory_gref, wholememory_handle);
 }
 
+#ifdef WITH_NVSHMEM_SUPPORT
+
+wholememory_error_code_t wholememory_get_nvshmem_reference(
+  wholememory_nvshmem_ref_t* wholememory_nvshmem_ref, wholememory_handle_t wholememory_handle)
+{
+  return wholememory::get_nvshmem_reference_frome_handle(wholememory_nvshmem_ref,
+                                                         wholememory_handle);
+}
+
+#endif
+
 wholememory_error_code_t wholememory_determine_partition_plan(size_t* size_per_rank,
                                                               size_t total_size,
                                                               size_t data_granularity,

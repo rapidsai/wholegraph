@@ -28,6 +28,7 @@
 #include "error.hpp"
 #include "integer_utils.hpp"
 #include "logger.hpp"
+#include "wholememory/wholememory.h"
 #include "wholememory_ops/functions/embedding_cache_func.h"
 #include "wholememory_ops/functions/exchange_embeddings_nccl_func.h"
 #include "wholememory_ops/functions/exchange_ids_nccl_func.h"
@@ -874,7 +875,8 @@ wholememory_error_code_t wholememory_create_embedding(
       WHOLEMEMORY_RETURN_ON_FAIL(
         wholememory_communicator_get_size(&embedding_world_size, cache_policy->cache_comm));
       WHOLEMEMORY_CHECK_NOTHROW(cache_world_size <= embedding_world_size);
-      if (cache_policy->cache_memory_type == WHOLEMEMORY_MT_DISTRIBUTED) {
+      if (cache_policy->cache_memory_type == WHOLEMEMORY_MT_DISTRIBUTED ||
+          cache_policy->cache_memory_type == WHOLEMEMORY_MT_NVSHMEM) {
         WHOLEMEMORY_ERROR(
           "For local cached global readonly embedding, cache_memory_type should be chunked or "
           "continuous.");

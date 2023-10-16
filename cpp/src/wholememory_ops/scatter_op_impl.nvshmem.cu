@@ -31,17 +31,18 @@ __global__ void scatter_func_with_nvshmem_kernel(const InputT* input,
                                                  wholememory_matrix_description_t input_desc,
                                                  const IndexT* indices,
                                                  int64_t indice_count,
-                                                 void* embeding_nvshmem_ptr,
+                                                 wholememory_nvshmem_ref_t embeding_nvshmem_ref,
                                                  wholememory_matrix_description_t embedding_desc,
                                                  size_t embedding_entry_count_per_rank,
                                                  int world_rank,
                                                  int world_size)
 {
-  int thread_idx                         = threadIdx.x;
-  int embedding_size                     = embedding_desc.sizes[1];
-  int64_t embedding_stride               = embedding_desc.stride;
-  int64_t input_stride                   = input_desc.stride;
-  EmbeddingT* embedding_nvshmem_type_ptr = static_cast<EmbeddingT*>(embeding_nvshmem_ptr);
+  int thread_idx           = threadIdx.x;
+  int embedding_size       = embedding_desc.sizes[1];
+  int64_t embedding_stride = embedding_desc.stride;
+  int64_t input_stride     = input_desc.stride;
+  wholememory::nvshmem_device_reference<EmbeddingT> embedding_nvshmem_device_ref{
+    embeding_nvshmem_ref};
 
   for (int64_t input_idx = static_cast<int64_t>(blockIdx.x) * blockDim.y + threadIdx.y;
        input_idx < indice_count;
@@ -49,15 +50,12 @@ __global__ void scatter_func_with_nvshmem_kernel(const InputT* input,
     const InputT* input_ptr    = input + input_desc.storage_offset + input_stride * input_idx;
     IndexT embedding_table_idx = indices[input_idx];
     if (embedding_table_idx < 0) continue;
-    int target_rank                   = embedding_table_idx / embedding_entry_count_per_rank;
-    int local_rank_embeding_table_idx = embedding_table_idx % embedding_entry_count_per_rank;
     int64_t embedding_offset =
-      embedding_desc.storage_offset + local_rank_embeding_table_idx * embedding_stride;
+      embedding_desc.storage_offset + embedding_table_idx * embedding_stride;
     for (int emb_idx = thread_idx; emb_idx < embedding_size; emb_idx += blockDim.x) {
       EmbeddingT scatter_ele = convert_type<InputT, EmbeddingT>(input_ptr[emb_idx]);
       // TODO: nvshmem_put block
-      wholememory::nvshmem_put<EmbeddingT>(
-        embedding_nvshmem_type_ptr + embedding_offset + emb_idx, scatter_ele, target_rank);
+      embedding_nvshmem_device_ref.store(embedding_offset + emb_idx, scatter_ele);
     }
   }
 }
@@ -67,7 +65,7 @@ void nvshmem_scatter_temp_func(const void* input,
                                wholememory_matrix_description_t input_desc,
                                void* indices,
                                int64_t indice_count,
-                               void* embeding_nvshmem_ptr,
+                               wholememory_nvshmem_ref_t embedding_nvshmem_ref,
                                wholememory_matrix_description_t embedding_desc,
                                size_t embedding_entry_count_per_rank,
                                int world_rank,
@@ -95,7 +93,7 @@ void nvshmem_scatter_temp_func(const void* input,
                                             input_desc,
                                             static_cast<const IndexT*>(indices),
                                             indice_count,
-                                            embeding_nvshmem_ptr,
+                                            embedding_nvshmem_ref,
                                             embedding_desc,
                                             embedding_entry_count_per_rank,
                                             world_rank,
@@ -153,10 +151,9 @@ wholememory_error_code_t wholememory_scatter_nvshmem(
     WHOLEMEMORY_RETURN_ON_FAIL(wholememory_communicator_get_size(&world_size, wm_comm));
     int world_rank;
     WHOLEMEMORY_RETURN_ON_FAIL(wholememory_communicator_get_rank(&world_rank, wm_comm));
-    void* embedding_nvshmem_ptr;
-    size_t local_array_size, local_array_offset;
-    WHOLEMEMORY_RETURN_ON_FAIL(wholememory_get_local_memory(
-      &embedding_nvshmem_ptr, &local_array_size, &local_array_offset, wholememory_handle));
+    wholememory_nvshmem_ref_t embedding_nvshmem_ref;
+    WHOLEMEMORY_RETURN_ON_FAIL(
+      wholememory_get_nvshmem_reference(&embedding_nvshmem_ref, wholememory_handle));
 
     DISPATCH_THREE_TYPES(input_desc.dtype,
                          indices_desc.dtype,
@@ -166,13 +163,13 @@ wholememory_error_code_t wholememory_scatter_nvshmem(
                          input_desc,
                          indices,
                          indices_desc.size,
-                         embedding_nvshmem_ptr,
+                         embedding_nvshmem_ref,
                          wholememory_desc,
                          embedding_entry_count_per_rank,
                          world_rank,
                          world_size,
                          stream);
-    // use put
+
     nvshmemx_barrier_all_on_stream(stream);
 
     WM_CUDA_CHECK(cudaGetLastError());

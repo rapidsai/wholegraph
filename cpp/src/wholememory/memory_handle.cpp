@@ -32,6 +32,8 @@
 #include "error.hpp"
 #include "integer_utils.hpp"
 #include "logger.hpp"
+#include "wholememory/global_reference.h"
+#include "wholememory/wholememory.h"
 
 #ifdef WITH_NVSHMEM_SUPPORT
 
@@ -1574,6 +1576,31 @@ wholememory_error_code_t get_global_reference_from_handle(
   *wholememory_gref = wholememory_handle->impl->get_global_reference();
   return (wholememory_gref->pointer == nullptr) ? WHOLEMEMORY_INVALID_INPUT : WHOLEMEMORY_SUCCESS;
 }
+
+#ifdef WITH_NVSHMEM_SUPPORT
+
+wholememory_error_code_t get_nvshmem_reference_frome_handle(
+  wholememory_nvshmem_ref_t* wholememory_nvshmem_ref,
+  wholememory_handle_t wholememory_handle) noexcept
+{
+  if (wholememory_handle == nullptr || wholememory_handle->impl == nullptr ||
+      wholememory_handle->impl->get_type() != WHOLEMEMORY_MT_NVSHMEM) {
+    return WHOLEMEMORY_INVALID_INPUT;
+  }
+  *wholememory_nvshmem_ref = wholememory_nvshmem_ref_t{};
+  size_t local_size, local_offset;
+  void* pointer;
+
+  wholememory_handle->impl->get_local_memory(&pointer, &local_size, &local_offset);
+  wholememory_nvshmem_ref->pointer    = pointer;
+  wholememory_nvshmem_ref->stride     = wholememory_handle->impl->get_partition_stride();
+  wholememory_nvshmem_ref->world_rank = wholememory_handle->impl->get_comm()->world_rank;
+  wholememory_nvshmem_ref->world_size = wholememory_handle->impl->get_comm()->world_size;
+  return (wholememory_nvshmem_ref->pointer == nullptr) ? WHOLEMEMORY_INVALID_INPUT
+                                                       : WHOLEMEMORY_SUCCESS;
+}
+
+#endif
 
 wholememory_error_code_t determine_partition_plan(size_t* size_per_rank,
                                                   size_t total_size,

@@ -352,6 +352,10 @@ wholememory_error_code_t wholememory_init_nvshmem_with_comm(wholememory_comm_t c
 wholememory_error_code_t wholememory_finalize_nvshmem(wholememory_comm_t comm);
 
 bool wholememory_is_build_with_nvshmem();
+#ifdef WITH_NVSHMEM_SUPPORT
+wholememory_error_code_t wholememory_get_nvshmem_reference(
+  wholememory_nvshmem_ref_t* wholememory_nvshmem_ref, wholememory_handle_t wholememory_handle);
+#endif
 
 #ifdef __cplusplus
 }
