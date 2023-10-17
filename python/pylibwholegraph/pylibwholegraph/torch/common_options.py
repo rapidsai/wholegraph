@@ -109,7 +109,7 @@ def add_common_model_options(parser: OptionParser):
         default="cugraph",
         help="framework type, valid values are: dgl, pyg, wg, cugraph",
     )
-    parser.add_option("--heads", type="int", dest="heads", default=1, help="num heads")
+    parser.add_option("--heads", type="int", dest="heads", default=4, help="num heads")
     parser.add_option(
         "-d", "--dropout", type="float", dest="dropout", default=0.5, help="dropout"
     )
@@ -126,9 +126,8 @@ def add_common_sampler_options(parser: OptionParser):
     parser.add_option(
         "-s",
         "--inferencesample",
-        type="int",
         dest="inferencesample",
-        default=30,
+        default="30",
         help="inference sample count, -1 is all",
     )
 
