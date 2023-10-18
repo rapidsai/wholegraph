@@ -31,6 +31,10 @@ wgth.add_common_model_options(parser)
 wgth.add_common_sampler_options(parser)
 wgth.add_node_classfication_options(parser)
 wgth.add_dataloader_options(parser)
+parser.add_option(
+    "--fp16_embedding", action="store_true", dest="fp16_mbedding", default=False, help="Whether to use fp16 embedding"
+)
+
 
 (options, args) = parser.parse_args()
 
@@ -188,13 +192,15 @@ def main_func():
         else wgth.create_wholememory_optimizer("adam", {})
     )
 
+    embedding_dtype = torch.float32 if not options.fp16_mbedding else torch.float16
+
     if wm_optimizer is None:
         node_feat_wm_embedding = wgth.create_embedding_from_filelist(
             feature_comm,
             embedding_wholememory_type,
             embedding_wholememory_location,
             os.path.join(options.root_dir, "node_feat.bin"),
-            torch.float,
+            embedding_dtype,
             options.feat_dim,
             optimizer=wm_optimizer,
             cache_policy=cache_policy,
@@ -204,7 +210,7 @@ def main_func():
             feature_comm,
             embedding_wholememory_type,
             embedding_wholememory_location,
-            torch.float,
+            embedding_dtype,
             [graph_structure.node_count, options.feat_dim],
             optimizer=wm_optimizer,
             cache_policy=cache_policy,

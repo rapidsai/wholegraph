@@ -18,6 +18,11 @@ import pylibwholegraph.binding.wholememory_binding as wmb
 from .comm import set_world_info, get_global_communicator, get_local_node_communicator
 
 
+def init(world_rank: int, world_size: int, local_rank: int, local_size: int):
+    wmb.init(0)
+    set_world_info(world_rank, world_size, local_rank, local_size)
+
+
 def init_torch_env(world_rank: int, world_size: int, local_rank: int, local_size: int):
     r"""Init WholeGraph environment for PyTorch.
     :param world_rank: world rank of current process
