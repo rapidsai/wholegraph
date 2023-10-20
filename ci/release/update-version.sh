@@ -58,7 +58,7 @@ sed_runner 's/version = .*/version = '"'${NEXT_SHORT_TAG}'"'/g' docs/wholegraph/
 sed_runner 's/release = .*/release = '"'${NEXT_FULL_TAG}'"'/g' docs/wholegraph/source/conf.py
 
 # Python _version.py updates
-sed_runner "/__version__ / s/= .*/= \"${NEXT_FULL_TAG}\"/g" python/pylibwholegraph/pylibwholegraph/_version.py
+sed_runner "/^__version__ / s/= .*/= \"${NEXT_FULL_TAG}\"/g" python/pylibwholegraph/pylibwholegraph/_version.py
 
 DEPENDENCIES=(
   libraft
