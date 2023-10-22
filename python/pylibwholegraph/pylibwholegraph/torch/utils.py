@@ -92,8 +92,6 @@ def str_to_wmb_wholememory_memory_type(str_wmb_type: str):
         return wmb.WholeMemoryMemoryType.MtChunked
     elif str_wmb_type == "distributed":
         return wmb.WholeMemoryMemoryType.MtDistributed
-    elif str_wmb_type == "nvshmem":
-        return wmb.WholeMemoryMemoryType.MtNVSHMEM
     else:
         raise ValueError(
             "WholeMemory type %s not supported, should be (continuous, chunked, distributed)"
@@ -138,6 +136,18 @@ def str_to_wmb_wholememory_optimizer_type(str_wmb_optimizer: str):
         raise ValueError(
             "WholeMemory optimizer %s not supported, should be (sgd, adam, adagrad, rmsprop)"
             % (str_wmb_optimizer,)
+        )
+
+
+def str_to_wmb_wholememory_distributed_backend_type(str_wmb_distributed_backend: str):
+    if str_wmb_distributed_backend == "nccl":
+        return wmb.WholeMemoryDistributedBackend.DbNCCL
+    elif str_wmb_distributed_backend == "nvshmem":
+        return wmb.WholeMemoryDistributedBackend.DbNVSHMEM
+    else:
+        raise ValueError(
+            "WholeMemory str_wmb_distributed_backend %s not supported, should be (nccl, nvshmem)"
+            % (str_wmb_distributed_backend,)
         )
 
 

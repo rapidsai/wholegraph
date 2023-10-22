@@ -15,7 +15,9 @@ import torch
 import torch.distributed as dist
 import torch.utils.dlpack
 import pylibwholegraph.binding.wholememory_binding as wmb
-
+from .utils import (
+    str_to_wmb_wholememory_distributed_backend_type
+)
 
 global_communicator = None
 local_node_communicator = None
@@ -180,20 +182,9 @@ def get_local_device_communicator():
             global_communicator = local_device_communicator
     return local_device_communicator
 
-def init_nvshmem_with_comm(wm_comm: WholeMemoryCommunicator):
-    """
-    Init nvshmem backend with a WholeMemoryCommunicator, the function must be called before creating wholememory of nvshmem backend. 
-    :param wm_comm: WholeMemoryCommunicator to destroy
-    :return: None
-    """
-    wmb.init_nvshmem_with_communicator(wm_comm.wmb_comm)
-    return
 
-def finalize_nvshmem_with_comm(wm_comm: WholeMemoryCommunicator):
-    """
-    Finalize nvshmem backend with a WholeMemoryCommunicator, the wm_comm must be the one that be used to init nvshmem backend.
-    :param wm_comm: WholeMemoryCommunicator to destroy
-    :return: None
-    """
-    wmb.finalize_nvshmem_with_communicator(wm_comm.wmb_comm)
+def comm_set_preferred_distributed_backend(wm_comm: WholeMemoryCommunicator, distributed_backend: str):
+
+    wmb.communicator_set_preferred_distributed_backend(wm_comm.wmb_comm, str_to_wmb_wholememory_distributed_backend_type
+                                                       (distributed_backend))
     return

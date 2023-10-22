@@ -148,6 +148,13 @@ struct EmbeddingTestParams {
     cache_group_count = count;
     return *this;
   }
+
+  EmbeddingTestParams& set_preferred_distributed_backend(
+    wholememory_distributed_backend_t distributed_backend)
+  {
+    distributed_backend = distributed_backend;
+    return *this;
+  }
   wholememory_array_description_t indice_description;
   wholememory_matrix_description_t embedding_description;
   wholememory_matrix_description_t output_description;
@@ -158,6 +165,7 @@ struct EmbeddingTestParams {
   float cache_ratio                                   = 0.2;
   int cache_type        = 0;  // 0: no cache, 1: device cache, 2: local cache
   int cache_group_count = 1;
+  wholememory_distributed_backend_t distributed_backend = WHOLEMEMORY_DB_NCCL;
 };
 
 class WholeMemoryEmbeddingParameterTests : public ::testing::TestWithParam<EmbeddingTestParams> {};
@@ -187,10 +195,13 @@ TEST_P(WholeMemoryEmbeddingParameterTests, EmbeddingGatherTest)
         create_group_communicator_by_pipes(pipes, world_rank, world_size, params.cache_group_count);
     }
 
-    if (params.cache_memory_type == WHOLEMEMORY_MT_NVSHMEM ||
-        params.memory_type == WHOLEMEMORY_MT_NVSHMEM) {
-      EXPECT_EQ(wholememory_init_nvshmem_with_comm(wm_comm), WHOLEMEMORY_SUCCESS);
+#ifdef WITH_NVSHMEM_SUPPORT
+    if (params.distributed_backend == WHOLEMEMORY_DB_NVSHMEM) {
+      EXPECT_EQ(
+        wholememory_communicator_set_preferred_distributed_backend(wm_comm, WHOLEMEMORY_DB_NVSHMEM),
+        WHOLEMEMORY_SUCCESS);
     }
+#endif
 
     void *dev_indices = nullptr, *dev_gather_buffer = nullptr, *dev_reference_buffer = nullptr;
     void *host_indices = nullptr, *host_gather_buffer = nullptr, *host_reference_buffer = nullptr;
@@ -309,10 +320,6 @@ TEST_P(WholeMemoryEmbeddingParameterTests, EmbeddingGatherTest)
 
     EXPECT_EQ(wholememory_destroy_embedding(wm_embedding), WHOLEMEMORY_SUCCESS);
 
-    if (params.cache_memory_type == WHOLEMEMORY_MT_NVSHMEM ||
-        params.memory_type == WHOLEMEMORY_MT_NVSHMEM) {
-      EXPECT_EQ(wholememory_finalize_nvshmem(wm_comm), WHOLEMEMORY_SUCCESS);
-    }
     EXPECT_EQ(wholememory_finalize(), WHOLEMEMORY_SUCCESS);
     WHOLEMEMORY_CHECK(::testing::Test::HasFailure() == false);
   });
@@ -476,39 +483,48 @@ INSTANTIATE_TEST_SUITE_P(
       .set_embedding_dim(11)
       .set_embedding_stride(12),
 #ifdef WITH_NVSHMEM_SUPPORT
-    EmbeddingTestParams().device_cache().set_cache_memory_type(WHOLEMEMORY_MT_NVSHMEM),
     EmbeddingTestParams()
       .device_cache()
-      .set_cache_memory_type(WHOLEMEMORY_MT_NVSHMEM)
-      .set_output_dtype(WHOLEMEMORY_DT_HALF),
+      .set_cache_memory_type(WHOLEMEMORY_MT_DISTRIBUTED)
+      .set_preferred_distributed_backend(WHOLEMEMORY_DB_NVSHMEM),
     EmbeddingTestParams()
       .device_cache()
-      .set_memory_type(WHOLEMEMORY_MT_NVSHMEM)
+      .set_cache_memory_type(WHOLEMEMORY_MT_DISTRIBUTED)
+      .set_output_dtype(WHOLEMEMORY_DT_HALF)
+      .set_preferred_distributed_backend(WHOLEMEMORY_DB_NVSHMEM),
+    EmbeddingTestParams()
+      .device_cache()
+      .set_memory_type(WHOLEMEMORY_MT_DISTRIBUTED)
       .set_memory_location(WHOLEMEMORY_ML_DEVICE)
-      .set_cache_memory_type(WHOLEMEMORY_MT_NVSHMEM)
-      .set_cache_memory_location(WHOLEMEMORY_ML_DEVICE),
-    EmbeddingTestParams()
-      .device_cache()
-      .set_cache_memory_type(WHOLEMEMORY_MT_NVSHMEM)
+      .set_cache_memory_type(WHOLEMEMORY_MT_DISTRIBUTED)
       .set_cache_memory_location(WHOLEMEMORY_ML_DEVICE)
-      .set_cache_ratio(0.002),
+      .set_preferred_distributed_backend(WHOLEMEMORY_DB_NVSHMEM),
     EmbeddingTestParams()
       .device_cache()
-      .set_memory_type(WHOLEMEMORY_MT_NVSHMEM)
+      .set_cache_memory_type(WHOLEMEMORY_MT_DISTRIBUTED)
+      .set_cache_memory_location(WHOLEMEMORY_ML_DEVICE)
+      .set_cache_ratio(0.002)
+      .set_preferred_distributed_backend(WHOLEMEMORY_DB_NVSHMEM),
+    EmbeddingTestParams()
+      .device_cache()
+      .set_memory_type(WHOLEMEMORY_MT_DISTRIBUTED)
       .set_memory_location(WHOLEMEMORY_ML_DEVICE)
-      .set_cache_memory_type(WHOLEMEMORY_MT_NVSHMEM)
+      .set_cache_memory_type(WHOLEMEMORY_MT_DISTRIBUTED)
       .set_cache_memory_location(WHOLEMEMORY_ML_DEVICE)
-      .set_cache_ratio(0.002),
+      .set_cache_ratio(0.002)
+      .set_preferred_distributed_backend(WHOLEMEMORY_DB_NVSHMEM),
     EmbeddingTestParams()
       .local_cache()
-      .set_memory_type(WHOLEMEMORY_MT_NVSHMEM)
+      .set_memory_type(WHOLEMEMORY_MT_DISTRIBUTED)
       .set_memory_location(WHOLEMEMORY_ML_DEVICE)
-      .set_cache_ratio(0.002),
+      .set_cache_ratio(0.002)
+      .set_preferred_distributed_backend(WHOLEMEMORY_DB_NVSHMEM),
     EmbeddingTestParams()
       .local_cache()
-      .set_memory_type(WHOLEMEMORY_MT_NVSHMEM)
+      .set_memory_type(WHOLEMEMORY_MT_DISTRIBUTED)
       .set_memory_location(WHOLEMEMORY_ML_DEVICE)
-      .set_output_dtype(WHOLEMEMORY_DT_HALF),
+      .set_output_dtype(WHOLEMEMORY_DT_HALF)
+      .set_preferred_distributed_backend(WHOLEMEMORY_DB_NVSHMEM),
 #endif
 
 #endif

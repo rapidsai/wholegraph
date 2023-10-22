@@ -216,7 +216,8 @@ wholememory_error_code_t gather_cached_nvshmem_temp_func(
   WHOLEMEMORY_RETURN_ON_FAIL(
     wholememory_get_nvshmem_reference(&cache_line_tag_nvshmem_ref, cache_line_tag_handle));
 
-  if (embedding_type == WHOLEMEMORY_MT_NVSHMEM) {
+  if (embedding_type == WHOLEMEMORY_MT_DISTRIBUTED &&
+      (wholememory_get_distributed_backend(padded_embedding_handle) == WHOLEMEMORY_DB_NVSHMEM)) {
     wholememory_nvshmem_ref_t padded_embedding_nvshmem_ref;
     WHOLEMEMORY_RETURN_ON_FAIL(
       wholememory_get_nvshmem_reference(&padded_embedding_nvshmem_ref, padded_embedding_handle));

@@ -62,6 +62,12 @@ def add_training_options(parser: OptionParser):
         default=False,
         help="Whether to train embedding",
     )
+    parser.add_option(
+        "--distributed-backend-type",
+        dest="distributed_backend_type",
+        default="nccl",
+        help="distributed backend type, should be: nccl, nvshmem ",
+    )
 
 
 def add_common_graph_options(parser: OptionParser):

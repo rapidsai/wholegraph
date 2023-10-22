@@ -56,7 +56,22 @@ wholememory_error_code_t wholememory_communicator_get_size(int* size, wholememor
 {
   return wholememory::communicator_get_size(size, comm);
 }
+wholememory_error_code_t wholememory_communicator_is_bind_to_nvshmem(bool* is_bind_to_nvshmem,
+                                                                     wholememory_comm_t comm)
+{
+#ifdef WITH_NVSHMEM_SUPPORT
+  return wholememory::communicator_is_bind_to_nvshmem(is_bind_to_nvshmem, comm);
+#endif
 
+  *is_bind_to_nvshmem = false;
+  return WHOLEMEMORY_SUCCESS;
+}
+
+wholememory_error_code_t wholememory_communicator_set_preferred_distributed_backend(
+  wholememory_comm_t comm, wholememory_distributed_backend_t distributed_backend)
+{
+  return wholememory::communicator_set_perferred_distributed_backend(comm, distributed_backend);
+}
 wholememory_error_code_t wholememory_communicator_barrier(wholememory_comm_t comm)
 {
   wholememory::communicator_barrier(comm);
@@ -94,6 +109,12 @@ wholememory_memory_location_t wholememory_get_memory_location(
   wholememory_handle_t wholememory_handle)
 {
   return wholememory::get_memory_location(wholememory_handle);
+}
+
+wholememory_distributed_backend_t wholememory_get_distributed_backend(
+  wholememory_handle_t wholememory_handle)
+{
+  return wholememory::get_distributed_backend_t(wholememory_handle);
 }
 
 size_t wholememory_get_total_size(wholememory_handle_t wholememory_handle)
@@ -217,20 +238,6 @@ wholememory_error_code_t wholememory_load_from_hdfs_file(wholememory_handle_t wh
 {
   return WHOLEMEMORY_NOT_IMPLEMENTED;
 }
-
-#ifdef WITH_NVSHMEM_SUPPORT
-
-wholememory_error_code_t wholememory_init_nvshmem_with_comm(wholememory_comm_t comm)
-{
-  return wholememory::init_nvshmem_with_comm(comm);
-}
-
-wholememory_error_code_t wholememory_finalize_nvshmem(wholememory_comm_t comm)
-{
-  return wholememory::finalize_nvshmem(comm);
-}
-
-#endif
 
 bool wholememory_is_build_with_nvshmem()
 {

@@ -557,7 +557,11 @@ wholememory_error_code_t device_cached_host_embedding::gather(wholememory_tensor
       WHOLEMEMORY_RETURN_ON_FAIL(wholememory_communicator_barrier(cache_policy->cache_comm));
     }
   }
-  if (cache_policy->cache_memory_type == WHOLEMEMORY_MT_DISTRIBUTED) {
+  bool cache_comm_bind_to_nvshmem;
+  wholememory_communicator_is_bind_to_nvshmem(&cache_comm_bind_to_nvshmem,
+                                              cache_policy->cache_comm);
+  if (cache_policy->cache_memory_type == WHOLEMEMORY_MT_DISTRIBUTED &&
+      (!cache_comm_bind_to_nvshmem)) {
     // Local Gather
     total_recv_count = 0;
     for (int i = 0; i < world_size; i++) {
@@ -648,7 +652,8 @@ wholememory_error_code_t device_cached_host_embedding::gather(wholememory_tensor
     WM_CUDA_DEBUG_SYNC_STREAM(stream);
   }
 #ifdef WITH_NVSHMEM_SUPPORT
-  else if (cache_policy->cache_memory_type == WHOLEMEMORY_MT_NVSHMEM) {
+  else if (cache_policy->cache_memory_type == WHOLEMEMORY_MT_DISTRIBUTED &&
+           (cache_comm_bind_to_nvshmem)) {
     wholememory_handle_t global_raw_handle =
       wholememory_tensor_get_memory_handle(allocated_embedding);
     wholememory_handle_t global_cached_handle =
@@ -901,8 +906,7 @@ wholememory_error_code_t wholememory_create_embedding(
       WHOLEMEMORY_RETURN_ON_FAIL(
         wholememory_communicator_get_size(&embedding_world_size, cache_policy->cache_comm));
       WHOLEMEMORY_CHECK_NOTHROW(cache_world_size <= embedding_world_size);
-      if (cache_policy->cache_memory_type == WHOLEMEMORY_MT_DISTRIBUTED ||
-          cache_policy->cache_memory_type == WHOLEMEMORY_MT_NVSHMEM) {
+      if (cache_policy->cache_memory_type == WHOLEMEMORY_MT_DISTRIBUTED) {
         WHOLEMEMORY_ERROR(
           "For local cached global readonly embedding, cache_memory_type should be chunked or "
           "continuous.");

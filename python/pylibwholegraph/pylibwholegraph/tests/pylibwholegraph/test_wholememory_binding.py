@@ -53,7 +53,7 @@ def single_test_case(wm_comm, mt, ml, malloc_size, granularity):
     if mt == wmb.WholeMemoryMemoryType.MtDistributed or (
         mt == wmb.WholeMemoryMemoryType.MtChunked
         and ml == wmb.WholeMemoryMemoryLocation.MlDevice
-    ) or mt == wmb.WholeMemoryMemoryType.MtNVSHMEM:
+    ):
         with pytest.raises(ValueError):
             global_tensor, _ = h.get_global_flatten_tensor(
                 torch_import_from_dlpack, tensor_data_type, view_device, view_device_id

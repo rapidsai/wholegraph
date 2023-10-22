@@ -57,10 +57,9 @@ enum wholememory_error_code_t {
  * Memory Type is the Memory Address Mapping Type of WholeMemory
  */
 enum wholememory_memory_type_t {
-  WHOLEMEMORY_MT_NONE = 0,   /*!< Not defined.  */
-  WHOLEMEMORY_MT_CONTINUOUS, /*!< Memory from all ranks are mapped in continuous address space */
-  WHOLEMEMORY_MT_CHUNKED,    /*!< Memory from all ranks are mapped in chunked address space */
-  WHOLEMEMORY_MT_NVSHMEM,
+  WHOLEMEMORY_MT_NONE = 0,    /*!< Not defined.  */
+  WHOLEMEMORY_MT_CONTINUOUS,  /*!< Memory from all ranks are mapped in continuous address space */
+  WHOLEMEMORY_MT_CHUNKED,     /*!< Memory from all ranks are mapped in chunked address space */
   WHOLEMEMORY_MT_DISTRIBUTED, /*!< Memory from other ranks are not mapped. */
 };
 
@@ -75,6 +74,11 @@ enum wholememory_memory_location_t {
   WHOLEMEMORY_ML_HOST,     /*!< Host Memory */
 };
 
+enum wholememory_distributed_backend_t {
+  WHOLEMEMORY_DB_NONE = 0, /*!< Not defined */
+  WHOLEMEMORY_DB_NCCL,
+  WHOLEMEMORY_DB_NVSHMEM,
+};
 /**
  * Initialize WholeMemory library
  * @param flags : reserved should be 0
@@ -149,6 +153,11 @@ wholememory_error_code_t wholememory_communicator_get_rank(int* rank, wholememor
  */
 wholememory_error_code_t wholememory_communicator_get_size(int* size, wholememory_comm_t comm);
 
+wholememory_error_code_t wholememory_communicator_is_bind_to_nvshmem(bool* is_bind_to_nvshmem,
+                                                                     wholememory_comm_t comm);
+
+wholememory_error_code_t wholememory_communicator_set_preferred_distributed_backend(
+  wholememory_comm_t comm, wholememory_distributed_backend_t distributed_backend);
 /**
  * Barrier on WholeMemory Communicator
  * @param comm : WholeMemory Communicator
@@ -209,6 +218,9 @@ wholememory_memory_type_t wholememory_get_memory_type(wholememory_handle_t whole
  * @return : WholeMemory Location
  */
 wholememory_memory_location_t wholememory_get_memory_location(
+  wholememory_handle_t wholememory_handle);
+
+wholememory_distributed_backend_t wholememory_get_distributed_backend(
   wholememory_handle_t wholememory_handle);
 
 /**
@@ -346,10 +358,6 @@ wholememory_error_code_t wholememory_store_to_file(wholememory_handle_t wholemem
                                                    size_t memory_entry_stride,
                                                    size_t file_entry_size,
                                                    const char* local_file_name);
-
-wholememory_error_code_t wholememory_init_nvshmem_with_comm(wholememory_comm_t comm);
-
-wholememory_error_code_t wholememory_finalize_nvshmem(wholememory_comm_t comm);
 
 bool wholememory_is_build_with_nvshmem();
 #ifdef WITH_NVSHMEM_SUPPORT

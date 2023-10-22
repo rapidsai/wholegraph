@@ -65,6 +65,7 @@ class wholememory_impl {
       total_size_(total_size),
       data_granularity_(data_granularity)
   {
+    distrubuted_backend_ = WHOLEMEMORY_DB_NCCL;
   }
   wholememory_impl()                         = delete;
   wholememory_impl(const wholememory_impl&)  = delete;
@@ -75,6 +76,11 @@ class wholememory_impl {
   [[nodiscard]] wholememory_memory_type_t get_type() const { return type_; }
   [[nodiscard]] wholememory_memory_location_t get_location() const { return location_; }
   [[nodiscard]] wholememory_comm_t get_comm() const { return comm_; }
+  [[nodiscard]] wholememory_distributed_backend_t get_distributed_backend() const
+  {
+    return distrubuted_backend_;
+  }
+
   [[nodiscard]] size_t total_size() const { return total_size_; }
   [[nodiscard]] size_t data_granularity() const { return data_granularity_; }
   virtual void create_memory()           = 0;
@@ -156,7 +162,7 @@ class wholememory_impl {
   wholememory_comm_t comm_;
   wholememory_memory_type_t type_;
   wholememory_memory_location_t location_;
-
+  wholememory_distributed_backend_t distrubuted_backend_;
   // raw user input size, real allocation may be larger than this.
   size_t total_size_;
   size_t data_granularity_;
@@ -1141,8 +1147,10 @@ class nvshmem_device_wholememory_impl : public wholememory_impl {
     : wholememory_impl(
         wholememory_handle, total_size, comm, memory_type, memory_location, data_granularity)
   {
-    WHOLEMEMORY_CHECK(type_ == WHOLEMEMORY_MT_NVSHMEM);
+    WHOLEMEMORY_CHECK(type_ == WHOLEMEMORY_MT_DISTRIBUTED);
     WHOLEMEMORY_CHECK(location_ == WHOLEMEMORY_ML_DEVICE);
+    WHOLEMEMORY_CHECK(comm->bind_to_nvshmem);
+    distrubuted_backend_ = WHOLEMEMORY_DB_NVSHMEM;
   }
 
   void create_memory() override
@@ -1245,6 +1253,7 @@ class nvshmem_device_wholememory_impl : public wholememory_impl {
     // gref_.is_nvshmem                = true;
     // gref_.stride                    = rank_partition_strategy_.partition_mem_stride;
     local_partition_memory_pointer_ = nvshmem_memory_handle_.local_alloc_mem_ptr;
+    distrubuted_backend_            = WHOLEMEMORY_DB_NVSHMEM;
   }
 
   void nvshmem_free_device_memory()
@@ -1409,8 +1418,16 @@ wholememory_error_code_t create_wholememory(wholememory_handle_t* wholememory_ha
     WM_COMM_CHECK_ALL_SAME(comm, wcp);
 
     if (memory_type == WHOLEMEMORY_MT_DISTRIBUTED) {
-      whole_memory_handle->impl = new distributed_wholememory_impl(
-        whole_memory_handle, total_size, comm, memory_type, memory_location, data_granularity);
+#ifdef WITH_NVSHMEM_SUPPORT
+      if (comm->bind_to_nvshmem) {
+        whole_memory_handle->impl = new nvshmem_device_wholememory_impl(
+          whole_memory_handle, total_size, comm, memory_type, memory_location, data_granularity);
+      } else
+#endif
+      {
+        whole_memory_handle->impl = new distributed_wholememory_impl(
+          whole_memory_handle, total_size, comm, memory_type, memory_location, data_granularity);
+      }
     } else if (memory_location == WHOLEMEMORY_ML_HOST) {
       whole_memory_handle->impl = new global_mapped_host_wholememory_impl(
         whole_memory_handle, total_size, comm, memory_type, memory_location, data_granularity);
@@ -1420,16 +1437,6 @@ wholememory_error_code_t create_wholememory(wholememory_handle_t* wholememory_ha
     } else if (memory_type == WHOLEMEMORY_MT_CHUNKED) {
       whole_memory_handle->impl = new chunked_device_wholememory_impl(
         whole_memory_handle, total_size, comm, memory_type, memory_location, data_granularity);
-    } else if (memory_type == WHOLEMEMORY_MT_NVSHMEM) {
-#ifdef WITH_NVSHMEM_SUPPORT
-      whole_memory_handle->impl = new nvshmem_device_wholememory_impl(
-        whole_memory_handle, total_size, comm, memory_type, memory_location, data_granularity);
-#else
-      WHOLEMEMORY_ERROR(
-        "NVSHMEM support is not enabled for embedding store backend. To enable NVSHMEM \
-     support, please add the following compiler flag when building: -DWITH_NVSHMEM_SUPPORT.");
-#endif
-
     } else {
       WHOLEMEMORY_FATAL("Unsupported memory_type (%d) and memory_location (%d).",
                         (int)memory_type,
@@ -1515,6 +1522,12 @@ wholememory_memory_location_t get_memory_location(wholememory_handle_t wholememo
   return wholememory_handle->impl->get_location();
 }
 
+wholememory_distributed_backend_t get_distributed_backend_t(
+  wholememory_handle_t wholememory_handle) noexcept
+{
+  return wholememory_handle->impl->get_distributed_backend();
+}
+
 size_t get_total_size(wholememory_handle_t wholememory_handle) noexcept
 {
   return wholememory_handle->impl->total_size();
@@ -1584,7 +1597,8 @@ wholememory_error_code_t get_nvshmem_reference_frome_handle(
   wholememory_handle_t wholememory_handle) noexcept
 {
   if (wholememory_handle == nullptr || wholememory_handle->impl == nullptr ||
-      wholememory_handle->impl->get_type() != WHOLEMEMORY_MT_NVSHMEM) {
+      wholememory_handle->impl->get_type() != WHOLEMEMORY_MT_DISTRIBUTED ||
+      (wholememory_handle->impl->get_distributed_backend() != WHOLEMEMORY_DB_NVSHMEM)) {
     return WHOLEMEMORY_INVALID_INPUT;
   }
   *wholememory_nvshmem_ref = wholememory_nvshmem_ref_t{};

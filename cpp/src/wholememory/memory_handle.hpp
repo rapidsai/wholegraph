@@ -87,6 +87,9 @@ size_t determine_entry_partition_plan(size_t total_entry_count, int world_size) 
 wholememory_error_code_t get_partition_plan_from_handle(
   size_t* size_per_rank, wholememory_handle_t wholememory_handle) noexcept;
 
+wholememory_distributed_backend_t get_distributed_backend_t(
+  wholememory_handle_t wholememory_handle) noexcept;
+
 #ifdef WITH_NVSHMEM_SUPPORT
 
 wholememory_error_code_t get_nvshmem_reference_frome_handle(

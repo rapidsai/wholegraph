@@ -648,12 +648,11 @@ wholememory_error_code_t destroy_communicator_locked(wholememory_comm_t comm) no
     if (communicator_map.find(comm->comm_id) == communicator_map.end()) {
       return WHOLEMEMORY_INVALID_INPUT;
     }
-#ifdef WITH_NVSHMEM_SUPPORT
 
-    WHOLEMEMORY_EXPECTS(comm->bind_to_nvshmem == false,
-                        "Please finalize nvshmem before destroy the communicator.");
-#endif
     destroy_all_wholememory(comm);
+#ifdef WITH_NVSHMEM_SUPPORT
+    if (comm->bind_to_nvshmem) { finalize_nvshmem_locked(comm); }
+#endif
     WM_COMM_CHECK_ALL_SAME(comm, WM_COMM_OP_DESTROY_COMM);
     communicator_map.erase(comm->comm_id);
     auto* raw_nccl_comm = comm->raw_nccl_comm;
@@ -705,6 +704,13 @@ wholememory_error_code_t communicator_get_size(int* size, wholememory_comm_t com
   return WHOLEMEMORY_SUCCESS;
 }
 
+wholememory_error_code_t communicator_is_bind_to_nvshmem(bool* is_bind_to_nvshmem,
+                                                         wholememory_comm_t comm) noexcept
+{
+  *is_bind_to_nvshmem = comm->bind_to_nvshmem;
+  return WHOLEMEMORY_SUCCESS;
+}
+
 void communicator_barrier(wholememory_comm_t comm)
 {
   try {
@@ -726,10 +732,9 @@ bool is_intranode_communicator(wholememory_comm_t comm) noexcept
 }
 
 #ifdef WITH_NVSHMEM_SUPPORT
-wholememory_error_code_t init_nvshmem_with_comm(wholememory_comm_t comm) noexcept
+wholememory_error_code_t init_nvshmem_with_comm_locked(wholememory_comm_t comm) noexcept
 {
   try {
-    std::unique_lock<std::mutex> mlock(comm_mu);
     WHOLEMEMORY_CHECK(comm != nullptr);
 
     WM_COMM_CHECK_ALL_SAME(comm, nvshmem_has_initalized);
@@ -772,23 +777,25 @@ wholememory_error_code_t init_nvshmem_with_comm(wholememory_comm_t comm) noexcep
     WHOLEMEMORY_FAIL_NOTHROW("Unknown exception.");
   }
 }
-void destroy_wholememory_with_nvshmem_comm(wholememory_comm_t comm) noexcept
+
+wholememory_error_code_t finalize_nvshmem_locked(wholememory_comm_t comm) noexcept
 {
   try {
-    std::unique_lock<std::mutex> mlock(comm->mu);
-    WM_COMM_CHECK_ALL_SAME(comm, WM_COMM_OP_DESTROY_ALL_HANDLES);
-    WM_COMM_CHECK_ALL_SAME(comm, comm->wholememory_map.size());
-    for (auto id_wm = comm->wholememory_map.begin(); id_wm != comm->wholememory_map.end();) {
-      // while
-      if (wholememory_get_memory_type(id_wm->second) != WHOLEMEMORY_MT_NVSHMEM) {
-        id_wm++;
-        continue;
-      }
-      if (wholememory_get_memory_type(id_wm->second) == WHOLEMEMORY_MT_NVSHMEM) {
-        destroy_wholememory_with_comm_locked(id_wm->second);
-        id_wm = comm->wholememory_map.begin();
-      }
-    }
+    WHOLEMEMORY_CHECK(comm != nullptr);
+
+    WM_COMM_CHECK_ALL_SAME(comm, nvshmem_has_initalized);
+    WHOLEMEMORY_EXPECTS(comm->bind_to_nvshmem == true,
+                        "The wholememory_comm_t must be the one previously used to init nvshmem.");
+    WHOLEMEMORY_EXPECTS(
+      nvshmem_has_initalized == true,
+      "To call finalize_nvshmem,please use wholememory_comm_t to init nvshmem first.");
+    // destroy all memory allocated by nvshmem
+    nvshmem_finalize();
+    nvshmemi_is_nvshmem_bootstrapped = false;  // so we can bootstrap again.
+    nvshmem_has_initalized           = false;
+    comm->bind_to_nvshmem            = false;
+    return WHOLEMEMORY_SUCCESS;
+
   } catch (const wholememory::logic_error& wle) {
     WHOLEMEMORY_FAIL_NOTHROW("%s", wle.what());
   } catch (const wholememory::cuda_error& wce) {
@@ -800,26 +807,25 @@ void destroy_wholememory_with_nvshmem_comm(wholememory_comm_t comm) noexcept
   }
 }
 
-wholememory_error_code_t finalize_nvshmem(wholememory_comm_t comm) noexcept
+wholememory_error_code_t communicator_set_perferred_distributed_backend(
+  wholememory_comm_t comm, wholememory_distributed_backend_t preferred_distributed_backend) noexcept
 {
   try {
     std::unique_lock<std::mutex> mlock(comm_mu);
+
     WHOLEMEMORY_CHECK(comm != nullptr);
+    WM_COMM_CHECK_ALL_SAME(comm, preferred_distributed_backend);
 
-    WM_COMM_CHECK_ALL_SAME(comm, nvshmem_has_initalized);
-    WHOLEMEMORY_EXPECTS(comm->bind_to_nvshmem == true,
-                        "The wholememory_comm_t must be the one previously used to init nvshmem.");
-    WHOLEMEMORY_EXPECTS(
-      nvshmem_has_initalized == true,
-      "To call finalize_nvshmem,please use wholememory_comm_t to init nvshmem first.");
-    destroy_wholememory_with_nvshmem_comm(comm);
-    // destroy all memory allocated by nvshmem
-    nvshmem_finalize();
-    nvshmemi_is_nvshmem_bootstrapped = false;  // so we can bootstrap again.
-    nvshmem_has_initalized           = false;
-    comm->bind_to_nvshmem            = false;
+    for (auto&& [id, handle] : comm->wholememory_map) {
+      WHOLEMEMORY_EXPECTS(
+        wholememory_get_memory_type(handle) != WHOLEMEMORY_MT_DISTRIBUTED,
+        "Please set perferred_distributed_backend before creating any whole_memory "
+        "whith distributed memory type!");
+    }
+    comm->preferred_distributed_backend = preferred_distributed_backend;
+    if (preferred_distributed_backend == WHOLEMEMORY_DB_NVSHMEM)
+      return init_nvshmem_with_comm_locked(comm);
     return WHOLEMEMORY_SUCCESS;
-
   } catch (const wholememory::logic_error& wle) {
     WHOLEMEMORY_FAIL_NOTHROW("%s", wle.what());
   } catch (const wholememory::cuda_error& wce) {

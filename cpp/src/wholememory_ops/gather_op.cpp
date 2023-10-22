@@ -78,7 +78,7 @@ wholememory_error_code_t wholememory_gather(wholememory_tensor_t wholememory_ten
     return WHOLEMEMORY_INVALID_INPUT;
   }
   if (has_handle && memory_type == WHOLEMEMORY_MT_DISTRIBUTED) {
-    return wholememory_ops::wholememory_gather_nccl(
+    return wholememory_ops::wholememory_gather_distributed(
       wholememory_tensor_get_memory_handle(wholememory_tensor),
       matrix_description,
       indices,
@@ -87,26 +87,6 @@ wholememory_error_code_t wholememory_gather(wholememory_tensor_t wholememory_ten
       output_desc,
       p_env_fns,
       static_cast<cudaStream_t>(stream));
-  }
-
-  if (has_handle && memory_type == WHOLEMEMORY_MT_NVSHMEM) {
-#ifdef WITH_NVSHMEM_SUPPORT
-
-    return wholememory_ops::wholememory_gather_nvshmem(
-      wholememory_tensor_get_memory_handle(wholememory_tensor),
-      matrix_description,
-      indices,
-      indices_desc,
-      output,
-      output_desc,
-      p_env_fns,
-      static_cast<cudaStream_t>(stream));
-#else
-    WHOLEMEMORY_ERROR(
-      "NVSHMEM support is not enabled for embedding store backend. To enable NVSHMEM \
-     support, please add the following compiler flag when building: -DWITH_NVSHMEM_SUPPORT.");
-
-#endif
   }
 
   WHOLEMEMORY_EXPECTS_NOTHROW(!has_handle || memory_type == WHOLEMEMORY_MT_CHUNKED ||
