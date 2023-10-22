@@ -807,7 +807,7 @@ wholememory_error_code_t finalize_nvshmem_locked(wholememory_comm_t comm) noexce
   }
 }
 
-wholememory_error_code_t communicator_set_perferred_distributed_backend(
+wholememory_error_code_t communicator_set_preferred_distributed_backend(
   wholememory_comm_t comm, wholememory_distributed_backend_t preferred_distributed_backend) noexcept
 {
   try {

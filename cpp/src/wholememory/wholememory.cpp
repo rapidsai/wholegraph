@@ -70,7 +70,7 @@ wholememory_error_code_t wholememory_communicator_is_bind_to_nvshmem(bool* is_bi
 wholememory_error_code_t wholememory_communicator_set_preferred_distributed_backend(
   wholememory_comm_t comm, wholememory_distributed_backend_t distributed_backend)
 {
-  return wholememory::communicator_set_perferred_distributed_backend(comm, distributed_backend);
+  return wholememory::communicator_set_preferred_distributed_backend(comm, distributed_backend);
 }
 wholememory_error_code_t wholememory_communicator_barrier(wholememory_comm_t comm)
 {

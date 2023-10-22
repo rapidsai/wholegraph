@@ -276,7 +276,7 @@ bool is_intranode_communicator(wholememory_comm_t comm) noexcept;
 std::string get_temporary_directory_path(wholememory_comm_t comm);
 
 std::string get_shm_prefix(wholememory_comm_t comm);
-wholememory_error_code_t communicator_set_perferred_distributed_backend(
+wholememory_error_code_t communicator_set_preferred_distributed_backend(
   wholememory_comm_t comm,
   wholememory_distributed_backend_t preferred_distributed_backend) noexcept;
 
