@@ -111,13 +111,6 @@ def routine_func(world_rank: int, world_size: int):
             wmb.WholeMemoryMemoryLocation.MlDevice,
         ]:
             single_test_case(wm_comm, mt, ml, malloc_size, granularity)
-
-    mt = wmb.WholeMemoryMemoryType.MtNVSHMEM
-    ml = wmb.WholeMemoryMemoryLocation.MlDevice
-    wmb.init_nvshmem_with_communicator(wm_comm)
-    single_test_case(wm_comm, mt, ml, malloc_size, granularity)
-    wmb.finalize_nvshmem_with_communicator(wm_comm)
-
     wmb.finalize()
 
 

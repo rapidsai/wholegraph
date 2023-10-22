@@ -182,7 +182,6 @@ cpdef enum WholeMemoryMemoryType:
     MtContinuous = WHOLEMEMORY_MT_CONTINUOUS
     MtChunked = WHOLEMEMORY_MT_CHUNKED
     MtDistributed = WHOLEMEMORY_MT_DISTRIBUTED
-    MtNVSHMEM = WHOLEMEMORY_MT_NVSHMEM
 
 cpdef enum WholeMemoryMemoryLocation:
     MlNone = WHOLEMEMORY_ML_NONE
