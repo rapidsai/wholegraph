@@ -46,6 +46,7 @@ class device_reference {
   size_t typed_stride_;
 };
 
+#ifdef WITH_NVSHMEM_SUPPORT
 template <typename DataTypeT>
 class nvshmem_device_reference {
  public:
@@ -88,5 +89,6 @@ class nvshmem_device_reference {
   DataTypeT* pointer_;
   size_t typed_stride_;
 };
+#endif
 
 }  // namespace wholememory
