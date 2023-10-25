@@ -53,7 +53,8 @@ setup(
         ]
     ),
     package_data={
-        "pylibwholegraph": ["torch_cpp_ext/*.cpp", "torch_cpp_ext/*.h"],
+        "pylibwholegraph": ["VERSION", "torch_cpp_ext/*.cpp", 
+                            "torch_cpp_ext/*.h"],
     },
     include_package_data=True,
     cmdclass=cmdclass,
