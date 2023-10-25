@@ -47,4 +47,4 @@ classifiers = [
 license-files = ["LICENSE"]
 
 [tool.setuptools.dynamic]
-version = {attr = "pylibwholegraph._version.__version__"}
+version = {file = "pylibwholegraph/VERSION"}

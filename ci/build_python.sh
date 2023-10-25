@@ -16,6 +16,7 @@ CPP_CHANNEL=$(rapids-download-conda-from-s3 cpp)
 version=$(rapids-generate-version)
 git_commit=$(git rev-parse HEAD)
 export RAPIDS_PACKAGE_VERSION=${version}
+echo "${version}" | tr -d '"' > VERSION
 
 rapids-logger "Begin py build"
 
@@ -23,7 +24,6 @@ rapids-logger "Begin py build"
 # node works correctly
 rapids-logger "Begin pylibwholegraph build"
 version_file_pylibwholegraph="python/pylibwholegraph/pylibwholegraph/_version.py"
-sed -i "/^__version__/ s/= .*/= ${version}/g" ${version_file_pylibwholegraph}
 sed -i "/^__git_commit__/ s/= .*/= \"${git_commit}\"/g" ${version_file_pylibwholegraph}
 rapids-conda-retry mambabuild \
   --no-test \
