@@ -166,6 +166,10 @@ cdef extern from "wholememory/wholememory.h":
     cdef wholememory_error_code_t wholememory_communicator_set_preferred_distributed_backend(wholememory_comm_t comm,
                                                                 wholememory_distributed_backend_t distributed_backend)
 
+    cdef wholememory_distributed_backend_t wholememory_communicator_get_preferred_distributed_backend(
+                                                                            wholememory_comm_t comm)
+
+
 cpdef enum WholeMemoryErrorCode:
     Success = WHOLEMEMORY_SUCCESS
     UnknowError = WHOLEMEMORY_UNKNOW_ERROR
@@ -1215,6 +1219,12 @@ cdef class PyWholeMemoryComm:
         return world_size
     def barrier(self):
         check_wholememory_error_code(wholememory_communicator_barrier(self.comm_id))
+
+    def get_preferred_distributed_backend(self):
+        return WholeMemoryDistributedBackend(wholememory_communicator_get_preferred_distributed_backend(self.comm_id))
+
+    def set_preferred_distributed_backend(self,WholeMemoryDistributedBackend distributed_backend):
+        check_wholememory_error_code(wholememory_communicator_set_preferred_distributed_backend(self.comm_id,int(distributed_backend)))
 
 cdef class PyWholeMemoryHandle:
     cdef wholememory_handle_t wholememory_handle

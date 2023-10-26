@@ -151,6 +151,17 @@ def str_to_wmb_wholememory_distributed_backend_type(str_wmb_distributed_backend:
         )
 
 
+def wholememory_distributed_backend_type_to_str(distributed_backend: wmb.WholeMemoryDistributedBackend):
+    if distributed_backend == wmb.WholeMemoryDistributedBackend.DbNCCL:
+        return "nccl"
+    elif distributed_backend == wmb.WholeMemoryDistributedBackend.DbNVSHMEM:
+        return "nvshmem"
+    else:
+        raise ValueError(
+            "WholeMemory distributed_backend  not supported, should be (DbNCCL, DbNVSHMEM)"
+        )
+
+
 def get_part_file_name(prefix: str, part_id: int, part_count: int):
     return "%s_part_%d_of_%d" % (prefix, part_id, part_count)
 

@@ -16,7 +16,8 @@ import torch.distributed as dist
 import torch.utils.dlpack
 import pylibwholegraph.binding.wholememory_binding as wmb
 from .utils import (
-    str_to_wmb_wholememory_distributed_backend_type
+    str_to_wmb_wholememory_distributed_backend_type,
+    wholememory_distributed_backend_type_to_str
 )
 
 global_communicator = None
@@ -78,6 +79,14 @@ class WholeMemoryCommunicator(object):
     def destroy(self):
         wmb.destroy_communicator(self.wmb_comm)
         self.wmb_comm = None
+
+    @property
+    def preferred_distributed_backend(self):
+        return wholememory_distributed_backend_type_to_str(self.wmb_comm.get_preferred_distributed_backend())
+
+    @preferred_distributed_backend.setter
+    def preferred_distributed_backend(self, value):
+        self.wmb_comm.set_preferred_distributed_backend(str_to_wmb_wholememory_distributed_backend_type(value))
 
 
 def create_group_communicator(group_size: int = -1, comm_stride: int = 1):

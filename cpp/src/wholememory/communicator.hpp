@@ -280,6 +280,9 @@ wholememory_error_code_t communicator_set_preferred_distributed_backend(
   wholememory_comm_t comm,
   wholememory_distributed_backend_t preferred_distributed_backend) noexcept;
 
+wholememory_distributed_backend_t communicator_get_preferred_distributed_backend(
+  wholememory_comm_t comm) noexcept;
+
 #ifdef WITH_NVSHMEM_SUPPORT
 
 wholememory_error_code_t communicator_is_bind_to_nvshmem(bool* is_bind_to_nvshmem,

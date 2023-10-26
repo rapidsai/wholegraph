@@ -158,6 +158,9 @@ wholememory_error_code_t wholememory_communicator_is_bind_to_nvshmem(bool* is_bi
 
 wholememory_error_code_t wholememory_communicator_set_preferred_distributed_backend(
   wholememory_comm_t comm, wholememory_distributed_backend_t distributed_backend);
+
+wholememory_distributed_backend_t wholememory_communicator_get_preferred_distributed_backend(
+  wholememory_comm_t comm);
 /**
  * Barrier on WholeMemory Communicator
  * @param comm : WholeMemory Communicator
