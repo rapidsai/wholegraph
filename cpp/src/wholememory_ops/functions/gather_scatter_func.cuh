@@ -269,50 +269,43 @@ __global__ void gather_func_kernel(wholememory_gref_t embedding_gref,
 
   int embedding_size       = embedding_desc.sizes[1];
   int64_t embedding_stride = embedding_desc.stride;
-  int block_idx = block.group_index().x;
+  //int block_idx = blockIdx.x;//block.group_index().x;
   int64_t output_stride     = output_desc.stride;
   //int async_copy_align = 4;
   int shm_size = 16384/sizeof(OutputT);
-  int batch_size = shm_size/(blockDim.x/32)/output_stride;//indices batch size for a block in lines
   wholememory::device_reference<EmbeddingT> embedding_dev_ref(embedding_gref);
   
   typed_data_vector<EmbeddingT, ALIGNMENT> embeddings;
   typed_data_vector<OutputT, ALIGNMENT> outputs;
 
   bool use_shm = true;
-  if (batch_size <= 0) {
+  if (shm_size/(blockDim.x/32) < output_desc.sizes[1]) {//
     use_shm = false;
-    batch_size = 1;
   } else {
     my_shared = all_sh + shm_size/(blockDim.x/32)*(threadIdx.x/32);
   }
-  
-  for (int64_t output_idx = warp_id*batch_size; output_idx < indice_count; output_idx += gridDim.x*(blockDim.x/32)*batch_size) {
-	  int cur_idx_lines = (indice_count - output_idx) > batch_size ? batch_size : indice_count - output_idx;
+
+  for (int64_t output_idx = warp_id; output_idx < indice_count; output_idx += gridDim.x*(blockDim.x/32)) {
     OutputT* output_ptr = output + output_desc.storage_offset + output_stride * output_idx;
     if (!use_shm) {
       my_shared = output_ptr;
     }
-    for (int e = 0; e < cur_idx_lines; e ++) {
-		  int64_t embedding_table_idx = indices[output_idx + e];
-	  	EmbeddingT *emb_ptr = &embedding_dev_ref[embedding_desc.storage_offset + embedding_table_idx*embedding_stride];
+		int64_t embedding_table_idx = indices[output_idx];
+	  EmbeddingT *emb_ptr = &embedding_dev_ref[embedding_desc.storage_offset + embedding_table_idx*embedding_stride];
       
-      for (int emb_idx = lane_id * ALIGNMENT; emb_idx < embedding_size; emb_idx += ALIGNMENT * 32) {
-        mov_data<sizeof(EmbeddingT) * ALIGNMENT>(&embeddings, emb_ptr + emb_idx);
+    for (int emb_idx = lane_id * ALIGNMENT; emb_idx < embedding_size; emb_idx += ALIGNMENT * 32) {
+      mov_data<sizeof(EmbeddingT) * ALIGNMENT>(&embeddings, emb_ptr + emb_idx);
 #pragma unroll
-        for (int sub_idx = 0; sub_idx < ALIGNMENT; sub_idx++) {
-          typed_data_vector_at(outputs, sub_idx) =
+      for (int sub_idx = 0; sub_idx < ALIGNMENT; sub_idx++) {
+        typed_data_vector_at(outputs, sub_idx) =
             convert_type<EmbeddingT, OutputT>(typed_data_vector_at(embeddings, sub_idx));
-        }
-        mov_data<sizeof(OutputT) * ALIGNMENT>(my_shared + e*output_stride + emb_idx, &outputs);
       }
-	  }
+      mov_data<sizeof(OutputT) * ALIGNMENT>(my_shared + emb_idx, &outputs);
+    }
     if (use_shm) {
-      int copy_size = cur_idx_lines*output_stride*sizeof(OutputT);
+      int copy_size = output_desc.sizes[1]*sizeof(OutputT);
 	    cooperative_groups::memcpy_async(mywarp, output_ptr, my_shared, copy_size);
 	    cooperative_groups::wait(mywarp);
-      //asm("cp.async.bulk.global.shared::cta.bulk_group [%0], [%1], [%2];\n"::"l"(output_ptr), "l"(my_shared), "r"(copy_size));
-      //asm("cp.async.ca.global.shared [%0], [%1], [%2];\n"::"l"(output_ptr), "l"(my_shared), "r"(copy_size));
     } 
   }
   return;
@@ -372,8 +365,8 @@ void gather_temp_func(wholememory_gref_t embedding_gref,
       return;
     }
   }
-  int block_size = 256;
-  int block_count = indice_count > 2048 ? 2048 : indice_count;
+  int block_size = 128;
+  int block_count = indice_count > 1584 ? 1584 : indice_count;
   kernel_fn<<<block_count, block_size, 0, stream>>>(embedding_gref,
                                                         embedding_desc,
                                                         static_cast<const IndexT*>(indices),
