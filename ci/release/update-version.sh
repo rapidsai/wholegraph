@@ -58,7 +58,7 @@ sed_runner 's/version = .*/version = '"'${NEXT_SHORT_TAG}'"'/g' docs/wholegraph/
 sed_runner 's/release = .*/release = '"'${NEXT_FULL_TAG}'"'/g' docs/wholegraph/source/conf.py
 
 # Centralized version file update
-echo "${NEXT_FULL_TAG}" | tr -d '"' > VERSION
+echo "${NEXT_FULL_TAG}" > VERSION
 
 DEPENDENCIES=(
   libraft
