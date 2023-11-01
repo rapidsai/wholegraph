@@ -166,6 +166,15 @@ TEST_P(WholeGraphCSRWeightedSampleWithoutReplacementParameterTests, WeightedSamp
 
       wholememory_comm_t wm_comm = create_communicator_by_pipes(pipes, world_rank, world_size);
 
+      if (wholememory_communicator_support_type_location(
+            wm_comm, params.memory_type, params.memory_location) != WHOLEMEMORY_SUCCESS) {
+        EXPECT_EQ(wholememory::destroy_all_communicators(), WHOLEMEMORY_SUCCESS);
+        EXPECT_EQ(wholememory_finalize(), WHOLEMEMORY_SUCCESS);
+        WHOLEMEMORY_CHECK(::testing::Test::HasFailure() == false);
+        if (world_rank == 0) GTEST_SKIP_("Skip due to not supported.");
+        return;
+      }
+
       auto csr_row_ptr_desc          = params.get_csr_row_ptr_desc();
       auto csr_col_ptr_desc          = params.get_csr_col_ptr_desc();
       auto csr_weight_ptr_desc       = params.get_csr_weight_ptr_desc();

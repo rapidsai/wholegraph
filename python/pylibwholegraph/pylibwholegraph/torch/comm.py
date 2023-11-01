@@ -15,6 +15,7 @@ import torch
 import torch.distributed as dist
 import torch.utils.dlpack
 import pylibwholegraph.binding.wholememory_binding as wmb
+from .utils import str_to_wmb_wholememory_memory_type, str_to_wmb_wholememory_location
 
 
 global_communicator = None
@@ -72,6 +73,16 @@ class WholeMemoryCommunicator(object):
         synchrionze that stream before calling this function.
         """
         return self.wmb_comm.barrier()
+
+    def support_type_location(self,
+                              memory_type: str,
+                              memory_location: str):
+        """
+        Return True if Communicator supports combination of memory_type and memory_location.
+        """
+        wm_memory_type = str_to_wmb_wholememory_memory_type(memory_type)
+        wm_location = str_to_wmb_wholememory_location(memory_location)
+        return self.wmb_comm.support_type_location(wm_memory_type, wm_location)
 
     def destroy(self):
         wmb.destroy_communicator(self.wmb_comm)

@@ -44,6 +44,15 @@ TEST_P(WholeMemoryHandleCreateDestroyParameterTests, CreateDestroyTest)
 
       wholememory_comm_t wm_comm = create_communicator_by_pipes(pipes, rank, world_size);
 
+      if (wholememory_communicator_support_type_location(
+            wm_comm, std::get<1>(params), std::get<2>(params)) != WHOLEMEMORY_SUCCESS) {
+        EXPECT_EQ(wholememory::destroy_all_communicators(), WHOLEMEMORY_SUCCESS);
+        EXPECT_EQ(wholememory_finalize(), WHOLEMEMORY_SUCCESS);
+        WHOLEMEMORY_CHECK(::testing::Test::HasFailure() == false);
+        if (rank == 0) GTEST_SKIP_("Skip due to not supported.");
+        return;
+      }
+
       wholememory_handle_t handle1;
       EXPECT_EQ(wholememory::create_wholememory(&handle1,
                                                 std::get<0>(params),
@@ -112,6 +121,15 @@ TEST_P(WholeMemoryHandleMultiCreateParameterTests, CreateDestroyTest)
       EXPECT_EQ(cudaSetDevice(rank), cudaSuccess);
 
       wholememory_comm_t wm_comm = create_communicator_by_pipes(pipes, rank, world_size);
+
+      if (wholememory_communicator_support_type_location(
+            wm_comm, std::get<0>(params), std::get<1>(params)) != WHOLEMEMORY_SUCCESS) {
+        EXPECT_EQ(wholememory::destroy_all_communicators(), WHOLEMEMORY_SUCCESS);
+        EXPECT_EQ(wholememory_finalize(), WHOLEMEMORY_SUCCESS);
+        WHOLEMEMORY_CHECK(::testing::Test::HasFailure() == false);
+        if (rank == 0) GTEST_SKIP_("Skip due to not supported.");
+        return;
+      }
 
       size_t total_size  = 1024UL * 1024UL * 32;
       size_t granularity = 128;

@@ -83,6 +83,8 @@ def load_routine_func(
             wmb.WholeMemoryMemoryLocation.MlHost,
             wmb.WholeMemoryMemoryLocation.MlDevice,
         ]:
+            if not wm_comm.support_type_location(mt, ml):
+                continue
             wholememory_root_tensor = wmb.create_wholememory_matrix(
                 data_type,
                 embedding_entry_count,
