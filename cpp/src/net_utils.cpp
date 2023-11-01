@@ -2,20 +2,21 @@
 
 #include <arpa/inet.h>
 #include <fcntl.h>
-#include <sys/socket.h>
 #include <netdb.h>
 #include <netinet/in.h>
-#include <string.h>
 #include <stdlib.h>
+#include <string.h>
+#include <sys/socket.h>
 #include <unistd.h>
 
 #include <string>
 
 #include "cuda_macros.hpp"
 
-static void ResolveHostName(sockaddr_in* saddr, const std::string& host_name, int port) {
-  addrinfo hints = { 0, AF_INET, SOCK_STREAM, IPPROTO_TCP, 0, nullptr, nullptr, nullptr};
-  addrinfo *res;
+static void ResolveHostName(sockaddr_in* saddr, const std::string& host_name, int port)
+{
+  addrinfo hints = {0, AF_INET, SOCK_STREAM, IPPROTO_TCP, 0, nullptr, nullptr, nullptr};
+  addrinfo* res;
   char port_buf[16];
   snprintf(port_buf, 16, "%d", port);
   int ret = getaddrinfo(host_name.c_str(), port_buf, &hints, &res);
@@ -26,7 +27,8 @@ static void ResolveHostName(sockaddr_in* saddr, const std::string& host_name, in
   *saddr = *(sockaddr_in*)(res->ai_addr);
 }
 
-int CreateServerListenFd(int port) {
+int CreateServerListenFd(int port)
+{
   int server_sock = socket(AF_INET, SOCK_STREAM, 0);
   WHOLEMEMORY_CHECK_NOTHROW(server_sock >= 0);
   int enable = 1;
@@ -36,8 +38,8 @@ int CreateServerListenFd(int port) {
   // Binding
   sockaddr_in server_addr;
   memset(&server_addr, 0, sizeof(sockaddr_in));
-  server_addr.sin_family = AF_INET;
-  server_addr.sin_port = htons(port);
+  server_addr.sin_family      = AF_INET;
+  server_addr.sin_port        = htons(port);
   server_addr.sin_addr.s_addr = htonl(INADDR_ANY);
 
   WHOLEMEMORY_CHECK_NOTHROW(bind(server_sock, (sockaddr*)&server_addr, sizeof(server_addr)) == 0);
@@ -45,16 +47,19 @@ int CreateServerListenFd(int port) {
   return server_sock;
 }
 
-void ServerListen(int listen_fd, int backlog) {
+void ServerListen(int listen_fd, int backlog)
+{
   WHOLEMEMORY_CHECK_NOTHROW(listen(listen_fd, backlog) == 0);
 }
 
-int ServerAccept(int listen_fd, sockaddr_in* client_addr, socklen_t* client_addr_len) {
+int ServerAccept(int listen_fd, sockaddr_in* client_addr, socklen_t* client_addr_len)
+{
   int client_sock = accept(listen_fd, (sockaddr*)client_addr, client_addr_len);
   return client_sock;
 }
 
-int CreateClientFd(const std::string& server_name, int server_port) {
+int CreateClientFd(const std::string& server_name, int server_port)
+{
   int client_sock = socket(AF_INET, SOCK_STREAM, 0);
   WHOLEMEMORY_CHECK_NOTHROW(client_sock >= 0);
 
@@ -70,17 +75,11 @@ int CreateClientFd(const std::string& server_name, int server_port) {
   while (connect(client_sock, (sockaddr*)&server_addr, sizeof(server_addr)) < 0) {
     switch (errno) {
       case ECONNREFUSED:
-        //std::cerr << "Server may not running, waiting..." << std::endl;
+        // std::cerr << "Server may not running, waiting..." << std::endl;
         break;
-      case ETIMEDOUT:
-        printf("Connecting timeout retrying...\n");
-        break;
-      case ENETUNREACH:
-        printf("Network unreachable, retrying...\n");
-        break;
-      default:
-        printf("unknow error %d, retrying...\n", errno);
-        break;
+      case ETIMEDOUT: printf("Connecting timeout retrying...\n"); break;
+      case ENETUNREACH: printf("Network unreachable, retrying...\n"); break;
+      default: printf("unknow error %d, retrying...\n", errno); break;
     }
     usleep(500 * 1000);
   }
@@ -88,7 +87,8 @@ int CreateClientFd(const std::string& server_name, int server_port) {
   return client_sock;
 }
 
-void SingleSend(int sock_fd, const void* send_data, size_t send_size) {
+void SingleSend(int sock_fd, const void* send_data, size_t send_size)
+{
   ssize_t bytes_send = send(sock_fd, send_data, send_size, 0);
   if (bytes_send < 0) {
     printf("recv returned %ld, errno=%d %s\n", bytes_send, errno, strerror(errno));
@@ -96,7 +96,8 @@ void SingleSend(int sock_fd, const void* send_data, size_t send_size) {
   WHOLEMEMORY_CHECK_NOTHROW(bytes_send == send_size);
 }
 
-void SingleRecv(int sock_fd, void* recv_data, size_t recv_size) {
+void SingleRecv(int sock_fd, void* recv_data, size_t recv_size)
+{
   ssize_t bytes_received = recv(sock_fd, recv_data, recv_size, 0);
   if (bytes_received < 0) {
     printf("recv returned %ld, errno=%d %s\n", bytes_received, errno, strerror(errno));
