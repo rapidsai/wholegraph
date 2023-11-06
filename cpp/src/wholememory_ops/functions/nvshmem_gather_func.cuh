@@ -10,6 +10,9 @@
 #include <cub/cub.cuh>
 #include <cuda.h>
 #include <cuda_runtime_api.h>
+#ifdef WITH_NVSHMEM_SUPPORT
+#include <nvshmem.h>
+#endif
 
 namespace wholememory_ops {
 template <typename _T>
@@ -101,6 +104,32 @@ void generate_partition_pair_index(const IndexT* indices,
   WM_CUDA_CHECK_NO_THROW(
     cudaMemcpyAsync(num_selected, d_num_selected, sizeof(int64_t), cudaMemcpyDeviceToHost, stream));
   WM_CUDA_CHECK_NO_THROW(cudaStreamSynchronize(stream));
+}
+
+template <typename EmbeddingT, typename IndexT, typename OutputT>
+__global__ void gather_func_with_nvshmem_convert_date_type_kernel(
+  OutputT* output,
+  const EmbeddingT* temp_output,
+  int64_t indice_count,
+  wholememory_matrix_description_t embedding_desc,
+
+  wholememory_matrix_description_t output_desc)
+{
+  int thread_idx        = threadIdx.x;
+  int64_t output_stride = output_desc.stride;
+  int embedding_size    = embedding_desc.sizes[1];
+
+  for (int64_t output_idx = static_cast<int64_t>(blockIdx.x) * blockDim.y + threadIdx.y;
+       output_idx < indice_count;
+       output_idx += static_cast<int64_t>(gridDim.x) * blockDim.y) {
+    OutputT* output_ptr = output + output_desc.storage_offset + output_stride * output_idx;
+
+    int64_t temp_output_offset = output_idx * output_stride;
+    for (int emb_idx = thread_idx; emb_idx < embedding_size; emb_idx += blockDim.x) {
+      output_ptr[emb_idx] =
+        convert_type<EmbeddingT, OutputT>(temp_output[temp_output_offset + emb_idx]);
+    }
+  }
 }
 
 }  // namespace wholememory_ops
