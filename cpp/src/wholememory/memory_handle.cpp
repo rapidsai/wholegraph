@@ -32,6 +32,7 @@
 #include "error.hpp"
 #include "integer_utils.hpp"
 #include "logger.hpp"
+#include "wholememory/communicator.hpp"
 #include "wholememory/global_reference.h"
 #include "wholememory/wholememory.h"
 
@@ -1149,8 +1150,11 @@ class nvshmem_device_wholememory_impl : public wholememory_impl {
   {
     WHOLEMEMORY_CHECK(type_ == WHOLEMEMORY_MT_DISTRIBUTED);
     WHOLEMEMORY_CHECK(location_ == WHOLEMEMORY_ML_DEVICE);
-    WHOLEMEMORY_CHECK(comm->bind_to_nvshmem);
+    WHOLEMEMORY_CHECK(comm->preferred_distributed_backend == WHOLEMEMORY_DB_NVSHMEM);
     distrubuted_backend_ = WHOLEMEMORY_DB_NVSHMEM;
+    check_or_set_nvshmem_heap_kind();
+    init_nvshmem_with_comm(comm);
+    WHOLEMEMORY_CHECK(comm->bind_to_nvshmem);
   }
 
   void create_memory() override
@@ -1265,9 +1269,32 @@ class nvshmem_device_wholememory_impl : public wholememory_impl {
     }
   }
 
+  void check_or_set_nvshmem_heap_kind()
+  {
+    if (!has_set_nvshmem_heap) {
+      if (location_ == WHOLEMEMORY_ML_HOST) {
+        setenv("NVSHMEM_HEAP_KIND", "SYSMEM", 1);
+      } else if (location_ == WHOLEMEMORY_ML_DEVICE) {
+        setenv("NVSHMEM_HEAP_KIND", "DEVICE", 1);
+      }
+      has_set_nvshmem_heap = true;
+      return;
+    }
+    const char* sys_heap_location = std::getenv("NVSHMEM_HEAP_KIND");
+
+    if (location_ == WHOLEMEMORY_ML_HOST) {
+      WHOLEMEMORY_CHECK((sys_heap_location != nullptr) &&
+                        (strcmp(sys_heap_location, "SYSMEM") == 0));
+    } else if (location_ == WHOLEMEMORY_ML_DEVICE) {
+      WHOLEMEMORY_CHECK((sys_heap_location != nullptr) &&
+                        (strcmp(sys_heap_location, "DEVICE") == 0));
+    }
+  }
+
   struct nvshmem_memory_handle {
     void* local_alloc_mem_ptr = nullptr;
   } nvshmem_memory_handle_;
+  inline static bool has_set_nvshmem_heap = false;
 };
 #endif
 

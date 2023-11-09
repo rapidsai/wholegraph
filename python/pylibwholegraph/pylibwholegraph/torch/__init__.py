@@ -15,7 +15,6 @@ from .comm import (
     WholeMemoryCommunicator,
     create_group_communicator,
     destroy_communicator,
-    comm_set_preferred_distributed_backend,
 )
 from .comm import (
     get_global_communicator,

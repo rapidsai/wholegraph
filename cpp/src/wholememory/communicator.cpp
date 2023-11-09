@@ -742,18 +742,21 @@ bool is_intranode_communicator(wholememory_comm_t comm) noexcept
 }
 
 #ifdef WITH_NVSHMEM_SUPPORT
-wholememory_error_code_t init_nvshmem_with_comm_locked(wholememory_comm_t comm) noexcept
+wholememory_error_code_t init_nvshmem_with_comm(wholememory_comm_t comm) noexcept
 {
   try {
+    std::unique_lock<std::mutex> mlock(comm_mu);
+
     WHOLEMEMORY_CHECK(comm != nullptr);
+    WHOLEMEMORY_EXPECTS(comm->bind_to_nvshmem == true,
+                        "The distributed_backend should be WHOLEMEMORY_DB_NVSHMEM.");
+    if (nvshmem_has_initalized) return WHOLEMEMORY_SUCCESS;
 
     WM_COMM_CHECK_ALL_SAME(comm, nvshmem_has_initalized);
 
     WHOLEMEMORY_EXPECTS(nvshmem_has_initalized == false,
                         "A wholememory_comm_t has been used to init nvshmem. To init nvshmem with "
                         "other wholememory_coomm_t, call finalize_nvshmem first.");
-    WHOLEMEMORY_EXPECTS(comm->bind_to_nvshmem == false,
-                        "The wholememory_comm has been used to init nvshmem.");
 
     auto set_env_if_not_exist = [](std::string_view env_name, std::string_view value) {
       if (getenv(env_name.data()) == nullptr || strcmp(getenv(env_name.data()), "") == 0) {
@@ -829,12 +832,12 @@ wholememory_error_code_t communicator_set_preferred_distributed_backend(
     for (auto&& [id, handle] : comm->wholememory_map) {
       WHOLEMEMORY_EXPECTS(
         wholememory_get_memory_type(handle) != WHOLEMEMORY_MT_DISTRIBUTED,
-        "Please set perferred_distributed_backend before creating any whole_memory "
-        "whith distributed memory type!");
+        "Please set perferred_distributed_backend before creating any whole_memory with "
+        "distributed memory type if need to change distriubted_backend");
     }
     comm->preferred_distributed_backend = preferred_distributed_backend;
-    if (preferred_distributed_backend == WHOLEMEMORY_DB_NVSHMEM)
-      return init_nvshmem_with_comm_locked(comm);
+    if (preferred_distributed_backend == WHOLEMEMORY_DB_NVSHMEM) { comm->bind_to_nvshmem = true; }
+
     return WHOLEMEMORY_SUCCESS;
   } catch (const wholememory::logic_error& wle) {
     WHOLEMEMORY_FAIL_NOTHROW("%s", wle.what());

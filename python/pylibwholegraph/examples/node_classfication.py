@@ -133,6 +133,7 @@ def main_func():
         wgth.get_world_size(),
         wgth.get_local_rank(),
         wgth.get_local_size(),
+        options.distributed_backend_type
     )
     if options.use_cpp_ext:
         wgth.compile_cpp_extension()
@@ -161,7 +162,6 @@ def main_func():
     graph_structure.set_csr_graph(csr_row_ptr_wm_tensor, csr_col_ind_wm_tensor)
 
     feature_comm = global_comm if options.use_global_embedding else local_comm
-    wgth.comm_set_preferred_distributed_backend(feature_comm, options.distributed_backend_type)
 
     embedding_wholememory_type = options.embedding_memory_type
     embedding_wholememory_location = (
