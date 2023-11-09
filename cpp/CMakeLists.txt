@@ -201,7 +201,7 @@ PRIVATE
 
 if(BUILD_WITH_NVSHMEM)
         set_source_files_properties("src/wholememory_ops/gather_op_impl_nvshmem.cu" "src/wholememory_ops/scatter_op_impl.nvshmem.cu"
-        "src/wholememory_ops/functions/gather_cached_nvshmem_func.cu" "src/wholememory_ops/gather_op_impl_nvshmem_sort_idx.cu"
+        "src/wholememory_ops/functions/gather_cached_nvshmem_func.cu"
         PROPERTIES
         # CUDA_SEPARABLE_COMPILATION ON
         COMPILE_FLAGS "-rdc=true"
@@ -225,7 +225,7 @@ get_target_property(NVSHMEM_BINARY_DIR nvshmem BINARY_DIR)
   target_sources(nvshmem_wholememory_bootstrap PRIVATE src/nvshmem_plugins/nvshmem_wholememory_bootstrap.cpp)
   target_link_libraries(nvshmem_wholememory_bootstrap PRIVATE wholegraph nvshmem_host )
   target_include_directories(nvshmem_wholememory_bootstrap
-                             PRIVATE 
+                             PRIVATE
                              ${CMAKE_CURRENT_SOURCE_DIR}/src
                              ${NVSHMEM_BINARY_DIR}/include/modules/common
                              ${NVSHMEM_BINARY_DIR}/include/modules/bootstrap
