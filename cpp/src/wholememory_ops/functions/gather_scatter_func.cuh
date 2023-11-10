@@ -269,9 +269,7 @@ __global__ void gather_func_kernel(wholememory_gref_t embedding_gref,
 
   int embedding_size       = embedding_desc.sizes[1];
   int64_t embedding_stride = embedding_desc.stride;
-  //int block_idx = blockIdx.x;//block.group_index().x;
   int64_t output_stride     = output_desc.stride;
-  //int async_copy_align = 4;
   int shm_size = 16384/sizeof(OutputT);
   wholememory::device_reference<EmbeddingT> embedding_dev_ref(embedding_gref);
   
@@ -365,8 +363,8 @@ void gather_temp_func(wholememory_gref_t embedding_gref,
       return;
     }
   }
-  int block_size = 128;
-  int block_count = indice_count > 1584 ? 1584 : indice_count;
+  int block_size = 1024;
+  int block_count = indice_count > 1568 ? 1568 : indice_count;
   kernel_fn<<<block_count, block_size, 0, stream>>>(embedding_gref,
                                                         embedding_desc,
                                                         static_cast<const IndexT*>(indices),
@@ -394,9 +392,8 @@ __global__ void scatter_func_kernel(const InputT* input,
 
   int embedding_size       = embedding_desc.sizes[1];
   int64_t embedding_stride = embedding_desc.stride;
-  int block_idx = block.group_index().x;
   int64_t input_stride     = input_desc.stride;
-  int async_copy_align = 4;
+  int async_copy_align = sizeof(InputT) > 4? 1 : 4/sizeof(InputT);
 
   int shm_size = 24576/sizeof(InputT);
 
@@ -417,11 +414,10 @@ __global__ void scatter_func_kernel(const InputT* input,
 	  const InputT* input_ptr = input + input_desc.storage_offset - input_off_tail + input_stride * input_idx;
     //this variable is also for alignment
     if (use_shm) {
-      int copy_size = (input_off_tail + cur_idx_lines*input_stride)*sizeof(InputT);
+      int copy_size = input_off_tail + cur_idx_lines*input_stride;
       if (input_idx + cur_idx_lines < indice_count)//input_dim * sizeof(InputT) > 4 is needed
         copy_size = (copy_size + async_copy_align -1)/async_copy_align*async_copy_align;
-      //for (int off = 0; off+4 < copy_size; off += 4)
-	    //  asm("cp.async.ca.shared.global [%0], [%1], 4;\n"::"l"(my_shared+off), "l"(input_ptr+off));
+      copy_size *= sizeof(InputT);
       cooperative_groups::memcpy_async(mywarp, my_shared, input_ptr, copy_size);
 	    cooperative_groups::wait(mywarp);
     }
@@ -464,10 +460,7 @@ void scatter_temp_func(const void* input,
   int wm_alignment   = determine_wholememory_alignment_elt_count(embedding_desc);
   int mm_alignment   = determine_memory_alignment_elt_count(input, input_desc);
   int alignment      = std::min<int>(wm_alignment, mm_alignment);
-  //int embedding_size = embedding_desc.sizes[1];
-  //int thread_num       = wholememory::div_rounding_up_safe<int>(embedding_size, alignment);
-  //thread_num           = std::min(thread_num, 512);
-  //int64_t block_count = indice_count >= 1024 ? 1024 : static_cast<int>(indice_count);
+ 
   void (*kernel_fn)(const InputT*,
                     wholememory_matrix_description_t,
                     const IndexT*,
@@ -501,7 +494,7 @@ void scatter_temp_func(const void* input,
     }
   }
   int block_size = 256;
-  int block_count = indice_count > 2048 ? 2048 : indice_count;
+  int block_count = indice_count > 1568 ? 1568 : indice_count;
   kernel_fn<<<block_count, block_size, 0, stream>>>(static_cast<const InputT*>(input),
                                                         input_desc,
                                                         static_cast<const IndexT*>(indices),
