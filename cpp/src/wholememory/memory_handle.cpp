@@ -1476,7 +1476,7 @@ wholememory_error_code_t create_wholememory(wholememory_handle_t* wholememory_ha
       whole_memory_handle->impl = new distributed_wholememory_impl(
         whole_memory_handle, total_size, comm, memory_type, memory_location, data_granularity);
     } else if (memory_type == WHOLEMEMORY_MT_CONTINUOUS) {
-      if (is_intranode_communicator(comm) && !SupportEGM()) {
+      if (is_intranode_communicator(comm) || !SupportEGM()) {
         if (memory_location == WHOLEMEMORY_ML_HOST) {
           whole_memory_handle->impl = new global_mapped_host_wholememory_impl(
             whole_memory_handle, total_size, comm, memory_type, memory_location, data_granularity);
