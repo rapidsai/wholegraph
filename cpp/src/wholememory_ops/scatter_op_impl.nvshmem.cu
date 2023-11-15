@@ -26,82 +26,58 @@
 #include "wholememory/nvshmem_template.cuh"
 
 namespace wholememory_ops {
-template <typename InputT, typename IndexT, typename EmbeddingT>
-__global__ void scatter_func_with_nvshmem_kernel(const InputT* input,
-                                                 wholememory_matrix_description_t input_desc,
-                                                 const IndexT* indices,
-                                                 int64_t indice_count,
-                                                 wholememory_nvshmem_ref_t embeding_nvshmem_ref,
-                                                 wholememory_matrix_description_t embedding_desc,
-                                                 size_t embedding_entry_count_per_rank,
-                                                 int world_rank,
-                                                 int world_size)
-{
-  int thread_idx           = threadIdx.x;
-  int embedding_size       = embedding_desc.sizes[1];
-  int64_t embedding_stride = embedding_desc.stride;
-  int64_t input_stride     = input_desc.stride;
-  wholememory::nvshmem_device_reference<EmbeddingT> embedding_nvshmem_device_ref{
-    embeding_nvshmem_ref};
 
-  for (int64_t input_idx = static_cast<int64_t>(blockIdx.x) * blockDim.y + threadIdx.y;
-       input_idx < indice_count;
-       input_idx += static_cast<int64_t>(gridDim.x) * blockDim.y) {
-    const InputT* input_ptr    = input + input_desc.storage_offset + input_stride * input_idx;
-    IndexT embedding_table_idx = indices[input_idx];
-    if (embedding_table_idx < 0) continue;
-    int64_t embedding_offset =
-      embedding_desc.storage_offset + embedding_table_idx * embedding_stride;
-    for (int emb_idx = thread_idx; emb_idx < embedding_size; emb_idx += blockDim.x) {
-      EmbeddingT scatter_ele = convert_type<InputT, EmbeddingT>(input_ptr[emb_idx]);
-      // TODO: nvshmem_put block
-      embedding_nvshmem_device_ref.store(embedding_offset + emb_idx, scatter_ele);
-    }
-  }
-}
+wholememory_error_code_t nvshmem_scatter_floating_int32_func(
+  wholememory_comm_t wm_comm,
+  void* input,
+  void* temp_input,
+  wholememory_matrix_description_t input_desc,
+  const void* indices,
+  wholememory_array_description_t indices_desc,
+  wholememory_nvshmem_ref_t embeding_nvshmem_ptr,
+  wholememory_matrix_description_t embedding_desc,
+  size_t embedding_entry_count_per_rank,
+  wholememory_env_func_t* p_env_fns,
+  cudaStream_t stream);
 
-template <typename InputT, typename IndexT, typename EmbeddingT>
-void nvshmem_scatter_temp_func(const void* input,
-                               wholememory_matrix_description_t input_desc,
-                               void* indices,
-                               int64_t indice_count,
-                               wholememory_nvshmem_ref_t embedding_nvshmem_ref,
-                               wholememory_matrix_description_t embedding_desc,
-                               size_t embedding_entry_count_per_rank,
-                               int world_rank,
-                               int world_size,
-                               cudaStream_t stream)
-{
-  if (indice_count == 0 || embedding_desc.sizes[1] == 0) return;
+wholememory_error_code_t nvshmem_scatter_floating_int64_func(
+  wholememory_comm_t wm_comm,
+  void* input,
+  void* temp_input,
+  wholememory_matrix_description_t input_desc,
+  const void* indices,
+  wholememory_array_description_t indices_desc,
+  wholememory_nvshmem_ref_t embeding_nvshmem_ptr,
+  wholememory_matrix_description_t embedding_desc,
+  size_t embedding_entry_count_per_rank,
+  wholememory_env_func_t* p_env_fns,
+  cudaStream_t stream);
 
-  int embedding_size = embedding_desc.sizes[1];
-  int thread_x       = std::min(raft::bound_by_power_of_two(embedding_size), 256);
-  int thread_y       = 1;
-  if (thread_x < 64) {
-    int power2_thread_x = 1;
-    for (; power2_thread_x < thread_x; power2_thread_x *= 2)
-      ;
-    thread_x = power2_thread_x;
-    thread_y = 64 / thread_x;
-  }
-  int64_t block_count_64 = (indice_count + thread_y - 1) / thread_y;
-  int block_count = block_count_64 >= INT_MAX ? INT_MAX / 4 : static_cast<int>(block_count_64);
-  dim3 block_dim(thread_x, thread_y, 1);
+wholememory_error_code_t nvshmem_scatter_integer_int32_func(
+  wholememory_comm_t wm_comm,
+  void* input,
+  void* temp_input,
+  wholememory_matrix_description_t input_desc,
+  const void* indices,
+  wholememory_array_description_t indices_desc,
+  wholememory_nvshmem_ref_t embeding_nvshmem_ptr,
+  wholememory_matrix_description_t embedding_desc,
+  size_t embedding_entry_count_per_rank,
+  wholememory_env_func_t* p_env_fns,
+  cudaStream_t stream);
 
-  scatter_func_with_nvshmem_kernel<InputT, IndexT, EmbeddingT>
-    <<<block_count, block_dim, 0, stream>>>(static_cast<const InputT*>(input),
-                                            input_desc,
-                                            static_cast<const IndexT*>(indices),
-                                            indice_count,
-                                            embedding_nvshmem_ref,
-                                            embedding_desc,
-                                            embedding_entry_count_per_rank,
-                                            world_rank,
-                                            world_size);
-}
-
-REGISTER_DISPATCH_THREE_TYPES(
-  ScatterFunNvshmem, nvshmem_scatter_temp_func, ALLSINT_ALLFLOAT, SINT3264, ALLSINT_ALLFLOAT)
+wholememory_error_code_t nvshmem_scatter_integer_int64_func(
+  wholememory_comm_t wm_comm,
+  void* input,
+  void* temp_input,
+  wholememory_matrix_description_t input_desc,
+  const void* indices,
+  wholememory_array_description_t indices_desc,
+  wholememory_nvshmem_ref_t embeding_nvshmem_ptr,
+  wholememory_matrix_description_t embedding_desc,
+  size_t embedding_entry_count_per_rank,
+  wholememory_env_func_t* p_env_fns,
+  cudaStream_t stream);
 
 wholememory_error_code_t wholememory_scatter_nvshmem(
   void* input,
@@ -155,25 +131,74 @@ wholememory_error_code_t wholememory_scatter_nvshmem(
     WHOLEMEMORY_RETURN_ON_FAIL(
       wholememory_get_nvshmem_reference(&embedding_nvshmem_ref, wholememory_handle));
 
-    DISPATCH_THREE_TYPES(input_desc.dtype,
-                         indices_desc.dtype,
-                         wholememory_desc.dtype,
-                         ScatterFunNvshmem,
-                         input,
-                         input_desc,
-                         indices,
-                         indices_desc.size,
-                         embedding_nvshmem_ref,
-                         wholememory_desc,
-                         embedding_entry_count_per_rank,
-                         world_rank,
-                         world_size,
-                         stream);
+    temp_memory_handle device_temp_input_handle(p_env_fns);
+    size_t temp_input_ele_size = wholememory_get_memory_element_count_from_matrix(&input_desc);
+    void* temp_input_ptr =
+      device_temp_input_handle.device_malloc(temp_input_ele_size, wholememory_desc.dtype);
+    size_t temp_input_byte_size =
+      temp_input_ele_size * wholememory_dtype_get_element_size(wholememory_desc.dtype);
+    // register
+    if (nvshmemx_buffer_register(temp_input_ptr, temp_input_byte_size) != 0) {
+      WHOLEMEMORY_ERROR("nvshmemx_buffer_register error in wholememory_gather_nvshmem");
+    }
 
-    nvshmemx_barrier_all_on_stream(stream);
+    wholememory_error_code_t (*p_nvshmem_scatter_func)(wholememory_comm_t,
+                                                       void*,
+                                                       void*,
+                                                       wholememory_matrix_description_t,
+                                                       const void*,
+                                                       wholememory_array_description_t,
+                                                       wholememory_nvshmem_ref_t,
+                                                       wholememory_matrix_description_t,
+                                                       size_t,
+                                                       wholememory_env_func_t*,
+                                                       cudaStream_t);
+
+    if (embedding_is_float) {
+      if (indices_desc.dtype == WHOLEMEMORY_DT_INT) {
+        p_nvshmem_scatter_func = nvshmem_scatter_floating_int32_func;
+      } else {
+        p_nvshmem_scatter_func = nvshmem_scatter_floating_int64_func;
+      }
+    } else {
+      if (indices_desc.dtype == WHOLEMEMORY_DT_INT) {
+        p_nvshmem_scatter_func = nvshmem_scatter_integer_int32_func;
+      } else {
+        p_nvshmem_scatter_func = nvshmem_scatter_integer_int64_func;
+      }
+    }
+    // DISPATCH_THREE_TYPES(input_desc.dtype,
+    //                      indices_desc.dtype,
+    //                      wholememory_desc.dtype,
+    //                      ScatterFunNvshmem,
+    //                      input,
+    //                      input_desc,
+    //                      indices,
+    //                      indices_desc.size,
+    //                      embedding_nvshmem_ref,
+    //                      wholememory_desc,
+    //                      embedding_entry_count_per_rank,
+    //                      world_rank,
+    //                      world_size,
+    //                      stream);
+
+    auto ret = p_nvshmem_scatter_func(wm_comm,
+                                      input,
+                                      temp_input_ptr,
+                                      input_desc,
+                                      indices,
+                                      indices_desc,
+                                      embedding_nvshmem_ref,
+                                      wholememory_desc,
+                                      embedding_entry_count_per_rank,
+                                      p_env_fns,
+                                      stream);
+    if (nvshmemx_buffer_unregister(temp_input_ptr) != 0) {
+      WHOLEMEMORY_ERROR("nvshmemx_buffer_unregister error in wholememory_gather_nvshmem");
+    }
 
     WM_CUDA_CHECK(cudaGetLastError());
-
+    return ret;
   } catch (const wholememory::cuda_error& wle) {
     WHOLEMEMORY_ERROR("scatter CUDA LOGIC Error %s\n", wle.what());
     return WHOLEMEMORY_LOGIC_ERROR;

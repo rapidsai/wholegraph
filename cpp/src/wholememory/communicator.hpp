@@ -285,8 +285,7 @@ wholememory_distributed_backend_t communicator_get_preferred_distributed_backend
 
 #ifdef WITH_NVSHMEM_SUPPORT
 
-wholememory_error_code_t communicator_is_bind_to_nvshmem(bool* is_bind_to_nvshmem,
-                                                         wholememory_comm_t comm) noexcept;
+bool communicator_is_bind_to_nvshmem(wholememory_comm_t comm) noexcept;
 
 wholememory_error_code_t init_nvshmem_with_comm(wholememory_comm_t comm) noexcept;
 wholememory_error_code_t finalize_nvshmem_locked(wholememory_comm_t comm) noexcept;

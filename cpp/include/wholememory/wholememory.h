@@ -153,8 +153,7 @@ wholememory_error_code_t wholememory_communicator_get_rank(int* rank, wholememor
  */
 wholememory_error_code_t wholememory_communicator_get_size(int* size, wholememory_comm_t comm);
 
-wholememory_error_code_t wholememory_communicator_is_bind_to_nvshmem(bool* is_bind_to_nvshmem,
-                                                                     wholememory_comm_t comm);
+bool wholememory_communicator_is_bind_to_nvshmem(wholememory_comm_t comm);
 
 wholememory_error_code_t wholememory_communicator_set_preferred_distributed_backend(
   wholememory_comm_t comm, wholememory_distributed_backend_t distributed_backend);

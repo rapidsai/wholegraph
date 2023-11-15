@@ -200,10 +200,10 @@ PRIVATE
 )
 
 if(BUILD_WITH_NVSHMEM)
-        set_source_files_properties("src/wholememory_ops/gather_op_impl_nvshmem.cu" "src/wholememory_ops/scatter_op_impl.nvshmem.cu"
-        "src/wholememory_ops/functions/gather_cached_nvshmem_func.cu"
+
+        file(GLOB_RECURSE NVSHMEM_SOURCE_FILES "src/wholememory_ops/functions/nvshmem*.cu")
+        set_source_files_properties( ${NVSHMEM_SOURCE_FILES}
         PROPERTIES
-        # CUDA_SEPARABLE_COMPILATION ON
         COMPILE_FLAGS "-rdc=true"
         )
   target_compile_definitions(wholegraph PRIVATE WITH_NVSHMEM_SUPPORT)
@@ -220,21 +220,17 @@ if(BUILD_TESTS AND CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
 endif()
 
 if(BUILD_WITH_NVSHMEM)
-get_target_property(NVSHMEM_BINARY_DIR nvshmem BINARY_DIR)
-  add_library(nvshmem_wholememory_bootstrap SHARED)
-  target_sources(nvshmem_wholememory_bootstrap PRIVATE src/nvshmem_plugins/nvshmem_wholememory_bootstrap.cpp)
-  target_link_libraries(nvshmem_wholememory_bootstrap PRIVATE wholegraph nvshmem_host )
-  target_include_directories(nvshmem_wholememory_bootstrap
+        get_target_property(NVSHMEM_BINARY_DIR nvshmem BINARY_DIR)
+        add_library(nvshmem_wholememory_bootstrap SHARED)
+        target_sources(nvshmem_wholememory_bootstrap PRIVATE src/nvshmem_plugins/nvshmem_wholememory_bootstrap.cpp)
+        target_link_libraries(nvshmem_wholememory_bootstrap PRIVATE wholegraph nvshmem_host )
+        target_include_directories(nvshmem_wholememory_bootstrap
                              PRIVATE
                              ${CMAKE_CURRENT_SOURCE_DIR}/src
                              ${NVSHMEM_BINARY_DIR}/include/modules/common
                              ${NVSHMEM_BINARY_DIR}/include/modules/bootstrap
                             )
-get_target_property(NVSHMEM_LIBRARY_OUTPUT_DIR nvshmem LIBRARY_OUTPUT_DIRECTORY)
 
-add_custom_command(TARGET nvshmem_wholememory_bootstrap POST_BUILD
-                   COMMAND ${CMAKE_COMMAND} -E copy_directory ${NVSHMEM_LIBRARY_OUTPUT_DIR}
-                   ${CMAKE_BINARY_DIR})
 
 endif()
 
@@ -294,14 +290,27 @@ set(PROGRAM_PERMISSIONS_DEFAULT
         GROUP_READ GROUP_EXECUTE
         WORLD_READ WORLD_EXECUTE)
 
+set(WHOLEGRAPH_INSTALL_LIBS wholegraph)
+set(NVSHMEM_LIBRARY_INSTALL_FILES "")
+if(BUILD_WITH_NVSHMEM)
+        list(APPEND WHOLEGRAPH_INSTALL_LIBS nvshmem_wholememory_bootstrap )
+        set(NVSHMEM_LIBRARY_INSTALL_FILES ${NVSHMEM_LIBRARY_FILES})
+endif()
+
+# install(
+#         FILES ${NVSHMEM_LIBRARY_INSTALL_FILES}
+#         DESTINATION ${lib_dir})
+
+# list(APPEND WHOLEGRAPH_INSTALL_LIBS ${NVSHMEM_LIBRARY_INSTALL_FILES} )
+
 install(
-        TARGETS     wholegraph
+        TARGETS     ${WHOLEGRAPH_INSTALL_LIBS}
         DESTINATION ${lib_dir}
         PERMISSIONS ${PROGRAM_PERMISSIONS_DEFAULT}
         EXPORT wholegraph-exports)
 
 rapids_export(
-        INSTALL wholegraph
+        INSTALL ${WHOLEGRAPH_INSTALL_LIBS}
         EXPORT_SET wholegraph-exports
         GLOBAL_TARGETS wholegraph
         NAMESPACE wholegraph::
@@ -310,7 +319,7 @@ rapids_export(
 
 # build export targets
 rapids_export(
-        BUILD wholegraph
+        BUILD ${WHOLEGRAPH_INSTALL_LIBS}
         EXPORT_SET wholegraph-exports
         GLOBAL_TARGETS wholegraph
         NAMESPACE wholegraph::

@@ -56,15 +56,9 @@ wholememory_error_code_t wholememory_communicator_get_size(int* size, wholememor
 {
   return wholememory::communicator_get_size(size, comm);
 }
-wholememory_error_code_t wholememory_communicator_is_bind_to_nvshmem(bool* is_bind_to_nvshmem,
-                                                                     wholememory_comm_t comm)
+bool wholememory_communicator_is_bind_to_nvshmem(wholememory_comm_t comm)
 {
-#ifdef WITH_NVSHMEM_SUPPORT
-  return wholememory::communicator_is_bind_to_nvshmem(is_bind_to_nvshmem, comm);
-#endif
-
-  *is_bind_to_nvshmem = false;
-  return WHOLEMEMORY_SUCCESS;
+  return wholememory::communicator_is_bind_to_nvshmem(comm);
 }
 
 wholememory_error_code_t wholememory_communicator_set_preferred_distributed_backend(

@@ -102,9 +102,9 @@ typedef struct WholeMemoryScatterTestParam {
     return *this;
   }
   WholeMemoryScatterTestParam& set_preferred_distributed_backend(
-    wholememory_distributed_backend_t distributed_backend)
+    wholememory_distributed_backend_t new_distributed_backend)
   {
-    preferred_distributed_backend = distributed_backend;
+    preferred_distributed_backend = new_distributed_backend;
     return *this;
   }
   wholememory_memory_type_t memory_type                           = WHOLEMEMORY_MT_CHUNKED;

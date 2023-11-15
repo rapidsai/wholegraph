@@ -557,11 +557,7 @@ wholememory_error_code_t device_cached_host_embedding::gather(wholememory_tensor
       WHOLEMEMORY_RETURN_ON_FAIL(wholememory_communicator_barrier(cache_policy->cache_comm));
     }
   }
-  bool cache_comm_bind_to_nvshmem;
-  wholememory_communicator_is_bind_to_nvshmem(&cache_comm_bind_to_nvshmem,
-                                              cache_policy->cache_comm);
-  if (cache_policy->cache_memory_type == WHOLEMEMORY_MT_DISTRIBUTED &&
-      (!cache_comm_bind_to_nvshmem)) {
+  if (cache_policy->cache_memory_type == WHOLEMEMORY_MT_DISTRIBUTED) {
     // Local Gather
     total_recv_count = 0;
     for (int i = 0; i < world_size; i++) {
@@ -650,34 +646,7 @@ wholememory_error_code_t device_cached_host_embedding::gather(wholememory_tensor
                                                              output_matrix_desc,
                                                              stream));
     WM_CUDA_DEBUG_SYNC_STREAM(stream);
-  }
-#ifdef WITH_NVSHMEM_SUPPORT
-  else if (cache_policy->cache_memory_type == WHOLEMEMORY_MT_DISTRIBUTED &&
-           (cache_comm_bind_to_nvshmem)) {
-    wholememory_handle_t global_raw_handle =
-      wholememory_tensor_get_memory_handle(allocated_embedding);
-    wholememory_handle_t global_cached_handle =
-      wholememory_tensor_get_memory_handle(cache_ptr_->cache_line_data_wm_tensor_);
-    wholememory_handle_t global_cached_line_tag_handle =
-      wholememory_tensor_get_memory_handle(cache_ptr_->cache_line_tag_wm_tensor_);
-    WHOLEMEMORY_RETURN_ON_FAIL(wholememory_ops::gather_cached_nvshmem_func(
-      global_raw_handle,
-      wholememory_tensor_get_tensor_description(allocated_embedding),
-      global_cached_handle,
-      wholememory_tensor_get_tensor_description(cache_ptr_->cache_line_data_wm_tensor_),
-      global_cached_line_tag_handle,
-      wholememory_tensor_get_data_pointer(indices),
-      indice_desc,
-      wholememory_tensor_get_data_pointer(output),
-      output_desc,
-      cache_ptr_->get_cache_set_coverage(),
-      0,
-      0,
-      stream));
-
-  }
-#endif
-  else {
+  } else {
     wholememory_gref_t global_raw_gref, global_cached_gref, global_cached_line_tag_gref;
     WHOLEMEMORY_RETURN_ON_FAIL(
       wholememory_tensor_get_global_reference(allocated_embedding, &global_raw_gref));
@@ -900,6 +869,13 @@ wholememory_error_code_t wholememory_create_embedding(
           "For device cached host memory, raw embedding should cover cache's address modes.");
         return WHOLEMEMORY_INVALID_INPUT;
       }
+      if (wholememory_communicator_is_bind_to_nvshmem(comm) &&
+          cache_policy->cache_memory_type == WHOLEMEMORY_MT_DISTRIBUTED) {
+        WHOLEMEMORY_ERROR(
+          "Cache is not supported if the communicator is bound to nvshmem and the cache memory "
+          "type is distributed.");
+        return WHOLEMEMORY_INVALID_INPUT;
+      }
       embedding_impl_ptr = new wholememory::device_cached_host_embedding();
     } else {
       int const cache_world_size = 1;
@@ -910,6 +886,13 @@ wholememory_error_code_t wholememory_create_embedding(
         WHOLEMEMORY_ERROR(
           "For local cached global readonly embedding, cache_memory_type should be chunked or "
           "continuous.");
+        return WHOLEMEMORY_INVALID_INPUT;
+      }
+      if (wholememory_communicator_is_bind_to_nvshmem(comm) &&
+          memory_type == WHOLEMEMORY_MT_DISTRIBUTED) {
+        WHOLEMEMORY_ERROR(
+          "Local_cached_global_readonly_embedding is not supported if the communicator is bound to "
+          "nvshmem and the  memory type is distributed.");
         return WHOLEMEMORY_INVALID_INPUT;
       }
       if (cache_policy->access_type != WHOLEMEMORY_AT_READONLY) {
