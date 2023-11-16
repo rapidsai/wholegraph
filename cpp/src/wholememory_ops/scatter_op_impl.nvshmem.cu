@@ -1,3 +1,18 @@
+/*
+ * Copyright (c) 2023, NVIDIA CORPORATION.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 #ifdef WITH_NVSHMEM_SUPPORT
 
 #include <cuda_runtime_api.h>
@@ -167,20 +182,6 @@ wholememory_error_code_t wholememory_scatter_nvshmem(
         p_nvshmem_scatter_func = nvshmem_scatter_integer_int64_func;
       }
     }
-    // DISPATCH_THREE_TYPES(input_desc.dtype,
-    //                      indices_desc.dtype,
-    //                      wholememory_desc.dtype,
-    //                      ScatterFunNvshmem,
-    //                      input,
-    //                      input_desc,
-    //                      indices,
-    //                      indices_desc.size,
-    //                      embedding_nvshmem_ref,
-    //                      wholememory_desc,
-    //                      embedding_entry_count_per_rank,
-    //                      world_rank,
-    //                      world_size,
-    //                      stream);
 
     auto ret = p_nvshmem_scatter_func(wm_comm,
                                       input,

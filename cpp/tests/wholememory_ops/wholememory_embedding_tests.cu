@@ -20,7 +20,6 @@
 #include "../wholememory/wholememory_test_utils.hpp"
 #include "embedding_test_utils.hpp"
 #include "wholememory/env_func_ptrs.hpp"
-#include "wholememory/wholememory.h"
 
 struct EmbeddingTestParams {
   EmbeddingTestParams()
@@ -148,7 +147,6 @@ struct EmbeddingTestParams {
     cache_group_count = count;
     return *this;
   }
-
   wholememory_array_description_t indice_description;
   wholememory_matrix_description_t embedding_description;
   wholememory_matrix_description_t output_description;

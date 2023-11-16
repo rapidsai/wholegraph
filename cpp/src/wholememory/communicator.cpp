@@ -818,6 +818,8 @@ wholememory_error_code_t finalize_nvshmem_locked(wholememory_comm_t comm) noexce
   }
 }
 
+#endif
+
 wholememory_error_code_t communicator_set_preferred_distributed_backend(
   wholememory_comm_t comm, wholememory_distributed_backend_t preferred_distributed_backend) noexcept
 {
@@ -834,8 +836,9 @@ wholememory_error_code_t communicator_set_preferred_distributed_backend(
         "distributed memory type if need to change distriubted_backend");
     }
     comm->preferred_distributed_backend = preferred_distributed_backend;
+#ifdef WITH_NVSHMEM_SUPPORT
     if (preferred_distributed_backend == WHOLEMEMORY_DB_NVSHMEM) { comm->bind_to_nvshmem = true; }
-
+#endif
     return WHOLEMEMORY_SUCCESS;
   } catch (const wholememory::logic_error& wle) {
     WHOLEMEMORY_FAIL_NOTHROW("%s", wle.what());
@@ -847,6 +850,4 @@ wholememory_error_code_t communicator_set_preferred_distributed_backend(
     WHOLEMEMORY_FAIL_NOTHROW("Unknown exception.");
   }
 }
-
-#endif
 }  // namespace wholememory

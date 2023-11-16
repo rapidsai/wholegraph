@@ -55,7 +55,7 @@ option(BUILD_SHARED_LIBS "Build libwholegraph shared libraries" ON)
 option(CMAKE_CUDA_LINEINFO "Enable the -lineinfo option for nvcc (useful for cuda-memcheck / profiler" OFF)
 option(BUILD_TESTS "Configure CMake to build tests" ON)
 option(CUDA_STATIC_RUNTIME "Statically link the CUDA toolkit runtime and libraries" OFF)
-option(BUILD_WITH_NVSHMEM "Enable nvshmem integration" ON)
+option(BUILD_WITH_NVSHMEM "Enable nvshmem integration" OFF)
 ##############################################################################
 # - Set options based on user defined one  -----------------------------------
 set(_ctk_static_suffix "")
@@ -207,7 +207,7 @@ if(BUILD_WITH_NVSHMEM)
         COMPILE_FLAGS "-rdc=true"
         )
   target_compile_definitions(wholegraph PRIVATE WITH_NVSHMEM_SUPPORT)
-  target_link_libraries(wholegraph PRIVATE nvshmem_host nvshmem_device)
+  target_link_libraries(wholegraph PRIVATE nvshmem::nvshmem_host nvshmem::nvshmem_device)
 endif()
 
 
@@ -223,7 +223,7 @@ if(BUILD_WITH_NVSHMEM)
         get_target_property(NVSHMEM_BINARY_DIR nvshmem BINARY_DIR)
         add_library(nvshmem_wholememory_bootstrap SHARED)
         target_sources(nvshmem_wholememory_bootstrap PRIVATE src/nvshmem_plugins/nvshmem_wholememory_bootstrap.cpp)
-        target_link_libraries(nvshmem_wholememory_bootstrap PRIVATE wholegraph nvshmem_host )
+        target_link_libraries(nvshmem_wholememory_bootstrap PRIVATE wholegraph nvshmem::nvshmem_host )
         target_include_directories(nvshmem_wholememory_bootstrap
                              PRIVATE
                              ${CMAKE_CURRENT_SOURCE_DIR}/src
@@ -291,17 +291,9 @@ set(PROGRAM_PERMISSIONS_DEFAULT
         WORLD_READ WORLD_EXECUTE)
 
 set(WHOLEGRAPH_INSTALL_LIBS wholegraph)
-set(NVSHMEM_LIBRARY_INSTALL_FILES "")
 if(BUILD_WITH_NVSHMEM)
         list(APPEND WHOLEGRAPH_INSTALL_LIBS nvshmem_wholememory_bootstrap )
-        set(NVSHMEM_LIBRARY_INSTALL_FILES ${NVSHMEM_LIBRARY_FILES})
 endif()
-
-# install(
-#         FILES ${NVSHMEM_LIBRARY_INSTALL_FILES}
-#         DESTINATION ${lib_dir})
-
-# list(APPEND WHOLEGRAPH_INSTALL_LIBS ${NVSHMEM_LIBRARY_INSTALL_FILES} )
 
 install(
         TARGETS     ${WHOLEGRAPH_INSTALL_LIBS}
@@ -310,7 +302,7 @@ install(
         EXPORT wholegraph-exports)
 
 rapids_export(
-        INSTALL ${WHOLEGRAPH_INSTALL_LIBS}
+        INSTALL wholegraph
         EXPORT_SET wholegraph-exports
         GLOBAL_TARGETS wholegraph
         NAMESPACE wholegraph::
@@ -319,7 +311,7 @@ rapids_export(
 
 # build export targets
 rapids_export(
-        BUILD ${WHOLEGRAPH_INSTALL_LIBS}
+        BUILD wholegraph
         EXPORT_SET wholegraph-exports
         GLOBAL_TARGETS wholegraph
         NAMESPACE wholegraph::
