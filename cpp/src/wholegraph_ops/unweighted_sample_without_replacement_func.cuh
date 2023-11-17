@@ -18,9 +18,9 @@
 #include <random>
 #include <thrust/scan.h>
 
-#include <raft/util/integer_utils.hpp>
-#include <raft/random/rng_state.hpp>
 #include <raft/random/rng_device.cuh>
+#include <raft/random/rng_state.hpp>
+#include <raft/util/integer_utils.hpp>
 #include <wholememory/device_reference.cuh>
 #include <wholememory/env_func_ptrs.h>
 #include <wholememory/global_reference.h>
@@ -59,19 +59,20 @@ __global__ void get_sample_count_without_replacement_kernel(
 }
 
 template <typename IdType, typename LocalIdType, typename WMIdType, typename WMOffsetType>
-__global__ void large_sample_kernel(wholememory_gref_t wm_csr_row_ptr,
-                                    wholememory_array_description_t wm_csr_row_ptr_desc,
-                                    wholememory_gref_t wm_csr_col_ptr,
-                                    wholememory_array_description_t wm_csr_col_ptr_desc,
-                                    const IdType* input_nodes,
-                                    const int input_node_count,
-                                    const int max_sample_count,
-                                    raft::random::detail::DeviceState<raft::random::detail::PCGenerator> rngstate,
-                                    const int* sample_offset,
-                                    wholememory_array_description_t sample_offset_desc,
-                                    WMIdType* output,
-                                    int* src_lid,
-                                    int64_t* output_edge_gid_ptr)
+__global__ void large_sample_kernel(
+  wholememory_gref_t wm_csr_row_ptr,
+  wholememory_array_description_t wm_csr_row_ptr_desc,
+  wholememory_gref_t wm_csr_col_ptr,
+  wholememory_array_description_t wm_csr_col_ptr_desc,
+  const IdType* input_nodes,
+  const int input_node_count,
+  const int max_sample_count,
+  raft::random::detail::DeviceState<raft::random::detail::PCGenerator> rngstate,
+  const int* sample_offset,
+  wholememory_array_description_t sample_offset_desc,
+  WMIdType* output,
+  int* src_lid,
+  int64_t* output_edge_gid_ptr)
 {
   int input_idx = blockIdx.x;
   if (input_idx >= input_node_count) return;
@@ -201,7 +202,7 @@ __global__ void unweighted_sample_without_replacement_kernel(
     params.end   = 1;
     int32_t rand_num;
     raft::random::detail::custom_next(rng, &rand_num, params, 0, 0);
-    int32_t r = idx < M ? rand_num % ( N - idx ) : N;
+    int32_t r = idx < M ? rand_num % (N - idx) : N;
     sa_p[i]   = ((uint64_t)r << 32UL) | idx;
   }
   __syncthreads();
@@ -371,7 +372,7 @@ void wholegraph_csr_unweighted_sample_without_replacement_func(
   }
   // sample node
   raft::random::RngState _rngstate(random_seed, 0, raft::random::GeneratorType::GenPC);
-  raft::random::detail::DeviceState <raft::random::detail::PCGenerator> rngstate(_rngstate);
+  raft::random::detail::DeviceState<raft::random::detail::PCGenerator> rngstate(_rngstate);
   if (max_sample_count <= 0) {
     sample_all_kernel<IdType, int, WMIdType, int64_t>
       <<<center_node_count, 64, 0, stream>>>(wm_csr_row_ptr,
@@ -411,19 +412,20 @@ void wholegraph_csr_unweighted_sample_without_replacement_func(
     return;
   }
 
-  typedef void (*unweighted_sample_func_type)(wholememory_gref_t wm_csr_row_ptr,
-                                              wholememory_array_description_t wm_csr_row_ptr_desc,
-                                              wholememory_gref_t wm_csr_col_ptr,
-                                              wholememory_array_description_t wm_csr_col_ptr_desc,
-                                              const IdType* input_nodes,
-                                              const int input_node_count,
-                                              const int max_sample_count,
-                                              raft::random::detail::DeviceState<raft::random::detail::PCGenerator> rngstate,
-                                              const int* sample_offset,
-                                              wholememory_array_description_t sample_offset_desc,
-                                              WMIdType* output,
-                                              int* src_lid,
-                                              int64_t* output_edge_gid_ptr);
+  typedef void (*unweighted_sample_func_type)(
+    wholememory_gref_t wm_csr_row_ptr,
+    wholememory_array_description_t wm_csr_row_ptr_desc,
+    wholememory_gref_t wm_csr_col_ptr,
+    wholememory_array_description_t wm_csr_col_ptr_desc,
+    const IdType* input_nodes,
+    const int input_node_count,
+    const int max_sample_count,
+    raft::random::detail::DeviceState<raft::random::detail::PCGenerator> rngstate,
+    const int* sample_offset,
+    wholememory_array_description_t sample_offset_desc,
+    WMIdType* output,
+    int* src_lid,
+    int64_t* output_edge_gid_ptr);
   static const unweighted_sample_func_type func_array[32] = {
     unweighted_sample_without_replacement_kernel<IdType, int, WMIdType, int64_t, 32, 1>,
     unweighted_sample_without_replacement_kernel<IdType, int, WMIdType, int64_t, 32, 2>,

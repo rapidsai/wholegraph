@@ -17,8 +17,8 @@
 #include <cmath>
 #include <wholememory/wholegraph_op.h>
 
-#include <raft/random/rng_state.hpp>
 #include <raft/random/rng_device.cuh>
+#include <raft/random/rng_state.hpp>
 
 #include "error.hpp"
 #include "logger.hpp"
@@ -41,7 +41,7 @@ wholememory_error_code_t generate_random_positive_int_cpu(int64_t random_seed,
   auto* output_ptr = wholememory_tensor_get_data_pointer(output);
 
   raft::random::RngState _rngstate(random_seed, 0, raft::random::GeneratorType::GenPC);
-  raft::random::detail::DeviceState <raft::random::detail::PCGenerator> rngstate(_rngstate);
+  raft::random::detail::DeviceState<raft::random::detail::PCGenerator> rngstate(_rngstate);
   raft::random::detail::PCGenerator rng(rngstate, (uint64_t)subsequence);
 
   for (int64_t i = 0; i < output_tensor_desc.sizes[0]; i++) {
@@ -78,12 +78,12 @@ wholememory_error_code_t generate_exponential_distribution_negative_float_cpu(
   }
   auto* output_ptr = wholememory_tensor_get_data_pointer(output);
   raft::random::RngState _rngstate(random_seed, 0, raft::random::GeneratorType::GenPC);
-  raft::random::detail::DeviceState <raft::random::detail::PCGenerator> rngstate(_rngstate);
+  raft::random::detail::DeviceState<raft::random::detail::PCGenerator> rngstate(_rngstate);
   raft::random::detail::PCGenerator rng(rngstate, (uint64_t)subsequence);
   for (int64_t i = 0; i < output_tensor_desc.sizes[0]; i++) {
     float u = 0.0;
     rng.next(u);
-    u = -(0.5 + 0.5*u);
+    u                    = -(0.5 + 0.5 * u);
     uint64_t random_num2 = 0;
     int seed_count       = -1;
     do {

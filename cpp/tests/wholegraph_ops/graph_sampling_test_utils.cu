@@ -23,9 +23,8 @@
 #include <random>
 #include <vector>
 
-
-#include <raft/random/rng_state.hpp>
 #include <raft/random/rng_device.cuh>
+#include <raft/random/rng_state.hpp>
 #include <wholememory_ops/register.hpp>
 
 namespace wholegraph_ops {
@@ -386,7 +385,7 @@ void host_unweighted_sample_without_replacement(
       for (int j = 0; j < device_num_threads; j++) {
         int local_gidx = gidx + j;
         raft::random::RngState _rngstate(random_seed, 0, raft::random::GeneratorType::GenPC);
-        raft::random::detail::DeviceState <raft::random::detail::PCGenerator> rngstate(_rngstate);
+        raft::random::detail::DeviceState<raft::random::detail::PCGenerator> rngstate(_rngstate);
         raft::random::detail::PCGenerator rng(rngstate, (uint64_t)local_gidx);
         raft::random::detail::UniformDistParams<int32_t> params;
         params.start = 0;
@@ -554,7 +553,7 @@ float host_gen_key_from_weight(const WeightType weight, raft::random::detail::PC
 {
   float u = 0.0;
   rng.next(u);
-  u = -(0.5 + 0.5*u);
+  u                    = -(0.5 + 0.5 * u);
   uint64_t random_num2 = 0;
   int seed_count       = -1;
   do {
@@ -651,7 +650,7 @@ void host_weighted_sample_without_replacement(
       for (int j = 0; j < block_size; j++) {
         int local_gidx = gidx + j;
         raft::random::RngState _rngstate(random_seed, 0, raft::random::GeneratorType::GenPC);
-        raft::random::detail::DeviceState <raft::random::detail::PCGenerator> rngstate(_rngstate);
+        raft::random::detail::DeviceState<raft::random::detail::PCGenerator> rngstate(_rngstate);
         raft::random::detail::PCGenerator rng(rngstate, (uint64_t)local_gidx);
         for (int id = j; id < neighbor_count; id += block_size) {
           if (id < neighbor_count) { consume_fun(id, rng); }

@@ -22,13 +22,13 @@
 #include <random>
 #include <thrust/scan.h>
 
-#include <raft/random/rng_state.hpp>
-#include <raft/random/rng_device.cuh>
 #include "raft/matrix/detail/select_warpsort.cuh"
 #include "raft/util/cuda_dev_essentials.cuh"
 #include "wholememory_ops/output_memory_handle.hpp"
 #include "wholememory_ops/temp_memory_handle.hpp"
 #include "wholememory_ops/thrust_allocator.hpp"
+#include <raft/random/rng_device.cuh>
+#include <raft/random/rng_state.hpp>
 #include <raft/util/integer_utils.hpp>
 #include <wholememory/device_reference.cuh>
 #include <wholememory/env_func_ptrs.h>
@@ -42,11 +42,12 @@
 namespace wholegraph_ops {
 
 template <typename WeightType>
-__device__ __forceinline__ float gen_key_from_weight(const WeightType weight, raft::random::detail::PCGenerator& rng)
+__device__ __forceinline__ float gen_key_from_weight(const WeightType weight,
+                                                     raft::random::detail::PCGenerator& rng)
 {
   float u = 0.0;
   rng.next(u);
-  u = -(0.5 + 0.5*u);
+  u                    = -(0.5 + 0.5 * u);
   uint64_t random_num2 = 0;
   int seed_count       = -1;
   do {
@@ -496,7 +497,7 @@ void wholegraph_csr_weighted_sample_without_replacement_func(
   }
 
   raft::random::RngState _rngstate(random_seed, 0, raft::random::GeneratorType::GenPC);
-  raft::random::detail::DeviceState <raft::random::detail::PCGenerator> rngstate(_rngstate);
+  raft::random::detail::DeviceState<raft::random::detail::PCGenerator> rngstate(_rngstate);
   if (max_sample_count > sample_count_threshold) {
     wholememory_ops::wm_thrust_allocator tmp_thrust_allocator(p_env_fns);
     thrust::exclusive_scan(thrust::cuda::par(tmp_thrust_allocator).on(stream),
