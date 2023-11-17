@@ -154,10 +154,11 @@ def routine_func(world_rank: int, world_size: int):
             wmb.WholeMemoryMemoryLocation.MlHost,
             wmb.WholeMemoryMemoryLocation.MlDevice,
         ]:
-            scatter_gather_test_cast(
-                wm_comm, dt, mt, ml, embedding_count, embedding_dim, indice_count, True
-            )
-            # scatter_gather_test_cast(wm_comm, dt, mt, ml, embedding_count, embedding_dim, indice_count, False)
+            if wm_comm.support_type_location(mt, ml):
+                scatter_gather_test_cast(
+                    wm_comm, dt, mt, ml, embedding_count, embedding_dim, indice_count, True
+                )
+                # scatter_gather_test_cast(wm_comm, dt, mt, ml, embedding_count, embedding_dim, indice_count, False)
     wmb.finalize()
 
 

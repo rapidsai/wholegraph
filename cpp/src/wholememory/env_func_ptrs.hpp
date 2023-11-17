@@ -48,6 +48,6 @@ wholememory_env_func_t* get_cached_env_func();
 /**
  * @brief : drop all caches of inside cached allocator of current CUDA device
  */
-void drop_env_func_cache();
+void drop_cached_env_func_cache();
 
 }  // namespace wholememory

@@ -100,4 +100,24 @@ inline void PipeGroupBroadcast(int rank,
   if (rret != sizeof(T)) { WHOLEMEMORY_FATAL("read to pipe failed."); }
 }
 
+class SideBandCommunicator;
+
+SideBandCommunicator* StartSidebandCommunicator(int world_rank,
+                                                int world_size,
+                                                const char* server_addr,
+                                                int port);
+void SideBandAllToAll(SideBandCommunicator* side_band_communicator,
+                      const void* input,
+                      void* output,
+                      size_t element_size);
+void SideBandAllGather(SideBandCommunicator* side_band_communicator,
+                       const void* input,
+                       void* output,
+                       size_t element_size);
+void SideBandBroadcast(SideBandCommunicator* side_band_communicator,
+                       void* data,
+                       size_t element_size,
+                       int root_rank);
+void ShutDownSidebandCommunicator(SideBandCommunicator* side_band_communicator);
+
 int ForkGetDeviceCount();

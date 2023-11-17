@@ -133,6 +133,15 @@ TEST_P(WholeMemoryScatterParameterTests, ScatterTest)
 
     wholememory_comm_t wm_comm = create_communicator_by_pipes(pipes, world_rank, world_size);
 
+    if (wholememory_communicator_support_type_location(
+          wm_comm, params.memory_type, params.memory_location) != WHOLEMEMORY_SUCCESS) {
+      EXPECT_EQ(wholememory::destroy_all_communicators(), WHOLEMEMORY_SUCCESS);
+      EXPECT_EQ(wholememory_finalize(), WHOLEMEMORY_SUCCESS);
+      WHOLEMEMORY_CHECK(::testing::Test::HasFailure() == false);
+      if (world_rank == 0) GTEST_SKIP_("Skip due to not supported.");
+      return;
+    }
+
     wholememory_handle_t embedding_handle;
     auto embedding_desc         = params.get_embedding_desc();
     auto indices_desc           = params.get_indices_desc();
