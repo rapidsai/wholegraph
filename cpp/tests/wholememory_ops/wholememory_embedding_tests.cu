@@ -181,9 +181,29 @@ TEST_P(WholeMemoryEmbeddingParameterTests, EmbeddingGatherTest)
     wholememory_comm_t wm_comm    = create_communicator_by_pipes(pipes, world_rank, world_size);
     wholememory_comm_t cache_comm = wm_comm;
 
+    if (wholememory_communicator_support_type_location(
+          wm_comm, params.memory_type, params.memory_location) != WHOLEMEMORY_SUCCESS) {
+      EXPECT_EQ(wholememory::destroy_all_communicators(), WHOLEMEMORY_SUCCESS);
+      EXPECT_EQ(wholememory_finalize(), WHOLEMEMORY_SUCCESS);
+      WHOLEMEMORY_CHECK(::testing::Test::HasFailure() == false);
+      GTEST_SKIP_("Skip due to not supported.");
+      return;
+    }
+
     if (params.cache_type == 2) {
       cache_comm =
         create_group_communicator_by_pipes(pipes, world_rank, world_size, params.cache_group_count);
+    }
+
+    if ((params.cache_type == 1 ||
+         params.cache_type == 2 && params.cache_group_count < world_size) &&
+        wholememory_communicator_support_type_location(
+          wm_comm, params.cache_memory_type, params.cache_memory_location) != WHOLEMEMORY_SUCCESS) {
+      EXPECT_EQ(wholememory::destroy_all_communicators(), WHOLEMEMORY_SUCCESS);
+      EXPECT_EQ(wholememory_finalize(), WHOLEMEMORY_SUCCESS);
+      WHOLEMEMORY_CHECK(::testing::Test::HasFailure() == false);
+      GTEST_SKIP_("Skip due to cache memory type/location not supported.");
+      return;
     }
 
     void *dev_indices = nullptr, *dev_gather_buffer = nullptr, *dev_reference_buffer = nullptr;
