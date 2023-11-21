@@ -55,6 +55,7 @@ option(BUILD_SHARED_LIBS "Build libwholegraph shared libraries" ON)
 option(CMAKE_CUDA_LINEINFO "Enable the -lineinfo option for nvcc (useful for cuda-memcheck / profiler" OFF)
 option(BUILD_TESTS "Configure CMake to build tests" ON)
 option(CUDA_STATIC_RUNTIME "Statically link the CUDA toolkit runtime and libraries" OFF)
+option(BUILD_BENCHMARKS "Configure CMake to build benchmark" ON)
 
 ##############################################################################
 # - Set options based on user defined one  -----------------------------------
@@ -203,6 +204,10 @@ if(BUILD_TESTS AND CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
     add_subdirectory(tests)
 endif()
 
+# optionally build benchmark
+if (BUILD_BENCHMARKS AND CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
+    add_subdirectory(bench)
+endif()
 ##############################################################################
 # - code checker -------------------------------------------------------------
 

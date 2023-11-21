@@ -57,11 +57,8 @@ sed_runner '/set(RAPIDS_VERSION/ s/".*"/'\"${NEXT_SHORT_TAG}\"'/g' python/pylibw
 sed_runner 's/version = .*/version = '"'${NEXT_SHORT_TAG}'"'/g' docs/wholegraph/source/conf.py
 sed_runner 's/release = .*/release = '"'${NEXT_FULL_TAG}'"'/g' docs/wholegraph/source/conf.py
 
-# Python __init__.py updates
-sed_runner "s/__version__ = .*/__version__ = \"${NEXT_FULL_TAG}\"/g" python/pylibwholegraph/pylibwholegraph/__init__.py
-
-# Python pyproject.toml updates
-sed_runner "s/^version = .*/version = \"${NEXT_FULL_TAG}\"/g" python/pylibwholegraph/pyproject.toml
+# Centralized version file update
+echo "${NEXT_FULL_TAG}" > VERSION
 
 DEPENDENCIES=(
   libraft
@@ -88,7 +85,7 @@ sed_runner "/^PROJECT_NUMBER/ s|=.*|= ${NEXT_SHORT_TAG}|" cpp/Doxyfile
 
 # CI files
 for FILE in .github/workflows/*.yaml; do
-  sed_runner "/shared-action-workflows/ s/@.*/@branch-${NEXT_SHORT_TAG}/g" "${FILE}"
+  sed_runner "/shared-workflows/ s/@.*/@branch-${NEXT_SHORT_TAG}/g" "${FILE}"
 
 done
 sed_runner "s/RAPIDS_VERSION_NUMBER=\".*/RAPIDS_VERSION_NUMBER=\"${NEXT_SHORT_TAG}\"/g" ci/build_docs.sh

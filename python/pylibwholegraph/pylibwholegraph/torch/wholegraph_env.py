@@ -19,25 +19,18 @@ import pylibwholegraph.binding.wholememory_binding as wmb
 from typing import Union
 from .utils import wholememory_dtype_to_torch_dtype, torch_dtype_to_wholememory_dtype
 
-default_cuda_stream_int_ptr = None
 default_wholegraph_env_context = None
 torch_cpp_ext_loaded = False
 torch_cpp_ext_lib = None
 
 
-def get_stream(use_default=True):
-    global default_cuda_stream_int_ptr
+def get_stream():
     cuda_stream_int_ptr = None
-    if default_cuda_stream_int_ptr is None or not use_default:
-        cuda_stream = torch.cuda.current_stream()._as_parameter_
-        if cuda_stream.value is not None:
-            cuda_stream_int_ptr = cuda_stream.value
-        else:
-            cuda_stream_int_ptr = int(0)
-        if use_default:
-            default_cuda_stream_int_ptr = cuda_stream_int_ptr
+    cuda_stream = torch.cuda.current_stream()._as_parameter_
+    if cuda_stream.value is not None:
+        cuda_stream_int_ptr = cuda_stream.value
     else:
-        cuda_stream_int_ptr = default_cuda_stream_int_ptr
+        cuda_stream_int_ptr = int(0)
     return cuda_stream_int_ptr
 
 

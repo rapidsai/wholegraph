@@ -23,6 +23,7 @@ from .utils import get_part_file_name, get_part_file_list
 from .comm import WholeMemoryCommunicator
 from typing import Union, List
 from .dlpack_utils import torch_import_from_dlpack
+from .wholegraph_env import wrap_torch_tensor, get_wholegraph_env_fns, get_stream
 
 
 WholeMemoryMemoryType = wmb.WholeMemoryMemoryType
@@ -56,6 +57,43 @@ class WholeMemoryTensor(object):
         return WholeMemoryCommunicator(
             self.wmb_tensor.get_wholememory_handle().get_communicator()
         )
+
+    def gather(self,
+               indice: torch.Tensor,
+               *,
+               force_dtype: Union[torch.dtype, None] = None):
+        assert indice.dim() == 1
+        embedding_dim = self.shape[1]
+        embedding_count = indice.shape[0]
+        current_cuda_device = "cuda:%d" % (torch.cuda.current_device(),)
+        output_dtype = (
+            force_dtype if force_dtype is not None else self.embedding_tensor.dtype
+        )
+        output_tensor = torch.empty(
+            [embedding_count, embedding_dim],
+            device=current_cuda_device,
+            dtype=output_dtype,
+            requires_grad=False,
+        )
+        wmb.wholememory_gather_op(self.wmb_tensor,
+                                  wrap_torch_tensor(indice),
+                                  wrap_torch_tensor(output_tensor),
+                                  get_wholegraph_env_fns(),
+                                  get_stream())
+        return output_tensor
+
+    def scatter(self,
+                input_tensor: torch.Tensor,
+                indice: torch.Tensor):
+        assert indice.dim() == 1
+        assert input_tensor.dim() == 2
+        assert indice.shape[0] == input_tensor.shape[0]
+        assert input_tensor.shape[1] == self.shape[1]
+        wmb.wholememory_scatter_op(wrap_torch_tensor(input_tensor),
+                                   wrap_torch_tensor(indice),
+                                   self.wmb_tensor,
+                                   get_wholegraph_env_fns(),
+                                   get_stream())
 
     def get_sub_tensor(self, starts, ends):
         """

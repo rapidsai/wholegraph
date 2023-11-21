@@ -59,10 +59,13 @@ class CuGraphGATConv(torch.nn.Module):  # pragma: no cover
         self.reset_parameters()
 
     def reset_parameters(self):
-        self.lin.reset_parameters()
         gain = torch.nn.init.calculate_gain("relu")
+        torch.nn.init.xavier_normal_(self.lin.weight, gain=gain)
         torch.nn.init.xavier_normal_(
-            self.att.view(2, self.heads, self.out_channels), gain=gain
+            self.att.view(2, self.heads, self.out_channels)[0, :, :], gain=gain
+        )
+        torch.nn.init.xavier_normal_(
+            self.att.view(2, self.heads, self.out_channels)[1, :, :], gain=gain
         )
         torch.nn.init.zeros_(self.bias)
 

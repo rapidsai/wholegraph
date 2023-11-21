@@ -11,51 +11,51 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from optparse import OptionParser
+from argparse import ArgumentParser
 
 
-def add_training_options(parser: OptionParser):
-    parser.add_option(
-        "-e", "--epochs", type="int", dest="epochs", default=24, help="number of epochs"
+def add_training_options(argparser: ArgumentParser):
+    argparser.add_argument(
+        "-e", "--epochs", type=int, dest="epochs", default=24, help="number of epochs"
     )
-    parser.add_option(
+    argparser.add_argument(
         "-b",
         "--batchsize",
-        type="int",
+        type=int,
         dest="batchsize",
         default=1024,
         help="batch size",
     )
-    parser.add_option(
-        "--lr", type="float", dest="lr", default=0.003, help="learning rate"
+    argparser.add_argument(
+        "--lr", type=float, dest="lr", default=0.003, help="learning rate"
     )
-    parser.add_option(
+    argparser.add_argument(
         "--embedding-memory-type",
         dest="embedding_memory_type",
         default="chunked",
         help="Embedding memory type, should be: continuous, chunked or distributed",
     )
-    parser.add_option(
+    argparser.add_argument(
         "--cache-type",
         dest="cache_type",
         default="none",
         help="Embedding cache type, should be: none, local_device, local_node or all_devices",
     )
-    parser.add_option(
+    argparser.add_argument(
         "--cache-ratio",
-        type="float",
+        type=float,
         dest="cache_ratio",
         default=0.5,
         help="cache ratio",
     )
-    parser.add_option(
+    argparser.add_argument(
         "--use-cpp-ext",
         action="store_true",
         dest="use_cpp_ext",
         default=False,
         help="Whether to use cpp extension for pytorch"
     )
-    parser.add_option(
+    argparser.add_argument(
         "--train-embedding",
         action="store_true",
         dest="train_embedding",
@@ -64,97 +64,97 @@ def add_training_options(parser: OptionParser):
     )
 
 
-def add_common_graph_options(parser: OptionParser):
-    parser.add_option(
+def add_common_graph_options(argparser: ArgumentParser):
+    argparser.add_argument(
         "-r",
         "--root-dir",
         dest="root_dir",
         default="dataset",
         help="graph dataset root directory.",
     )
-    parser.add_option(
+    argparser.add_argument(
         "--use-global-embedding",
         action="store_true",
         dest="use_global_embedding",
         default=False,
         help="Store embedding across all ranks or only in local node.",
     )
-    parser.add_option(
+    argparser.add_argument(
         "--feat-dim",
-        type="int",
+        type=int,
         dest="feat_dim",
         default=100,
         help="default feature dim",
     )
 
 
-def add_common_model_options(parser: OptionParser):
-    parser.add_option(
-        "--hiddensize", type="int", dest="hiddensize", default=256, help="hidden size"
+def add_common_model_options(argparser: ArgumentParser):
+    argparser.add_argument(
+        "--hiddensize", type=int, dest="hiddensize", default=256, help="hidden size"
     )
-    parser.add_option(
-        "-l", "--layernum", type="int", dest="layernum", default=3, help="layer number"
+    argparser.add_argument(
+        "-l", "--layernum", type=int, dest="layernum", default=3, help="layer number"
     )
-    parser.add_option(
+    argparser.add_argument(
         "-m",
         "--model",
         dest="model",
         default="sage",
         help="model type, valid values are: sage, gcn, gat",
     )
-    parser.add_option(
+    argparser.add_argument(
         "-f",
         "--framework",
         dest="framework",
         default="cugraph",
         help="framework type, valid values are: dgl, pyg, wg, cugraph",
     )
-    parser.add_option("--heads", type="int", dest="heads", default=1, help="num heads")
-    parser.add_option(
-        "-d", "--dropout", type="float", dest="dropout", default=0.5, help="dropout"
+    argparser.add_argument("--heads", type=int, dest="heads", default=4, help="num heads")
+    argparser.add_argument(
+        "-d", "--dropout", type=float, dest="dropout", default=0.5, help="dropout"
     )
 
 
-def add_common_sampler_options(parser: OptionParser):
-    parser.add_option(
+def add_common_sampler_options(argparser: ArgumentParser):
+    argparser.add_argument(
         "-n",
         "--neighbors",
         dest="neighbors",
         default="30,30,30",
         help="train neighboor sample count",
     )
-    parser.add_option(
+    argparser.add_argument(
         "-s",
         "--inferencesample",
-        type="int",
+        type=int,
         dest="inferencesample",
-        default=30,
+        default="30",
         help="inference sample count, -1 is all",
     )
 
 
-def add_node_classfication_options(parser: OptionParser):
-    parser.add_option(
+def add_node_classfication_options(argparser: ArgumentParser):
+    argparser.add_argument(
         "-c",
         "--classnum",
-        type="int",
+        type=int,
         dest="classnum",
         default=172,
         help="class number",
     )
 
 
-def add_dataloader_options(parser: OptionParser):
-    parser.add_option(
+def add_dataloader_options(argparser: ArgumentParser):
+    argparser.add_argument(
         "--pickle-data-path",
         dest="pickle_data_path",
         default="",
         help="training data file path, should be pickled dict",
     )
-    parser.add_option(
+    argparser.add_argument(
         "-w",
         "--dataloaderworkers",
-        type="int",
+        type=int,
         dest="dataloaderworkers",
         default=0,
         help="number of workers for dataloader",
