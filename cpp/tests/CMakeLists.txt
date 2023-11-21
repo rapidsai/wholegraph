@@ -74,7 +74,7 @@ function(ConfigureTestInternal TEST_NAME)
     endif()
 
     add_test(NAME ${TEST_NAME} COMMAND ${TEST_NAME})
-
+    set_tests_properties(${TEST_NAME} PROPERTIES ENVIRONMENT "LD_LIBRARY_PATH=${CMAKE_BINARY_DIR}:$ENV{LD_LIBRARY_PATH}")
     install(
             TARGETS ${TEST_NAME}
             COMPONENT testing

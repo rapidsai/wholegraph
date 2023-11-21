@@ -56,6 +56,7 @@ option(CMAKE_CUDA_LINEINFO "Enable the -lineinfo option for nvcc (useful for cud
 option(BUILD_TESTS "Configure CMake to build tests" ON)
 option(CUDA_STATIC_RUNTIME "Statically link the CUDA toolkit runtime and libraries" OFF)
 option(BUILD_WITH_NVSHMEM "Enable nvshmem integration" OFF)
+option(WHOLEGRAPH_EXCLUDE_NVSHMEM_FROM_ALL "Exclude nvshmem targets from wholeGraph's 'all' target" ON)
 ##############################################################################
 # - Set options based on user defined one  -----------------------------------
 set(_ctk_static_suffix "")
@@ -292,7 +293,7 @@ set(PROGRAM_PERMISSIONS_DEFAULT
 
 set(WHOLEGRAPH_INSTALL_LIBS wholegraph)
 if(BUILD_WITH_NVSHMEM)
-        list(APPEND WHOLEGRAPH_INSTALL_LIBS nvshmem_wholememory_bootstrap )
+        list(APPEND WHOLEGRAPH_INSTALL_LIBS nvshmem_wholememory_bootstrap  nvshmem_host)
 endif()
 
 install(

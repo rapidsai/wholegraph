@@ -15,6 +15,7 @@
  */
 #include "communicator.hpp"
 
+#include <cstdlib>
 #include <sys/stat.h>
 #include <unistd.h>
 
@@ -94,6 +95,8 @@ static ncclDataType_t get_nccl_dtype_same_size(const wholememory_dtype_t dtype)
 }
 
 void wholememory_comm_::barrier() const { raft_nccl_comm->barrier(); }
+
+void wholememory_comm_::abort() const { raft_nccl_comm->abort(); }
 
 void wholememory_comm_::allreduce(const void* sendbuff,
                                   void* recvbuff,
@@ -713,10 +716,10 @@ bool communicator_is_bind_to_nvshmem(wholememory_comm_t comm) noexcept
 #endif
 }
 
-wholememory_distributed_backend_t communicator_get_preferred_distributed_backend(
+wholememory_distributed_backend_t communicator_get_distributed_backend(
   wholememory_comm_t comm) noexcept
 {
-  return comm->preferred_distributed_backend;
+  return comm->distributed_backend;
 }
 
 void communicator_barrier(wholememory_comm_t comm)
@@ -820,24 +823,23 @@ wholememory_error_code_t finalize_nvshmem_locked(wholememory_comm_t comm) noexce
 
 #endif
 
-wholememory_error_code_t communicator_set_preferred_distributed_backend(
-  wholememory_comm_t comm, wholememory_distributed_backend_t preferred_distributed_backend) noexcept
+wholememory_error_code_t communicator_set_distributed_backend(
+  wholememory_comm_t comm, wholememory_distributed_backend_t distributed_backend) noexcept
 {
   try {
     std::unique_lock<std::mutex> mlock(comm_mu);
 
     WHOLEMEMORY_CHECK(comm != nullptr);
-    WM_COMM_CHECK_ALL_SAME(comm, preferred_distributed_backend);
+    WM_COMM_CHECK_ALL_SAME(comm, distributed_backend);
 
     for (auto&& [id, handle] : comm->wholememory_map) {
-      WHOLEMEMORY_EXPECTS(
-        wholememory_get_memory_type(handle) != WHOLEMEMORY_MT_DISTRIBUTED,
-        "Please set perferred_distributed_backend before creating any whole_memory with "
-        "distributed memory type if need to change distriubted_backend");
+      WHOLEMEMORY_EXPECTS(wholememory_get_memory_type(handle) != WHOLEMEMORY_MT_DISTRIBUTED,
+                          "Please set distributed_backend before creating any whole_memory with "
+                          "distributed memory type if need to change distriubted_backend");
     }
-    comm->preferred_distributed_backend = preferred_distributed_backend;
+    comm->distributed_backend = distributed_backend;
 #ifdef WITH_NVSHMEM_SUPPORT
-    if (preferred_distributed_backend == WHOLEMEMORY_DB_NVSHMEM) { comm->bind_to_nvshmem = true; }
+    if (distributed_backend == WHOLEMEMORY_DB_NVSHMEM) { comm->bind_to_nvshmem = true; }
 #endif
     return WHOLEMEMORY_SUCCESS;
   } catch (const wholememory::logic_error& wle) {

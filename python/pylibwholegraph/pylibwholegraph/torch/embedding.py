@@ -432,7 +432,7 @@ def create_embedding(
     tensor_desc.set_shape(sizes)
     tensor_desc.set_stride([sizes[1], 1])
     if memory_type == 'distributed':
-        comm_backend = comm.preferred_distributed_backend
+        comm_backend = comm.distributed_backend
         if comm_backend == 'nvshmem' and cache_policy is not None:
             raise AssertionError
         ("The caching feature is not supported yet when using NVSHMEM."

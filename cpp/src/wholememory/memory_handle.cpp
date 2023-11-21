@@ -1150,7 +1150,7 @@ class nvshmem_device_wholememory_impl : public wholememory_impl {
   {
     WHOLEMEMORY_CHECK(type_ == WHOLEMEMORY_MT_DISTRIBUTED);
     WHOLEMEMORY_CHECK(location_ == WHOLEMEMORY_ML_DEVICE);
-    WHOLEMEMORY_CHECK(comm->preferred_distributed_backend == WHOLEMEMORY_DB_NVSHMEM);
+    WHOLEMEMORY_CHECK(comm->distributed_backend == WHOLEMEMORY_DB_NVSHMEM);
     distrubuted_backend_ = WHOLEMEMORY_DB_NVSHMEM;
     check_or_set_nvshmem_heap_kind();
     init_nvshmem_with_comm(comm);
@@ -1170,16 +1170,11 @@ class nvshmem_device_wholememory_impl : public wholememory_impl {
     unregister_nvshmem_device_memory();
     nvshmem_free_device_memory();
   }
-  // [[nodiscard]] wholememory_gref_t get_global_reference() const noexcept override { return gref_;
-  // }
 
   bool contains_pointer(const void* ptr) const override
   {
     uint64_t int_ptr = reinterpret_cast<uint64_t>(ptr);
     size_t acc_size  = 0;
-
-    // we should only handle address that can be accessed by p2p.
-    // TODO: here return true ? // or print warning info ...
     for (int i = 0; i < comm_->world_size; i++) {
       size_t mem_size_of_this_rank_and_after = total_size_ - acc_size;
       size_t mem_size_for_current_rank =
@@ -1253,11 +1248,8 @@ class nvshmem_device_wholememory_impl : public wholememory_impl {
       "nvshmem_malloc_device_memory  should be called with the comm which used to init nvshmem.");
     size_t alloc_size                          = alloc_strategy_.local_alloc_size;
     nvshmem_memory_handle_.local_alloc_mem_ptr = nvshmem_malloc(alloc_size);
-    // TODO: use nvshmem_malloc_aligment(); // alloc_strategy_alignment
-    // gref_.is_nvshmem                = true;
-    // gref_.stride                    = rank_partition_strategy_.partition_mem_stride;
-    local_partition_memory_pointer_ = nvshmem_memory_handle_.local_alloc_mem_ptr;
-    distrubuted_backend_            = WHOLEMEMORY_DB_NVSHMEM;
+    local_partition_memory_pointer_            = nvshmem_memory_handle_.local_alloc_mem_ptr;
+    distrubuted_backend_                       = WHOLEMEMORY_DB_NVSHMEM;
   }
 
   void nvshmem_free_device_memory()

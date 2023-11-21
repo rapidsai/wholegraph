@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 #include <cstddef>
-#include <stdbool.h>
-#include <stdlib.h>
+#include <cstdlib>
 
+#include "logger.hpp"
 #include "nvshmem.h"
 #include "nvshmemi_bootstrap.h"
 #include "nvshmemx.h"
@@ -57,16 +57,17 @@ static int bootstrap_wholememory_alltoall(const void* sendbuf,
 
 static void bootstrap_wholememory_global_exit(int status)
 {
-  wholememory_error_code_t rc = WHOLEMEMORY_SUCCESS;
-  // TODO:
-  abort();
-  // ncclCommAbort
+  try {
+    bootstrap_comm->abort();
+  } catch (const std::exception& e) {
+    WHOLEMEMORY_ERROR("bootstrap_comm->abort() failed , error:%s\n", e.what());
+    std::exit(1);
+  }
 }
 
 static int bootstrap_wholememory_finalize(bootstrap_handle_t* handle)
 {
-  // nvshmemi_is_nvshmem_bootstrapped=false;
-
+  // do nothing
   return WHOLEMEMORY_SUCCESS;
 }
 

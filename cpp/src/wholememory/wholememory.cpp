@@ -65,16 +65,16 @@ bool wholememory_communicator_is_bind_to_nvshmem(wholememory_comm_t comm)
 #endif
 }
 
-wholememory_error_code_t wholememory_communicator_set_preferred_distributed_backend(
+wholememory_error_code_t wholememory_communicator_set_distributed_backend(
   wholememory_comm_t comm, wholememory_distributed_backend_t distributed_backend)
 {
-  return wholememory::communicator_set_preferred_distributed_backend(comm, distributed_backend);
+  return wholememory::communicator_set_distributed_backend(comm, distributed_backend);
 }
 
-wholememory_distributed_backend_t wholememory_communicator_get_preferred_distributed_backend(
+wholememory_distributed_backend_t wholememory_communicator_get_distributed_backend(
   wholememory_comm_t comm)
 {
-  return wholememory::communicator_get_preferred_distributed_backend(comm);
+  return wholememory::communicator_get_distributed_backend(comm);
 }
 
 wholememory_error_code_t wholememory_communicator_barrier(wholememory_comm_t comm)

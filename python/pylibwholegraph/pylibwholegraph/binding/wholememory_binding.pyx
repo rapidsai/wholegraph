@@ -163,10 +163,10 @@ cdef extern from "wholememory/wholememory.h":
 
     cdef bool wholememory_is_build_with_nvshmem()
 
-    cdef wholememory_error_code_t wholememory_communicator_set_preferred_distributed_backend(wholememory_comm_t comm,
+    cdef wholememory_error_code_t wholememory_communicator_set_distributed_backend(wholememory_comm_t comm,
                                                                 wholememory_distributed_backend_t distributed_backend)
 
-    cdef wholememory_distributed_backend_t wholememory_communicator_get_preferred_distributed_backend(
+    cdef wholememory_distributed_backend_t wholememory_communicator_get_distributed_backend(
                                                                             wholememory_comm_t comm)
 
 
@@ -1220,11 +1220,11 @@ cdef class PyWholeMemoryComm:
     def barrier(self):
         check_wholememory_error_code(wholememory_communicator_barrier(self.comm_id))
 
-    def get_preferred_distributed_backend(self):
-        return WholeMemoryDistributedBackend(wholememory_communicator_get_preferred_distributed_backend(self.comm_id))
+    def get_distributed_backend(self):
+        return WholeMemoryDistributedBackend(wholememory_communicator_get_distributed_backend(self.comm_id))
 
-    def set_preferred_distributed_backend(self,WholeMemoryDistributedBackend distributed_backend):
-        check_wholememory_error_code(wholememory_communicator_set_preferred_distributed_backend(self.comm_id,int(distributed_backend)))
+    def set_distributed_backend(self,WholeMemoryDistributedBackend distributed_backend):
+        check_wholememory_error_code(wholememory_communicator_set_distributed_backend(self.comm_id,int(distributed_backend)))
 
 cdef class PyWholeMemoryHandle:
     cdef wholememory_handle_t wholememory_handle
@@ -1577,8 +1577,8 @@ def destroy_communicator(PyWholeMemoryComm py_comm):
     check_wholememory_error_code(wholememory_destroy_communicator(py_comm.comm_id))
 
 
-def communicator_set_preferred_distributed_backend(PyWholeMemoryComm py_comm,WholeMemoryDistributedBackend distributed_backend):
-    check_wholememory_error_code(wholememory_communicator_set_preferred_distributed_backend(py_comm.comm_id,int(distributed_backend)))
+def communicator_set_distributed_backend(PyWholeMemoryComm py_comm,WholeMemoryDistributedBackend distributed_backend):
+    check_wholememory_error_code(wholememory_communicator_set_distributed_backend(py_comm.comm_id,int(distributed_backend)))
 
 def determine_partition_plan(int64_t entry_count,
                              int world_size):

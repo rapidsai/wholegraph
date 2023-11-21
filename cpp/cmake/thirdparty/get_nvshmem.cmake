@@ -20,22 +20,22 @@ set(USE_NVSHMEM_VERSION_BRANCH 3)
 function(find_and_configure_nvshmem)
 
 
-    set(NVSHMEM_INSTALL_DIR ${CMAKE_INSTALL_PREFIX})
+    set(oneValueArgs VERSION VERSION_BRANCH   EXCLUDE_FROM_ALL INSTALL_DIR)
+    cmake_parse_arguments(PKG "" "${oneValueArgs}" "" ${ARGN} )
 
-
-    rapids_cpm_find(nvshmem ${USE_NVSHMEM_VERSION}
+    rapids_cpm_find(nvshmem ${PKG_VERSION}
                     GLOBAL_TARGETS nvshmem::nvshmem nvshmem::nvshmem_device nvshmem::nvshmem_host
                     BUILD_EXPORT_SET wholegraph-exports
                     INSTALL_EXPORT_SET wholegraph-exports
-                    EXCLUDE_FROM_ALL TRUE
+                    EXCLUDE_FROM_ALL ${PKG_EXCLUDE_FROM_ALL}
                     CPM_ARGS
-                        URL https://developer.download.nvidia.cn/compute/redist/nvshmem/${USE_NVSHMEM_VERSION}/source/nvshmem_src_${USE_NVSHMEM_VERSION}-${USE_NVSHMEM_VERSION_BRANCH}.txz
+                        URL https://developer.download.nvidia.cn/compute/redist/nvshmem/${PKG_VERSION}/source/nvshmem_src_${PKG_VERSION}-${PKG_VERSION_BRANCH}.txz
                         OPTIONS
                             "NVSHMEM_IBGDA_SUPPORT ON"
                             "NVSHMEM_IBDEVX_SUPPORT ON"
                             "NVSHMEM_BUILD_EXAMPLES OFF"
                             "NVSHMEM_BUILD_TESTS OFF"
-                            "NVSHMEM_PREFIX  ${NVSHMEM_INSTALL_DIR}"
+                            "NVSHMEM_PREFIX  ${PKG_INSTALL_DIR}"
                     )
 
 
@@ -49,4 +49,8 @@ function(find_and_configure_nvshmem)
 endfunction()
 
 
-find_and_configure_nvshmem()
+find_and_configure_nvshmem(VERSION           ${USE_NVSHMEM_VERSION}
+                           VERSION_BRANCH    ${USE_NVSHMEM_VERSION_BRANCH}
+                           EXCLUDE_FROM_ALL  ${WHOLEGRAPH_EXCLUDE_NVSHMEM_FROM_ALL}
+                           INSTALL_DIR       ${CMAKE_INSTALL_PREFIX}
+                           )
