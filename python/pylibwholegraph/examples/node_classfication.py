@@ -145,15 +145,29 @@ def main_func():
     graph_structure = wgth.GraphStructure()
     graph_structure_wholememory_type = "chunked"
     graph_structure_wholememory_location = "cuda"
+
+    graph_comm = local_comm
+    if global_comm.get_size() != local_comm.get_size() and global_comm.support_type_location("continuous", "cuda"):
+        print("Using global communicator for graph structure.")
+        graph_comm = global_comm
+        graph_structure_wholememory_type = "continuous"
+        graph_structure_wholememory_location = "cuda"
+        if not options.use_global_embedding:
+            options.use_global_embedding = True
+            print("Changing to using global communicator for embedding...")
+            if options.embedding_memory_type == "chunked":
+                print("Changing to continuous wholememory for embedding...")
+                options.embedding_memory_type = "continuous"
+
     csr_row_ptr_wm_tensor = wgth.create_wholememory_tensor_from_filelist(
-        local_comm,
+        graph_comm,
         graph_structure_wholememory_type,
         graph_structure_wholememory_location,
         os.path.join(options.root_dir, "homograph_csr_row_ptr"),
         torch.int64,
     )
     csr_col_ind_wm_tensor = wgth.create_wholememory_tensor_from_filelist(
-        local_comm,
+        graph_comm,
         graph_structure_wholememory_type,
         graph_structure_wholememory_location,
         os.path.join(options.root_dir, "homograph_csr_col_idx"),

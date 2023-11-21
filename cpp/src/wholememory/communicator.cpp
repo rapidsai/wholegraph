@@ -29,6 +29,7 @@
 #include "cuda_macros.hpp"
 #include "logger.hpp"
 #include "memory_handle.hpp"
+#include "system_info.hpp"
 #include "wholememory/nccl_comms.hpp"
 
 #ifdef WITH_NVSHMEM_SUPPORT
@@ -349,6 +350,26 @@ void wholememory_comm_::device_multicast_sendrecv(const void* sendbuf,
     sendbuf, sendsizes, sendoffsets, dests, recvbuf, recvsizes, recvoffsets, sources, stream);
 }
 
+bool wholememory_comm_::is_intranode() const { return intra_node_rank_num == world_size; }
+
+bool wholememory_comm_::support_type_location(wholememory_memory_type_t memory_type,
+                                              wholememory_memory_location_t memory_location) const
+{
+  if (memory_location == WHOLEMEMORY_ML_HOST) {
+    if (is_intranode() || memory_type == WHOLEMEMORY_MT_DISTRIBUTED) return true;
+    return SupportMNNVLForEGM();
+  } else if (memory_location == WHOLEMEMORY_ML_DEVICE) {
+    if (memory_type == WHOLEMEMORY_MT_DISTRIBUTED) return true;
+    if (is_intranode()) {
+      return DevicesCanAccessP2P(&local_gpu_ids[0], intra_node_rank_num);
+    } else {
+      return DevicesCanAccessP2P(&local_gpu_ids[0], intra_node_rank_num) && SupportMNNVL();
+    }
+  } else {
+    return false;
+  }
+}
+
 void wholememory_comm_::group_start() const { raft_nccl_comm->group_start(); }
 
 void wholememory_comm_::group_end() const { raft_nccl_comm->group_end(); }
@@ -400,6 +421,7 @@ struct rank_info {
   pid_t pid;
   int rank;
   int size;
+  int gpu_id;
 };
 
 static void get_host_name(char* hostname, int maxlen, const char delim)
@@ -469,9 +491,10 @@ void exchange_rank_info(wholememory_comm_t wm_comm)
 {
   rank_info ri;
   get_host_info(&ri.rank_host_info);
-  ri.rank = wm_comm->world_rank;
-  ri.size = wm_comm->world_size;
-  ri.pid  = getpid();
+  ri.rank   = wm_comm->world_rank;
+  ri.size   = wm_comm->world_size;
+  ri.pid    = getpid();
+  ri.gpu_id = wm_comm->dev_id;
 
   std::unique_ptr<rank_info[]> p_rank_info(new rank_info[ri.size]);
   wm_comm->host_allgather(&ri, p_rank_info.get(), sizeof(rank_info), WHOLEMEMORY_DT_INT8);
@@ -486,6 +509,7 @@ void exchange_rank_info(wholememory_comm_t wm_comm)
         wm_comm->intra_node_first_rank_pid = p_rank_info.get()[r].pid;
         wm_comm->intra_node_first_rank     = r;
       }
+      wm_comm->local_gpu_ids[wm_comm->intra_node_rank_num] = p_rank_info.get()[r].gpu_id;
       wm_comm->intra_node_rank_num++;
     }
   }
@@ -595,7 +619,7 @@ wholememory_error_code_t create_communicator(wholememory_comm_t* comm,
       ncclCommInitRank(&nccl_comm, world_size, (ncclUniqueId&)unique_id, world_rank) ==
       ncclSuccess);
     cudaStream_t cuda_stream;
-    WM_CUDA_CHECK(cudaStreamCreate(&cuda_stream));
+    WM_CUDA_CHECK(cudaStreamCreateWithFlags(&cuda_stream, cudaStreamNonBlocking));
     auto* wm_comm = new wholememory_comm_(nccl_comm, world_size, world_rank, cuda_stream);
     *comm         = wm_comm;
     WM_COMM_CHECK_ALL_SAME(wm_comm, WM_COMM_OP_STARTING);
@@ -685,6 +709,15 @@ wholememory_error_code_t destroy_communicator(wholememory_comm_t comm) noexcept
   return destroy_communicator_locked(comm);
 }
 
+wholememory_error_code_t communicator_support_type_location(
+  wholememory_comm_t comm,
+  wholememory_memory_type_t memory_type,
+  wholememory_memory_location_t memory_location) noexcept
+{
+  return comm->support_type_location(memory_type, memory_location) ? WHOLEMEMORY_SUCCESS
+                                                                   : WHOLEMEMORY_NOT_SUPPORTED;
+}
+
 wholememory_error_code_t destroy_all_communicators() noexcept
 {
   std::unique_lock<std::mutex> mlock(comm_mu);
@@ -737,10 +770,7 @@ void communicator_barrier(wholememory_comm_t comm)
   }
 }
 
-bool is_intranode_communicator(wholememory_comm_t comm) noexcept
-{
-  return comm->intra_node_rank_num == comm->world_size;
-}
+bool is_intranode_communicator(wholememory_comm_t comm) noexcept { return comm->is_intranode(); }
 
 #ifdef WITH_NVSHMEM_SUPPORT
 wholememory_error_code_t init_nvshmem_with_comm(wholememory_comm_t comm) noexcept

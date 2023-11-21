@@ -47,6 +47,14 @@ wholememory_error_code_t wholememory_destroy_communicator(wholememory_comm_t com
   return wholememory::destroy_communicator(comm);
 }
 
+wholememory_error_code_t wholememory_communicator_support_type_location(
+  wholememory_comm_t comm,
+  wholememory_memory_type_t memory_type,
+  wholememory_memory_location_t memory_location)
+{
+  return wholememory::communicator_support_type_location(comm, memory_type, memory_location);
+}
+
 wholememory_error_code_t wholememory_communicator_get_rank(int* rank, wholememory_comm_t comm)
 {
   return wholememory::communicator_get_rank(rank, comm);

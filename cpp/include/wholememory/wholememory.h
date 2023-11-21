@@ -39,6 +39,7 @@ enum wholememory_error_code_t {
   WHOLEMEMORY_INVALID_INPUT,       /*!< input is invalid, e.g. nullptr */
   WHOLEMEMORY_INVALID_VALUE,       /*!< input value is invalid */
   WHOLEMEMORY_OUT_OF_MEMORY,       /*!< out of memory */
+  WHOLEMEMORY_NOT_SUPPORTED,       /*!< not supported */
 };
 
 #define WHOLEMEMORY_RETURN_ON_FAIL(X)                                                 \
@@ -136,6 +137,18 @@ wholememory_error_code_t wholememory_create_communicator(wholememory_comm_t* com
  * @return : wholememory_error_code_t
  */
 wholememory_error_code_t wholememory_destroy_communicator(wholememory_comm_t comm);
+
+/**
+ * Check if combination of WholeMemory type and location is supported in the communicator
+ * @param comm : WholeMemory Communicator
+ * @param memory_type : WholeMemory type
+ * @param memory_location : WholeMemory Location
+ * @return WHOLEMEMORY_SUCCESS if supported else WHOLEMEMORY_NOT_SUPPORTED
+ */
+wholememory_error_code_t wholememory_communicator_support_type_location(
+  wholememory_comm_t comm,
+  wholememory_memory_type_t memory_type,
+  wholememory_memory_location_t memory_location);
 
 /**
  * Get the rank of current process in the WholeMemory Communicator

@@ -36,13 +36,12 @@
 #include "wholememory/global_reference.h"
 #include "wholememory/wholememory.h"
 
+#include "system_info.hpp"
 #ifdef WITH_NVSHMEM_SUPPORT
-
 #include "nvshmem.h"
 #include "nvshmemx.h"
 
 #endif
-
 namespace wholememory {
 
 enum wm_memory_op : int32_t {
@@ -591,10 +590,10 @@ class continuous_device_wholememory_impl : public wholememory_impl {
         wholememory_handle, total_size, comm, memory_type, memory_location, data_granularity)
   {
     WHOLEMEMORY_CHECK(type_ == WHOLEMEMORY_MT_CONTINUOUS);
-    WHOLEMEMORY_CHECK(location_ == WHOLEMEMORY_ML_DEVICE);
   }
   void create_memory() override
   {
+    WHOLEMEMORY_CHECK(location_ == WHOLEMEMORY_ML_DEVICE);
     each_rank_multiple_page_strategy();
     generate_rank_partition_strategy();
     create_and_map_driver_device_memory();
@@ -981,6 +980,9 @@ class continuous_device_wholememory_impl : public wholememory_impl {
     std::vector<CUmemGenericAllocationHandle> all_cu_handles;
     void* mapped_whole_memory = nullptr;
     ipc_sharable_cu_handle local_ipc_handle;
+#if CUDA_VERSION >= 12030
+    CUmemFabricHandle local_ipc_fabric_handle;
+#endif
 
     int send_fd = -1;
     std::vector<int> recv_fds;
@@ -1289,6 +1291,207 @@ class nvshmem_device_wholememory_impl : public wholememory_impl {
   inline static bool has_set_nvshmem_heap = false;
 };
 #endif
+// Implementation for MNNVL wholememory that use cuda driver api.
+// Each rank allocate multiple pages and share pages with other ranks.
+// for CONTINUOUS type with HOST or DEVICE location
+#if CUDA_VERSION >= 12030
+class continuous_mnnvl_wholememory_impl : public continuous_device_wholememory_impl {
+ public:
+  continuous_mnnvl_wholememory_impl(wholememory_handle_t wholememory_handle,
+                                    size_t total_size,
+                                    wholememory_comm_t comm,
+                                    wholememory_memory_type_t memory_type,
+                                    wholememory_memory_location_t memory_location,
+                                    size_t data_granularity)
+    : continuous_device_wholememory_impl(
+        wholememory_handle, total_size, comm, memory_type, memory_location, data_granularity)
+  {
+    WHOLEMEMORY_INFO("Using continuous_mnnvl_wholememory_impl");
+    WHOLEMEMORY_CHECK_NOTHROW(type_ == WHOLEMEMORY_MT_CONTINUOUS);
+  }
+  void check_valid()
+  {
+    if (location_ == WHOLEMEMORY_ML_HOST) { WHOLEMEMORY_CHECK_NOTHROW(SupportEGM()); }
+    WHOLEMEMORY_CHECK_NOTHROW(SupportMNNVL());
+  }
+  void create_memory() override
+  {
+    check_valid();
+    each_rank_multiple_page_strategy();
+    generate_rank_partition_strategy();
+    create_and_map_driver_memory();
+    register_continuous_mnnvl_memory();
+  }
+  void destroy_memory() noexcept override
+  {
+    unregister_continuous_mnnvl_memory();
+    unmap_and_destroy_driver_host_memory();
+  }
+
+ protected:
+  void register_continuous_mnnvl_memory()
+  {
+    std::unique_lock<std::mutex> vma_lock(wholememory_vma_mu);
+    register_wholememory_vma_range_locked(
+      cu_alloc_handle_.mapped_whole_memory, total_size_, handle_);
+  }
+  void unregister_continuous_mnnvl_memory() noexcept
+  {
+    std::unique_lock<std::mutex> vma_lock(wholememory_vma_mu);
+    unregister_wholememory_vma_range_locked(
+      cu_alloc_handle_.mapped_whole_memory, total_size_, handle_);
+  }
+
+  static CUmemGenericAllocationHandle create_cu_mem(size_t mem_size,
+                                                    int dev_id,
+                                                    wholememory_memory_location_t location)
+  {
+    CUmemGenericAllocationHandle h;
+    CUmemAllocationProp prop;
+    memset(&prop, 0, sizeof(prop));
+    if (location == WHOLEMEMORY_ML_HOST) {
+      int numa_id;
+      cuDeviceGetAttribute(&numa_id, CU_DEVICE_ATTRIBUTE_HOST_NUMA_ID, dev_id);
+
+      prop.type                       = CU_MEM_ALLOCATION_TYPE_PINNED;
+      prop.requestedHandleTypes       = CU_MEM_HANDLE_TYPE_FABRIC;
+      prop.location.type              = CU_MEM_LOCATION_TYPE_HOST_NUMA;
+      prop.location.id                = numa_id;
+      prop.allocFlags.compressionType = CU_MEM_ALLOCATION_COMP_NONE;
+    } else {
+      WHOLEMEMORY_CHECK_NOTHROW(location == WHOLEMEMORY_ML_DEVICE);
+      prop.type                       = CU_MEM_ALLOCATION_TYPE_PINNED;
+      prop.requestedHandleTypes       = CU_MEM_HANDLE_TYPE_FABRIC;
+      prop.location.type              = CU_MEM_LOCATION_TYPE_DEVICE;
+      prop.location.id                = dev_id;
+      prop.allocFlags.compressionType = CU_MEM_ALLOCATION_COMP_NONE;
+    }
+    WM_CU_CHECK_NO_THROW(cuMemCreate(&h, mem_size, &prop, 0));
+    return h;
+  }
+
+  static CUmemFabricHandle create_sharable_fabric_handle(CUmemGenericAllocationHandle h)
+  {
+    CUmemFabricHandle fabric_handle;
+    if (h != 0) {
+      WM_CU_CHECK_NO_THROW(
+        cuMemExportToShareableHandle(&fabric_handle, h, CU_MEM_HANDLE_TYPE_FABRIC, 0));
+    }
+    return fabric_handle;
+  }
+
+  void exchange_driver_host_memory_handles(
+    std::vector<CUmemFabricHandle>* recv_ipc_sharable_cu_fabric_handles,
+    CUmemFabricHandle* send_ipc_sharable_cu_fabric_handle)
+  {
+    communicator_barrier(comm_);
+    recv_ipc_sharable_cu_fabric_handles->resize(comm_->world_size);
+    comm_->host_allgather(static_cast<const void*>(send_ipc_sharable_cu_fabric_handle),
+                          static_cast<void*>(recv_ipc_sharable_cu_fabric_handles->data()),
+                          sizeof(CUmemFabricHandle),
+                          WHOLEMEMORY_DT_INT8);
+    communicator_barrier(comm_);
+  }
+  CUmemGenericAllocationHandle import_cu_mem_handle(CUmemFabricHandle sharable_cu_fabric_handle,
+                                                    bool same_rank)
+  {
+    CUmemGenericAllocationHandle h;
+    if (!same_rank) {
+      WM_CU_CHECK_NO_THROW(
+        cuMemImportFromShareableHandle(&h, &sharable_cu_fabric_handle, CU_MEM_HANDLE_TYPE_FABRIC));
+    } else {
+      h = cu_alloc_handle_.local_cu_handle;
+    }
+    return h;
+  }
+  void map_driver_memory_handles(
+    std::vector<CUmemFabricHandle>* recv_ipc_sharable_cu_fabric_handles)
+  {
+    cu_alloc_handle_.all_cu_handles.resize(comm_->world_size);
+    for (int i = 0; i < comm_->world_size; i++) {
+      size_t mem_size = alloc_strategy_.alloc_sizes[i];
+      if (mem_size > 0) {
+        cu_alloc_handle_.all_cu_handles[i] =
+          import_cu_mem_handle((*recv_ipc_sharable_cu_fabric_handles)[i], i == comm_->world_rank);
+
+        WM_CU_CHECK_NO_THROW(
+          cuMemMap(reinterpret_cast<CUdeviceptr>(cu_alloc_handle_.mapped_whole_memory) +
+                     alloc_strategy_.alloc_offsets[i],
+                   mem_size,
+                   0,
+                   cu_alloc_handle_.all_cu_handles[i],
+                   0));
+      }
+      recv_ipc_sharable_cu_fabric_handles->clear();
+    }
+    CUmemAccessDesc madesc;
+    madesc.location.type = CU_MEM_LOCATION_TYPE_DEVICE;
+    madesc.location.id   = comm_->dev_id;
+    madesc.flags         = CU_MEM_ACCESS_FLAGS_PROT_READWRITE;
+    WM_CU_CHECK_NO_THROW(
+      cuMemSetAccess(reinterpret_cast<CUdeviceptr>(cu_alloc_handle_.mapped_whole_memory),
+                     alloc_strategy_.total_alloc_size,
+                     &madesc,
+                     1));
+  }
+  void create_and_map_driver_memory()
+  {
+    WM_CU_CHECK(
+      cuMemAddressReserve(reinterpret_cast<CUdeviceptr*>(&cu_alloc_handle_.mapped_whole_memory),
+                          alloc_strategy_.total_alloc_size,
+                          alloc_strategy_.alignment,
+                          0,
+                          0));
+    cu_alloc_handle_.all_cu_handles.resize(comm_->world_size, 0);
+    std::vector<CUmemFabricHandle> recv_ipc_sharable_cu_fabric_handles;
+    cu_alloc_handle_.local_cu_handle = 0;
+    if (alloc_strategy_.local_alloc_size > 0) {
+      cu_alloc_handle_.local_cu_handle =
+        create_cu_mem(alloc_strategy_.local_alloc_size, comm_->dev_id, location_);
+    }
+    cu_alloc_handle_.local_ipc_fabric_handle =
+      create_sharable_fabric_handle(cu_alloc_handle_.local_cu_handle);
+
+    exchange_driver_host_memory_handles(&recv_ipc_sharable_cu_fabric_handles,
+                                        &cu_alloc_handle_.local_ipc_fabric_handle);
+
+    map_driver_memory_handles(&recv_ipc_sharable_cu_fabric_handles);
+    local_partition_memory_pointer_ = static_cast<char*>(cu_alloc_handle_.mapped_whole_memory) +
+                                      rank_partition_strategy_.local_mem_offset;
+  }
+  void unmap_and_destroy_driver_host_memory() noexcept
+  {
+    try {
+      communicator_barrier(comm_);
+      for (int i = 0; i < comm_->world_size; i++) {
+        size_t mem_size = alloc_strategy_.alloc_sizes[i];
+        if (mem_size > 0) {
+          WM_CU_CHECK(
+            cuMemUnmap(reinterpret_cast<CUdeviceptr>(cu_alloc_handle_.mapped_whole_memory) +
+                         alloc_strategy_.alloc_offsets[i],
+                       mem_size));
+          if (i != comm_->world_rank) {
+            WM_CU_CHECK(cuMemRelease(cu_alloc_handle_.all_cu_handles[i]));
+          }
+        }
+      }
+      communicator_barrier(comm_);
+      if (alloc_strategy_.local_alloc_size > 0) {
+        WM_CU_CHECK(cuMemRelease(cu_alloc_handle_.local_cu_handle));
+      }
+      WM_CU_CHECK(
+        cuMemAddressFree(reinterpret_cast<CUdeviceptr>(cu_alloc_handle_.mapped_whole_memory),
+                         alloc_strategy_.total_alloc_size));
+
+      communicator_barrier(comm_);
+    } catch (const wholememory::cu_error& wce) {
+      WHOLEMEMORY_FAIL_NOTHROW("%s", wce.what());
+    } catch (const raft::exception& re) {
+      WHOLEMEMORY_FAIL_NOTHROW("%s", re.what());
+    }
+  }
+};
+#endif
 
 void wholememory_impl::generate_rank_partition_strategy()
 {
@@ -1447,15 +1650,32 @@ wholememory_error_code_t create_wholememory(wholememory_handle_t* wholememory_ha
         whole_memory_handle->impl = new distributed_wholememory_impl(
           whole_memory_handle, total_size, comm, memory_type, memory_location, data_granularity);
       }
-    } else if (memory_location == WHOLEMEMORY_ML_HOST) {
-      whole_memory_handle->impl = new global_mapped_host_wholememory_impl(
-        whole_memory_handle, total_size, comm, memory_type, memory_location, data_granularity);
     } else if (memory_type == WHOLEMEMORY_MT_CONTINUOUS) {
-      whole_memory_handle->impl = new continuous_device_wholememory_impl(
-        whole_memory_handle, total_size, comm, memory_type, memory_location, data_granularity);
+      if (is_intranode_communicator(comm) || !SupportEGM()) {
+        if (memory_location == WHOLEMEMORY_ML_HOST) {
+          whole_memory_handle->impl = new global_mapped_host_wholememory_impl(
+            whole_memory_handle, total_size, comm, memory_type, memory_location, data_granularity);
+        } else {
+          whole_memory_handle->impl = new continuous_device_wholememory_impl(
+            whole_memory_handle, total_size, comm, memory_type, memory_location, data_granularity);
+        }
+      } else {
+#if CUDA_VERSION >= 12030
+        whole_memory_handle->impl = new continuous_mnnvl_wholememory_impl(
+          whole_memory_handle, total_size, comm, memory_type, memory_location, data_granularity);
+#else
+        WHOLEMEMORY_FAIL_NOTHROW("Multinode CONTINUOUS is only supported on CUDA Version >= 12.3");
+#endif
+      }
     } else if (memory_type == WHOLEMEMORY_MT_CHUNKED) {
-      whole_memory_handle->impl = new chunked_device_wholememory_impl(
-        whole_memory_handle, total_size, comm, memory_type, memory_location, data_granularity);
+      WHOLEMEMORY_CHECK_NOTHROW(is_intranode_communicator(comm));
+      if (memory_location == WHOLEMEMORY_ML_HOST) {
+        whole_memory_handle->impl = new global_mapped_host_wholememory_impl(
+          whole_memory_handle, total_size, comm, memory_type, memory_location, data_granularity);
+      } else {
+        whole_memory_handle->impl = new chunked_device_wholememory_impl(
+          whole_memory_handle, total_size, comm, memory_type, memory_location, data_granularity);
+      }
     } else {
       WHOLEMEMORY_FATAL("Unsupported memory_type (%d) and memory_location (%d).",
                         (int)memory_type,

@@ -190,6 +190,11 @@ struct wholememory_comm_ {
                                  std::vector<int> const& sources,
                                  cudaStream_t stream) const;
 
+  bool is_intranode() const;
+
+  bool support_type_location(wholememory_memory_type_t memory_type,
+                             wholememory_memory_location_t memory_location) const;
+
   void group_start() const;
 
   void group_end() const;
@@ -209,7 +214,8 @@ struct wholememory_comm_ {
 
   int comm_id = -1;
 
-  int dev_id = -1;
+  int dev_id            = -1;
+  int local_gpu_ids[16] = {0};
 
   size_t alloc_granularity = 2 * 1024 * 1024UL;
 
@@ -264,6 +270,11 @@ wholememory_error_code_t create_communicator(wholememory_comm_t* comm,
 wholememory_error_code_t destroy_communicator_locked(wholememory_comm_t comm) noexcept;
 
 wholememory_error_code_t destroy_communicator(wholememory_comm_t comm) noexcept;
+
+wholememory_error_code_t communicator_support_type_location(
+  wholememory_comm_t comm,
+  wholememory_memory_type_t memory_type,
+  wholememory_memory_location_t memory_location) noexcept;
 
 wholememory_error_code_t destroy_all_communicators() noexcept;
 

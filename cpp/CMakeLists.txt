@@ -57,6 +57,8 @@ option(BUILD_TESTS "Configure CMake to build tests" ON)
 option(CUDA_STATIC_RUNTIME "Statically link the CUDA toolkit runtime and libraries" OFF)
 option(BUILD_WITH_NVSHMEM "Enable nvshmem integration" OFF)
 option(WHOLEGRAPH_EXCLUDE_NVSHMEM_FROM_ALL "Exclude nvshmem targets from wholeGraph's 'all' target" ON)
+option(BUILD_BENCHMARKS "Configure CMake to build benchmark" ON)
+
 ##############################################################################
 # - Set options based on user defined one  -----------------------------------
 set(_ctk_static_suffix "")
@@ -236,6 +238,10 @@ if(BUILD_WITH_NVSHMEM)
 endif()
 
 
+# optionally build benchmark
+if (BUILD_BENCHMARKS AND CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
+    add_subdirectory(bench)
+endif()
 ##############################################################################
 # - code checker -------------------------------------------------------------
 

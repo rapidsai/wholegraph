@@ -143,9 +143,19 @@ TEST_P(WholeMemoryGatherParameterTests, GatherTest)
 
       wholememory_comm_t wm_comm = create_communicator_by_pipes(pipes, world_rank, world_size);
 
+#ifdef WITH_NVSHMEM_SUPPORT
       if (params.distributed_backend == WHOLEMEMORY_DB_NVSHMEM) {
         EXPECT_EQ(wholememory_communicator_set_distributed_backend(wm_comm, WHOLEMEMORY_DB_NVSHMEM),
                   WHOLEMEMORY_SUCCESS);
+      }
+#endif
+      if (wholememory_communicator_support_type_location(
+            wm_comm, params.memory_type, params.memory_location) != WHOLEMEMORY_SUCCESS) {
+        EXPECT_EQ(wholememory::destroy_all_communicators(), WHOLEMEMORY_SUCCESS);
+        EXPECT_EQ(wholememory_finalize(), WHOLEMEMORY_SUCCESS);
+        WHOLEMEMORY_CHECK(::testing::Test::HasFailure() == false);
+        if (world_rank == 0) GTEST_SKIP_("Skip due to not supported.");
+        return;
       }
 
       wholememory_handle_t embedding_handle;

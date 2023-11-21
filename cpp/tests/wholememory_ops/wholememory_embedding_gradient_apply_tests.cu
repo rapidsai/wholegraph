@@ -530,6 +530,19 @@ TEST_P(WholeMemoryEmbeddingBackwardParameterTests, EmbeddingGatherGradientApplyT
       wholememory_comm_t wm_comm    = create_communicator_by_pipes(pipes, world_rank, world_size);
       wholememory_comm_t cache_comm = wm_comm;
 
+      if (wholememory_communicator_support_type_location(
+            wm_comm, params.memory_type, params.memory_location) != WHOLEMEMORY_SUCCESS ||
+          (params.use_cache &&
+           wholememory_communicator_support_type_location(
+             cache_comm, params.cache_memory_type, params.cache_memory_location) !=
+             WHOLEMEMORY_SUCCESS)) {
+        EXPECT_EQ(wholememory::destroy_all_communicators(), WHOLEMEMORY_SUCCESS);
+        EXPECT_EQ(wholememory_finalize(), WHOLEMEMORY_SUCCESS);
+        WHOLEMEMORY_CHECK(::testing::Test::HasFailure() == false);
+        if (world_rank == 0) GTEST_SKIP_("Skip due to not supported.");
+        return;
+      }
+
       int64_t embedding_dim = params.embedding_description.sizes[1];
 
       void *dev_indices = nullptr, *dev_grad_buffer = nullptr;

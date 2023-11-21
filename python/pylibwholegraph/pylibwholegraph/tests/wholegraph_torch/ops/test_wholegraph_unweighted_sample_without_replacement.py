@@ -245,6 +245,10 @@ def routine_func(world_rank: int, world_size: int, **kwargs):
     wholememory_location = int_to_wholememory_location(int_wholememory_location)
     wholememory_type = int_to_wholememory_type(int_wholememory_type)
 
+    if not wm_comm.support_type_location(wholememory_type, wholememory_location):
+        wmb.finalize()
+        return
+
     wm_csr_row_ptr = wmb.create_wholememory_array(
         wmb.WholeMemoryDataType.DtInt64,
         graph_node_count + 1,
