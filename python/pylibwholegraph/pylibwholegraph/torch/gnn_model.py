@@ -193,31 +193,31 @@ class HomoGNNModel(torch.nn.Module):
         self,
         graph_structure: GraphStructure,
         node_embedding: WholeMemoryEmbedding,
-        options,
+        args,
     ):
         super().__init__()
-        hidden_feat_dim = options.hiddensize
+        hidden_feat_dim = args.hiddensize
         self.graph_structure = graph_structure
         self.node_embedding = node_embedding
-        self.num_layer = options.layernum
-        self.hidden_feat_dim = options.hiddensize
-        num_head = options.heads if (options.model == "gat") else 1
+        self.num_layer = args.layernum
+        self.hidden_feat_dim = args.hiddensize
+        num_head = args.heads if (args.model == "gat") else 1
         assert hidden_feat_dim % num_head == 0
         in_feat_dim = self.node_embedding.shape[1]
         self.gnn_layers = create_gnn_layers(
             in_feat_dim,
             hidden_feat_dim,
-            options.classnum,
-            options.layernum,
+            args.classnum,
+            args.layernum,
             num_head,
-            options.model,
+            args.model,
         )
-        self.mean_output = True if options.model == "gat" else False
-        self.add_self_loop = True if options.model == "gat" else False
+        self.mean_output = True if args.model == "gat" else False
+        self.add_self_loop = True if args.model == "gat" else False
         self.gather_fn = WholeMemoryEmbeddingModule(self.node_embedding)
-        self.dropout = options.dropout
-        self.max_neighbors = parse_max_neighbors(options.layernum, options.neighbors)
-        self.max_inference_neighbors = parse_max_neighbors(options.layernum, options.inferencesample)
+        self.dropout = args.dropout
+        self.max_neighbors = parse_max_neighbors(args.layernum, args.neighbors)
+        self.max_inference_neighbors = parse_max_neighbors(args.layernum, args.inferencesample)
 
     def forward(self, ids):
         global framework_name
