@@ -23,7 +23,8 @@
 #include <random>
 #include <vector>
 
-#include "wholememory_ops/raft_random.cuh"
+#include <raft/random/rng_device.cuh>
+#include <raft/random/rng_state.hpp>
 #include <wholememory_ops/register.hpp>
 
 namespace wholegraph_ops {
@@ -383,12 +384,17 @@ void host_unweighted_sample_without_replacement(
       std::vector<int32_t> r(neighbor_count);
       for (int j = 0; j < device_num_threads; j++) {
         int local_gidx = gidx + j;
-        PCGenerator rng(random_seed, (uint64_t)local_gidx, (uint64_t)0);
+        raft::random::RngState _rngstate(random_seed, 0, raft::random::GeneratorType::GenPC);
+        raft::random::detail::DeviceState<raft::random::detail::PCGenerator> rngstate(_rngstate);
+        raft::random::detail::PCGenerator rng(rngstate, (uint64_t)local_gidx);
+        raft::random::detail::UniformDistParams<int32_t> params;
+        params.start = 0;
+        params.end   = 1;
 
         for (int k = 0; k < items_per_thread; k++) {
           int id = k * device_num_threads + j;
           int32_t random_num;
-          rng.next(random_num);
+          raft::random::detail::custom_next(rng, &random_num, params, 0, 0);
           if (id < neighbor_count) { r[id] = id < M ? (random_num % (N - id)) : N; }
         }
       }
@@ -543,9 +549,11 @@ inline int count_one(unsigned long long num)
 }
 
 template <typename WeightType>
-float host_gen_key_from_weight(const WeightType weight, PCGenerator& rng)
+float host_gen_key_from_weight(const WeightType weight, raft::random::detail::PCGenerator& rng)
 {
-  float u              = -rng.next_float(1.0f, 0.5f);
+  float u = 0.0;
+  rng.next(u);
+  u                    = -(0.5 + 0.5 * u);
   uint64_t random_num2 = 0;
   int seed_count       = -1;
   do {
@@ -624,7 +632,7 @@ void host_weighted_sample_without_replacement(
       std::priority_queue<std::pair<int, WeightType>, std::vector<std::pair<int, WeightType>>, cmp>
         small_heap;
 
-      auto consume_fun = [&](int id, PCGenerator& rng) {
+      auto consume_fun = [&](int id, raft::random::detail::PCGenerator& rng) {
         WeightType edge_weight = csr_weight_ptr[start + id];
         WeightType weight      = host_gen_key_from_weight(edge_weight, rng);
         process_count++;
@@ -641,7 +649,9 @@ void host_weighted_sample_without_replacement(
 
       for (int j = 0; j < block_size; j++) {
         int local_gidx = gidx + j;
-        PCGenerator rng(random_seed, (uint64_t)local_gidx, (uint64_t)0);
+        raft::random::RngState _rngstate(random_seed, 0, raft::random::GeneratorType::GenPC);
+        raft::random::detail::DeviceState<raft::random::detail::PCGenerator> rngstate(_rngstate);
+        raft::random::detail::PCGenerator rng(rngstate, (uint64_t)local_gidx);
         for (int id = j; id < neighbor_count; id += block_size) {
           if (id < neighbor_count) { consume_fun(id, rng); }
         }
