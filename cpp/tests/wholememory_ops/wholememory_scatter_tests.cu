@@ -101,19 +101,26 @@ typedef struct WholeMemoryScatterTestParam {
     input_type = new_input_type;
     return *this;
   }
-  wholememory_memory_type_t memory_type         = WHOLEMEMORY_MT_CHUNKED;
-  wholememory_memory_location_t memory_location = WHOLEMEMORY_ML_DEVICE;
-  int64_t embedding_entry_count                 = 1000000LL;
-  int64_t embedding_dim                         = 32;
-  int64_t embedding_stride                      = 32;
-  int64_t indices_count                         = 100000;
-  int64_t input_stride                          = 32;
-  wholememory_dtype_t embedding_type            = WHOLEMEMORY_DT_FLOAT;
-  wholememory_dtype_t indices_type              = WHOLEMEMORY_DT_INT;
-  wholememory_dtype_t input_type                = WHOLEMEMORY_DT_FLOAT;
-  int64_t embedding_storage_offset              = 0;
-  int64_t indices_storage_offset                = 0;
-  int64_t input_storage_offset                  = 0;
+  WholeMemoryScatterTestParam& set_distributed_backend(
+    wholememory_distributed_backend_t new_distributed_backend)
+  {
+    distributed_backend = new_distributed_backend;
+    return *this;
+  }
+  wholememory_memory_type_t memory_type                 = WHOLEMEMORY_MT_CHUNKED;
+  wholememory_memory_location_t memory_location         = WHOLEMEMORY_ML_DEVICE;
+  int64_t embedding_entry_count                         = 1000000LL;
+  int64_t embedding_dim                                 = 32;
+  int64_t embedding_stride                              = 32;
+  int64_t indices_count                                 = 100000;
+  int64_t input_stride                                  = 32;
+  wholememory_dtype_t embedding_type                    = WHOLEMEMORY_DT_FLOAT;
+  wholememory_dtype_t indices_type                      = WHOLEMEMORY_DT_INT;
+  wholememory_dtype_t input_type                        = WHOLEMEMORY_DT_FLOAT;
+  int64_t embedding_storage_offset                      = 0;
+  int64_t indices_storage_offset                        = 0;
+  int64_t input_storage_offset                          = 0;
+  wholememory_distributed_backend_t distributed_backend = WHOLEMEMORY_DB_NCCL;
 } WholeMemoryScatterTestParam;
 
 class WholeMemoryScatterParameterTests
@@ -132,7 +139,14 @@ TEST_P(WholeMemoryScatterParameterTests, ScatterTest)
     EXPECT_EQ(cudaSetDevice(world_rank), cudaSuccess);
 
     wholememory_comm_t wm_comm = create_communicator_by_pipes(pipes, world_rank, world_size);
+#ifdef WITH_NVSHMEM_SUPPORT
 
+    if (params.distributed_backend == WHOLEMEMORY_DB_NVSHMEM) {
+      EXPECT_EQ(wholememory_communicator_set_distributed_backend(wm_comm, WHOLEMEMORY_DB_NVSHMEM),
+                WHOLEMEMORY_SUCCESS);
+    }
+
+#endif
     if (wholememory_communicator_support_type_location(
           wm_comm, params.memory_type, params.memory_location) != WHOLEMEMORY_SUCCESS) {
       EXPECT_EQ(wholememory::destroy_all_communicators(), WHOLEMEMORY_SUCCESS);
@@ -384,4 +398,66 @@ INSTANTIATE_TEST_SUITE_P(
       .set_embedding_type(WHOLEMEMORY_DT_HALF)
       .set_embedding_stride(33),
 #endif
-    WholeMemoryScatterTestParam().set_memory_type(WHOLEMEMORY_MT_DISTRIBUTED)));
+    WholeMemoryScatterTestParam().set_memory_type(WHOLEMEMORY_MT_DISTRIBUTED)
+#ifdef WITH_NVSHMEM_SUPPORT
+      ,
+    WholeMemoryScatterTestParam()
+      .set_memory_type(WHOLEMEMORY_MT_DISTRIBUTED)
+      .set_distributed_backend(WHOLEMEMORY_DB_NVSHMEM),
+    WholeMemoryScatterTestParam()
+      .set_memory_type(WHOLEMEMORY_MT_DISTRIBUTED)
+      .set_indices_count(0)
+      .set_distributed_backend(WHOLEMEMORY_DB_NVSHMEM),
+    WholeMemoryScatterTestParam()
+      .set_memory_type(WHOLEMEMORY_MT_DISTRIBUTED)
+      .set_embedding_dim(128)
+      .set_distributed_backend(WHOLEMEMORY_DB_NVSHMEM),
+    WholeMemoryScatterTestParam()
+      .set_memory_type(WHOLEMEMORY_MT_DISTRIBUTED)
+      .set_embedding_dim(11)
+      .set_indices_count(100005)
+      .set_distributed_backend(WHOLEMEMORY_DB_NVSHMEM),
+    WholeMemoryScatterTestParam()
+      .set_memory_type(WHOLEMEMORY_MT_DISTRIBUTED)
+      .set_embedding_dim(127)
+      .set_distributed_backend(WHOLEMEMORY_DB_NVSHMEM),
+    WholeMemoryScatterTestParam()
+      .set_memory_type(WHOLEMEMORY_MT_DISTRIBUTED)
+      .set_embedding_dim(129)
+      .set_distributed_backend(WHOLEMEMORY_DB_NVSHMEM),
+    WholeMemoryScatterTestParam()
+      .set_memory_type(WHOLEMEMORY_MT_DISTRIBUTED)
+      .set_embedding_dim(513)
+      .set_distributed_backend(WHOLEMEMORY_DB_NVSHMEM),
+    WholeMemoryScatterTestParam()
+      .set_memory_type(WHOLEMEMORY_MT_DISTRIBUTED)
+      .set_embedding_type(WHOLEMEMORY_DT_HALF)
+      .set_distributed_backend(WHOLEMEMORY_DB_NVSHMEM),
+    WholeMemoryScatterTestParam()
+      .set_memory_type(WHOLEMEMORY_MT_DISTRIBUTED)
+      .set_embedding_type(WHOLEMEMORY_DT_HALF)
+      .set_distributed_backend(WHOLEMEMORY_DB_NVSHMEM),
+    WholeMemoryScatterTestParam()
+      .set_memory_type(WHOLEMEMORY_MT_DISTRIBUTED)
+      .set_embedding_type(WHOLEMEMORY_DT_HALF)
+      .set_input_type(WHOLEMEMORY_DT_HALF)
+      .set_distributed_backend(WHOLEMEMORY_DB_NVSHMEM),
+    WholeMemoryScatterTestParam()
+      .set_memory_type(WHOLEMEMORY_MT_DISTRIBUTED)
+      .set_indices_type(WHOLEMEMORY_DT_INT64)
+      .set_distributed_backend(WHOLEMEMORY_DB_NVSHMEM),
+    WholeMemoryScatterTestParam()
+      .set_memory_type(WHOLEMEMORY_MT_DISTRIBUTED)
+      .set_embedding_stride(33)
+      .set_distributed_backend(WHOLEMEMORY_DB_NVSHMEM),
+    WholeMemoryScatterTestParam()
+      .set_memory_type(WHOLEMEMORY_MT_DISTRIBUTED)
+      .set_input_stride(33)
+      .set_distributed_backend(WHOLEMEMORY_DB_NVSHMEM),
+    WholeMemoryScatterTestParam()
+      .set_memory_type(WHOLEMEMORY_MT_DISTRIBUTED)
+      .set_embedding_type(WHOLEMEMORY_DT_HALF)
+      .set_embedding_stride(33)
+      .set_distributed_backend(WHOLEMEMORY_DB_NVSHMEM)
+#endif
+      ));

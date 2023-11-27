@@ -130,6 +130,7 @@ def main_func():
         wgth.get_world_size(),
         wgth.get_local_rank(),
         wgth.get_local_size(),
+        args.distributed_backend_type
     )
 
     if args.use_cpp_ext:
@@ -187,7 +188,9 @@ def main_func():
             f"location={graph_structure_wholememory_location}\n"
             f"embedding: type={embedding_wholememory_type}, location={embedding_wholememory_location}, "
             f"cache_type={args.cache_type}, cache_ratio={args.cache_ratio}, "
-            f"trainable={args.train_embedding}"
+            f"trainable={args.train_embedding}, "
+            f"distributed-backend-type={args.distributed_backend_type}, "
+            f"use_global_embedding={args.use_global_embedding} "
         )
     cache_policy = wgth.create_builtin_cache_policy(
         args.cache_type,

@@ -25,6 +25,7 @@
 #include "wholememory_ops/functions/exchange_embeddings_nccl_func.h"
 #include "wholememory_ops/functions/exchange_ids_nccl_func.h"
 #include "wholememory_ops/functions/gather_scatter_func.h"
+#include "wholememory_ops/scatter_op_impl.h"
 #include "wholememory_ops/temp_memory_handle.hpp"
 #include "wholememory_ops/thrust_allocator.hpp"
 
@@ -164,4 +165,36 @@ wholememory_error_code_t wholememory_scatter_nccl(void* input,
   return WHOLEMEMORY_SUCCESS;
 }
 
+wholememory_error_code_t wholememory_scatter_distributed(
+  void* input,
+  wholememory_matrix_description_t input_desc,
+  void* indices,
+  wholememory_array_description_t indices_desc,
+  wholememory_handle_t wholememory_handle,
+  wholememory_matrix_description_t wholememory_desc,
+  wholememory_env_func_t* p_env_fns,
+  cudaStream_t stream)
+{
+#ifdef WITH_NVSHMEM_SUPPORT
+  if (wholememory_get_distributed_backend(wholememory_handle) == WHOLEMEMORY_DB_NVSHMEM) {
+    return wholememory_scatter_nvshmem(input,
+                                       input_desc,
+                                       indices,
+                                       indices_desc,
+                                       wholememory_handle,
+                                       wholememory_desc,
+                                       p_env_fns,
+                                       stream);
+  }
+#endif
+
+  return wholememory_scatter_nccl(input,
+                                  input_desc,
+                                  indices,
+                                  indices_desc,
+                                  wholememory_handle,
+                                  wholememory_desc,
+                                  p_env_fns,
+                                  stream);
+}
 }  // namespace wholememory_ops
