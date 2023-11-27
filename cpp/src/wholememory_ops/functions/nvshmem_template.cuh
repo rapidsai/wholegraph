@@ -24,7 +24,7 @@
 #include <cstdint>
 #include <cuda_fp16.h>
 
-namespace wholememory {
+namespace wholememory_ops {
 
 template <typename DataType>
 __inline__ __device__ __host__ DataType nvshmem_get(const DataType* source, int pe)
@@ -314,7 +314,7 @@ __inline__ __device__ __host__ void nvshmem_put<float4>(float4* dest, const floa
   nvshmem_float_p(dest_float + 3, val.w, pe);
 }
 
-}  // namespace wholememory
+}  // namespace wholememory_ops
 
 #endif  // WITH_NVSHMEM_SUPPORT
 

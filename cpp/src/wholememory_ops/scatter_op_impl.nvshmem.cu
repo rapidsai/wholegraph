@@ -38,8 +38,6 @@
 #include <nvshmem.h>
 #include <nvshmemx.h>
 
-#include "wholememory/nvshmem_template.cuh"
-
 namespace wholememory_ops {
 
 wholememory_error_code_t nvshmem_scatter_floating_int32_func(

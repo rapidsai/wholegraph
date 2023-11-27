@@ -33,7 +33,6 @@
 
 #include "wholememory/device_reference.cuh"
 #include "wholememory/global_reference.h"
-#include "wholememory/nvshmem_template.cuh"
 #include "wholememory_ops/register.hpp"
 #include "wholememory_ops/temp_memory_handle.hpp"
 #include "wholememory_ops/thrust_allocator.hpp"

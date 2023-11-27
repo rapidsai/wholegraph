@@ -17,16 +17,15 @@
 #pragma once
 
 #include "gather_scatter_func.cuh"
+#include "nvshmem_device_reference.cuh"
 #include "wholememory/communicator.hpp"
 #include "wholememory/device_reference.cuh"
 #include "wholememory/global_reference.h"
 #include "wholememory/memory_handle.hpp"
-#include "wholememory/nvshmem_template.cuh"
 #include "wholememory/tensor_description.h"
 #include "wholememory_ops/register.hpp"
 #include "wholememory_ops/temp_memory_handle.hpp"
 #include "wholememory_ops/thrust_allocator.hpp"
-
 #include <cub/cub.cuh>
 #include <cuda_bf16.h>
 #include <cuda_fp16.h>
@@ -138,8 +137,7 @@ __global__ void gather_func_with_nvshmem_sort_idxs_kernel(
   int embedding_size       = embedding_desc.sizes[1];
   int64_t embedding_stride = embedding_desc.stride;
   int64_t output_stride    = output_desc.stride;
-  wholememory::nvshmem_device_reference<EmbeddingT> embedding_nvshmem_device_ref{
-    embeding_nvshmem_ref};
+  nvshmem_device_reference<EmbeddingT> embedding_nvshmem_device_ref{embeding_nvshmem_ref};
   if (blockIdx.x >= max_blocks_for_local) {
     const int64_t thread_id = (blockIdx.x - max_blocks_for_local) * blockDim.x + threadIdx.x;
     for (int64_t row_id = thread_id; row_id < indice_count - local_index_length;
@@ -482,8 +480,7 @@ __global__ void scatter_func_with_nvshmem_sort_idxs_kernel(
   int embedding_size       = embedding_desc.sizes[1];
   int64_t embedding_stride = embedding_desc.stride;
   int64_t input_stride     = temp_input_desc.stride;
-  wholememory::nvshmem_device_reference<EmbeddingT> embedding_nvshmem_device_ref{
-    embeding_nvshmem_ref};
+  nvshmem_device_reference<EmbeddingT> embedding_nvshmem_device_ref{embeding_nvshmem_ref};
   if (blockIdx.x >= max_blocks_for_local) {
     const int64_t thread_id = (blockIdx.x - max_blocks_for_local) * blockDim.x + threadIdx.x;
     for (int64_t row_id = thread_id; row_id < indice_count - local_index_length;
