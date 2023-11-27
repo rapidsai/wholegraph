@@ -78,7 +78,7 @@ wholememory_error_code_t wholememory_gather(wholememory_tensor_t wholememory_ten
     return WHOLEMEMORY_INVALID_INPUT;
   }
   if (has_handle && memory_type == WHOLEMEMORY_MT_DISTRIBUTED) {
-    return wholememory_ops::wholememory_gather_nccl(
+    return wholememory_ops::wholememory_gather_distributed(
       wholememory_tensor_get_memory_handle(wholememory_tensor),
       matrix_description,
       indices,
