@@ -64,6 +64,26 @@ wholememory_error_code_t wholememory_communicator_get_size(int* size, wholememor
 {
   return wholememory::communicator_get_size(size, comm);
 }
+bool wholememory_communicator_is_bind_to_nvshmem(wholememory_comm_t comm)
+{
+#ifdef WITH_NVSHMEM_SUPPORT
+  return wholememory::communicator_is_bind_to_nvshmem(comm);
+#else
+  return false;
+#endif
+}
+
+wholememory_error_code_t wholememory_communicator_set_distributed_backend(
+  wholememory_comm_t comm, wholememory_distributed_backend_t distributed_backend)
+{
+  return wholememory::communicator_set_distributed_backend(comm, distributed_backend);
+}
+
+wholememory_distributed_backend_t wholememory_communicator_get_distributed_backend(
+  wholememory_comm_t comm)
+{
+  return wholememory::communicator_get_distributed_backend(comm);
+}
 
 wholememory_error_code_t wholememory_communicator_barrier(wholememory_comm_t comm)
 {
@@ -102,6 +122,12 @@ wholememory_memory_location_t wholememory_get_memory_location(
   wholememory_handle_t wholememory_handle)
 {
   return wholememory::get_memory_location(wholememory_handle);
+}
+
+wholememory_distributed_backend_t wholememory_get_distributed_backend(
+  wholememory_handle_t wholememory_handle)
+{
+  return wholememory::get_distributed_backend_t(wholememory_handle);
 }
 
 size_t wholememory_get_total_size(wholememory_handle_t wholememory_handle)
@@ -144,6 +170,17 @@ wholememory_error_code_t wholememory_get_global_reference(wholememory_gref_t* wh
 {
   return wholememory::get_global_reference_from_handle(wholememory_gref, wholememory_handle);
 }
+
+#ifdef WITH_NVSHMEM_SUPPORT
+
+wholememory_error_code_t wholememory_get_nvshmem_reference(
+  wholememory_nvshmem_ref_t* wholememory_nvshmem_ref, wholememory_handle_t wholememory_handle)
+{
+  return wholememory::get_nvshmem_reference_frome_handle(wholememory_nvshmem_ref,
+                                                         wholememory_handle);
+}
+
+#endif
 
 wholememory_error_code_t wholememory_determine_partition_plan(size_t* size_per_rank,
                                                               size_t total_size,
@@ -215,6 +252,16 @@ wholememory_error_code_t wholememory_load_from_hdfs_file(wholememory_handle_t wh
   return WHOLEMEMORY_NOT_IMPLEMENTED;
 }
 
+bool wholememory_is_build_with_nvshmem()
+{
+#ifdef WITH_NVSHMEM_SUPPORT
+
+  return true;
+
+#else
+  return false;
+#endif
+}
 #ifdef __cplusplus
 }
 #endif

@@ -41,6 +41,8 @@ struct wholememory_comm_ {
 
   void barrier() const;
 
+  void abort() const;
+
   void allreduce(const void* sendbuff,
                  void* recvbuff,
                  size_t count,
@@ -219,6 +221,10 @@ struct wholememory_comm_ {
 
   std::mutex mu;
   std::map<int, wholememory_handle_t> wholememory_map;
+  wholememory_distributed_backend_t distributed_backend = WHOLEMEMORY_DB_NCCL;
+#ifdef WITH_NVSHMEM_SUPPORT
+  bool bind_to_nvshmem = false;
+#endif
 } __attribute__((aligned(64)));
 
 template <typename TypeT>
@@ -283,5 +289,20 @@ bool is_intranode_communicator(wholememory_comm_t comm) noexcept;
 std::string get_temporary_directory_path(wholememory_comm_t comm);
 
 std::string get_shm_prefix(wholememory_comm_t comm);
+
+wholememory_error_code_t communicator_set_distributed_backend(
+  wholememory_comm_t comm, wholememory_distributed_backend_t distributed_backend) noexcept;
+
+wholememory_distributed_backend_t communicator_get_distributed_backend(
+  wholememory_comm_t comm) noexcept;
+
+#ifdef WITH_NVSHMEM_SUPPORT
+
+bool communicator_is_bind_to_nvshmem(wholememory_comm_t comm) noexcept;
+
+wholememory_error_code_t init_nvshmem_with_comm(wholememory_comm_t comm) noexcept;
+wholememory_error_code_t finalize_nvshmem_locked(wholememory_comm_t comm) noexcept;
+
+#endif
 
 }  // namespace wholememory

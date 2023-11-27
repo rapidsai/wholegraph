@@ -16,9 +16,9 @@
 #pragma once
 
 #include <assert.h>
+#include <cstddef>
 
 #include "global_reference.h"
-
 namespace wholememory {
 
 template <typename DataTypeT>

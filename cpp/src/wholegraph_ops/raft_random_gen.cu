@@ -16,7 +16,9 @@
 
 #include <cmath>
 #include <wholememory/wholegraph_op.h>
-#include <wholememory_ops/raft_random.cuh>
+
+#include <raft/random/rng_device.cuh>
+#include <raft/random/rng_state.hpp>
 
 #include "error.hpp"
 #include "logger.hpp"
@@ -37,15 +39,25 @@ wholememory_error_code_t generate_random_positive_int_cpu(int64_t random_seed,
   }
 
   auto* output_ptr = wholememory_tensor_get_data_pointer(output);
-  PCGenerator rng((unsigned long long)random_seed, subsequence, 0);
+
+  raft::random::RngState _rngstate(random_seed, 0, raft::random::GeneratorType::GenPC);
+  raft::random::detail::DeviceState<raft::random::detail::PCGenerator> rngstate(_rngstate);
+  raft::random::detail::PCGenerator rng(rngstate, (uint64_t)subsequence);
+
   for (int64_t i = 0; i < output_tensor_desc.sizes[0]; i++) {
     if (output_tensor_desc.dtype == WHOLEMEMORY_DT_INT) {
+      raft::random::detail::UniformDistParams<int32_t> params;
+      params.start = 0;
+      params.end   = 1;
       int32_t random_num;
-      rng.next(random_num);
+      raft::random::detail::custom_next(rng, &random_num, params, 0, 0);
       static_cast<int*>(output_ptr)[i] = random_num;
     } else {
+      raft::random::detail::UniformDistParams<int64_t> params;
+      params.start = 0;
+      params.end   = 1;
       int64_t random_num;
-      rng.next(random_num);
+      raft::random::detail::custom_next(rng, &random_num, params, 0, 0);
       static_cast<int64_t*>(output_ptr)[i] = random_num;
     }
   }
@@ -65,9 +77,13 @@ wholememory_error_code_t generate_exponential_distribution_negative_float_cpu(
     return WHOLEMEMORY_INVALID_INPUT;
   }
   auto* output_ptr = wholememory_tensor_get_data_pointer(output);
-  PCGenerator rng((unsigned long long)random_seed, subsequence, 0);
+  raft::random::RngState _rngstate(random_seed, 0, raft::random::GeneratorType::GenPC);
+  raft::random::detail::DeviceState<raft::random::detail::PCGenerator> rngstate(_rngstate);
+  raft::random::detail::PCGenerator rng(rngstate, (uint64_t)subsequence);
   for (int64_t i = 0; i < output_tensor_desc.sizes[0]; i++) {
-    float u              = -rng.next_float(1.0f, 0.5f);
+    float u = 0.0;
+    rng.next(u);
+    u                    = -(0.5 + 0.5 * u);
     uint64_t random_num2 = 0;
     int seed_count       = -1;
     do {

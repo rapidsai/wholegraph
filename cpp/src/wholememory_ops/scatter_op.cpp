@@ -78,7 +78,7 @@ wholememory_error_code_t wholememory_scatter(wholememory_tensor_t input_tensor,
     return WHOLEMEMORY_INVALID_INPUT;
   }
   if (has_handle && memory_type == WHOLEMEMORY_MT_DISTRIBUTED) {
-    return wholememory_ops::wholememory_scatter_nccl(
+    return wholememory_ops::wholememory_scatter_distributed(
       input,
       input_desc,
       indices,

@@ -15,6 +15,7 @@
  */
 #pragma once
 
+#include <cstdint>
 #include <cuda.h>
 #include <cuda_runtime_api.h>
 

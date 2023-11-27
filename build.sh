@@ -32,6 +32,7 @@ VALIDARGS="
     --native
     --cmake-args
     --compile-cmd
+    --enable-nvshmem
    --clean
     -h
     --help
@@ -52,6 +53,7 @@ HELP="$0 [<target> ...] [<flag> ...]
    --allgpuarch               - build for all supported GPU architectures
    --cmake-args=\\\"<args>\\\" - add arbitrary CMake arguments to any cmake call
    --compile-cmd               - only output compile commands (invoke CMake without build)
+   --enable-nvshmem            - build with nvshmem support (beta).
    --clean                    - clean an individual target (note: to do a complete rebuild, use the clean target described above)
    -h | --h[elp]               - print this text
 
@@ -219,7 +221,11 @@ if hasArg benchmarks; then
 else
     BUILD_BENCHMARKS=OFF
 fi
-
+if hasArg --enable-nvshmem; then
+    BUILD_WITH_NVSHMEM=ON
+else
+    BUILD_WITH_NVSHMEM=OFF
+fi
 ################################################################################
 # libwholegraph
 if buildAll || hasArg libwholegraph; then
@@ -240,6 +246,7 @@ if buildAll || hasArg libwholegraph; then
           -DCMAKE_PREFIX_PATH=${INSTALL_PREFIX} \
           -DCMAKE_MESSAGE_LOG_LEVEL=VERBOSE \
           -DBUILD_TESTS=${BUILD_TESTS} \
+          -DBUILD_WITH_NVSHMEM=${BUILD_WITH_NVSHMEM} \
           ${EXTRA_CMAKE_ARGS}
 
     cd ${LIBWHOLEGRAPH_BUILD_DIR}
