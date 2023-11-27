@@ -25,17 +25,15 @@ function(find_and_configure_nvshmem)
 
     rapids_cpm_find(nvshmem ${PKG_VERSION}
                     GLOBAL_TARGETS nvshmem::nvshmem nvshmem::nvshmem_device nvshmem::nvshmem_host
-                    BUILD_EXPORT_SET wholegraph-exports
-                    INSTALL_EXPORT_SET wholegraph-exports
-                    EXCLUDE_FROM_ALL ${PKG_EXCLUDE_FROM_ALL}
                     CPM_ARGS
+                        EXCLUDE_FROM_ALL ${PKG_EXCLUDE_FROM_ALL}
                         URL https://developer.download.nvidia.cn/compute/redist/nvshmem/${PKG_VERSION}/source/nvshmem_src_${PKG_VERSION}-${PKG_VERSION_BRANCH}.txz
                         OPTIONS
                             "NVSHMEM_IBGDA_SUPPORT ON"
                             "NVSHMEM_IBDEVX_SUPPORT ON"
                             "NVSHMEM_BUILD_EXAMPLES OFF"
                             "NVSHMEM_BUILD_TESTS OFF"
-                            "NVSHMEM_PREFIX  ${PKG_INSTALL_DIR}"
+                            "NVSHMEM_PREFIX ${PKG_INSTALL_DIR}"
                     )
 
 

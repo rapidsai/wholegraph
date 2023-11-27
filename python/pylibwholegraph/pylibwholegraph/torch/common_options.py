@@ -62,7 +62,7 @@ def add_training_options(argparser: ArgumentParser):
         default=False,
         help="Whether to train embedding",
     )
-    argparser.add_option(
+    argparser.add_argument(
         "--distributed-backend-type",
         dest="distributed_backend_type",
         default="nccl",
