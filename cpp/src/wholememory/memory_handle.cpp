@@ -905,8 +905,8 @@ class continuous_device_wholememory_impl : public wholememory_impl {
       } else {
         WHOLEMEMORY_CHECK((*recv_ipc_sharable_cu_handles)[i].fd == -1);
       }
-      recv_ipc_sharable_cu_handles->clear();
     }
+    recv_ipc_sharable_cu_handles->clear();
     CUmemAccessDesc madesc;
     madesc.location.type = CU_MEM_LOCATION_TYPE_DEVICE;
     madesc.location.id   = comm_->dev_id;
@@ -1422,8 +1422,8 @@ class continuous_mnnvl_wholememory_impl : public continuous_device_wholememory_i
                    cu_alloc_handle_.all_cu_handles[i],
                    0));
       }
-      recv_ipc_sharable_cu_fabric_handles->clear();
     }
+    recv_ipc_sharable_cu_fabric_handles->clear();
     CUmemAccessDesc madesc;
     madesc.location.type = CU_MEM_LOCATION_TYPE_DEVICE;
     madesc.location.id   = comm_->dev_id;
