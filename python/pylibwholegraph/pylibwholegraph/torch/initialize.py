@@ -74,3 +74,4 @@ def finalize():
     """
     wmb.finalize()
     reset_communicators()
+    torch.distributed.destroy_process_group() if torch.distributed.is_initialized() else None
