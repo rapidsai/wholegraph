@@ -31,6 +31,17 @@ all_comm_world_size = 1
 all_comm_local_rank = 0
 all_comm_local_size = 1
 
+def reset_communicators():
+    global all_comm_world_rank, all_comm_world_size, all_comm_local_rank, all_comm_local_size
+    global global_communicators, local_node_communicator, local_device_communicator
+    global_communicators = {}
+    local_node_communicator = None
+    local_device_communicator = None
+
+    all_comm_world_rank = 0
+    all_comm_world_size = 1
+    all_comm_local_rank = 0
+    all_comm_local_size = 1
 
 def set_world_info(world_rank: int, world_size: int, local_rank: int, local_size: int):
     """
