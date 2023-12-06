@@ -85,6 +85,8 @@ void nccl_comms::barrier() const
   WM_CUDA_CHECK(cudaStreamSynchronize(rmm_stream_));
 }
 
+void nccl_comms::abort() const { RAFT_NCCL_TRY(ncclCommAbort(nccl_comm_)); }
+
 void nccl_comms::allreduce(const void* sendbuff,
                            void* recvbuff,
                            size_t count,

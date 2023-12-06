@@ -14,7 +14,7 @@
 # limitations under the License.
 #=============================================================================
 
-set(RAPIDS_VERSION "23.10")
+set(RAPIDS_VERSION "23.12")
 set(WHOLEGRAPH_VERSION "${RAPIDS_VERSION}.00")
 
 cmake_minimum_required(VERSION 3.23.1 FATAL_ERROR)
@@ -55,6 +55,9 @@ option(BUILD_SHARED_LIBS "Build libwholegraph shared libraries" ON)
 option(CMAKE_CUDA_LINEINFO "Enable the -lineinfo option for nvcc (useful for cuda-memcheck / profiler" OFF)
 option(BUILD_TESTS "Configure CMake to build tests" ON)
 option(CUDA_STATIC_RUNTIME "Statically link the CUDA toolkit runtime and libraries" OFF)
+option(BUILD_WITH_NVSHMEM "Enable nvshmem integration" OFF)
+option(WHOLEGRAPH_EXCLUDE_NVSHMEM_FROM_ALL "Exclude nvshmem targets from wholeGraph's 'all' target" ON)
+option(BUILD_BENCHMARKS "Configure CMake to build benchmark" ON)
 
 ##############################################################################
 # - Set options based on user defined one  -----------------------------------
@@ -132,6 +135,10 @@ rapids_cpm_init()
 
 include(./cmake/thirdparty/get_raft.cmake)
 include(./cmake/thirdparty/get_nccl.cmake)
+if(BUILD_WITH_NVSHMEM)
+  include(./cmake/thirdparty/get_nvshmem.cmake)
+endif()
+
 
 file(GLOB WHOLEGRAPH_SOURCES
         "src/*.cpp"
@@ -195,6 +202,18 @@ PRIVATE
     NCCL::NCCL
 )
 
+if(BUILD_WITH_NVSHMEM)
+
+        file(GLOB_RECURSE NVSHMEM_SOURCE_FILES "src/wholememory_ops/functions/nvshmem*.cu")
+        set_source_files_properties( ${NVSHMEM_SOURCE_FILES}
+        PROPERTIES
+        COMPILE_FLAGS "-rdc=true"
+        )
+  target_compile_definitions(wholegraph PRIVATE WITH_NVSHMEM_SUPPORT)
+  target_link_libraries(wholegraph PRIVATE nvshmem::nvshmem_host nvshmem::nvshmem_device)
+endif()
+
+
 # optionally build tests
 if(BUILD_TESTS AND CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
     include(./cmake/thirdparty/get_gtest.cmake)
@@ -203,6 +222,26 @@ if(BUILD_TESTS AND CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
     add_subdirectory(tests)
 endif()
 
+if(BUILD_WITH_NVSHMEM)
+        get_target_property(NVSHMEM_BINARY_DIR nvshmem BINARY_DIR)
+        add_library(nvshmem_wholememory_bootstrap SHARED)
+        target_sources(nvshmem_wholememory_bootstrap PRIVATE src/nvshmem_plugins/nvshmem_wholememory_bootstrap.cpp)
+        target_link_libraries(nvshmem_wholememory_bootstrap PRIVATE wholegraph nvshmem::nvshmem_host )
+        target_include_directories(nvshmem_wholememory_bootstrap
+                             PRIVATE
+                             ${CMAKE_CURRENT_SOURCE_DIR}/src
+                             ${NVSHMEM_BINARY_DIR}/include/modules/common
+                             ${NVSHMEM_BINARY_DIR}/include/modules/bootstrap
+                            )
+
+
+endif()
+
+
+# optionally build benchmark
+if (BUILD_BENCHMARKS AND CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
+    add_subdirectory(bench)
+endif()
 ##############################################################################
 # - code checker -------------------------------------------------------------
 
@@ -258,8 +297,13 @@ set(PROGRAM_PERMISSIONS_DEFAULT
         GROUP_READ GROUP_EXECUTE
         WORLD_READ WORLD_EXECUTE)
 
+set(WHOLEGRAPH_INSTALL_LIBS wholegraph)
+if(BUILD_WITH_NVSHMEM)
+        list(APPEND WHOLEGRAPH_INSTALL_LIBS nvshmem_wholememory_bootstrap  nvshmem_host)
+endif()
+
 install(
-        TARGETS     wholegraph
+        TARGETS     ${WHOLEGRAPH_INSTALL_LIBS}
         DESTINATION ${lib_dir}
         PERMISSIONS ${PROGRAM_PERMISSIONS_DEFAULT}
         EXPORT wholegraph-exports)

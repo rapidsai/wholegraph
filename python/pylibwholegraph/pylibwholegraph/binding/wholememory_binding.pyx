@@ -54,6 +54,7 @@ cdef extern from "wholememory/wholememory.h":
         WHOLEMEMORY_INVALID_INPUT           "WHOLEMEMORY_INVALID_INPUT"  # invalid input, e.g. nullptr
         WHOLEMEMORY_INVALID_VALUE           "WHOLEMEMORY_INVALID_VALUE"  # input value is invalid
         WHOLEMEMORY_OUT_OF_MEMORY           "WHOLEMEMORY_OUT_OF_MEMORY"  # out of memory
+        WHOLEMEMORY_NOT_SUPPORTED           "WHOLEMEMORY_NOT_SUPPORTED"  # not supported
 
     ctypedef enum wholememory_memory_type_t:
         WHOLEMEMORY_MT_NONE                 "WHOLEMEMORY_MT_NONE"
@@ -66,6 +67,10 @@ cdef extern from "wholememory/wholememory.h":
         WHOLEMEMORY_ML_DEVICE               "WHOLEMEMORY_ML_DEVICE"
         WHOLEMEMORY_ML_HOST                 "WHOLEMEMORY_ML_HOST"
 
+    ctypedef enum wholememory_distributed_backend_t:
+        WHOLEMEMORY_DB_NONE                 "WHOLEMEMORY_DB_NONE"
+        WHOLEMEMORY_DB_NCCL                 "WHOLEMEMORY_DB_NCCL"
+        WHOLEMEMORY_DB_NVSHMEM              "WHOLEMEMORY_DB_NVSHMEM"
     cdef wholememory_error_code_t wholememory_init(unsigned int flags)
 
     cdef wholememory_error_code_t wholememory_finalize()
@@ -86,6 +91,11 @@ cdef extern from "wholememory/wholememory.h":
                                                                   int size)
 
     cdef wholememory_error_code_t wholememory_destroy_communicator(wholememory_comm_t comm)
+
+    cdef wholememory_error_code_t wholememory_communicator_support_type_location(
+            wholememory_comm_t comm,
+            wholememory_memory_type_t memory_type,
+            wholememory_memory_location_t memory_location)
 
     cdef wholememory_error_code_t wholememory_communicator_get_rank(int * rank, wholememory_comm_t comm)
 
@@ -157,6 +167,14 @@ cdef extern from "wholememory/wholememory.h":
                                                             size_t file_entry_size,
                                                             const char *local_file_name)
 
+    cdef bool wholememory_is_build_with_nvshmem()
+
+    cdef wholememory_error_code_t wholememory_communicator_set_distributed_backend(wholememory_comm_t comm,
+                                                                wholememory_distributed_backend_t distributed_backend)
+
+    cdef wholememory_distributed_backend_t wholememory_communicator_get_distributed_backend(
+                                                                            wholememory_comm_t comm)
+
 
 cpdef enum WholeMemoryErrorCode:
     Success = WHOLEMEMORY_SUCCESS
@@ -168,6 +186,7 @@ cpdef enum WholeMemoryErrorCode:
     InvalidInput = WHOLEMEMORY_INVALID_INPUT
     InvalidValue = WHOLEMEMORY_INVALID_VALUE
     OutOfMemory = WHOLEMEMORY_OUT_OF_MEMORY
+    NotSupported = WHOLEMEMORY_NOT_SUPPORTED
 
 cpdef enum WholeMemoryMemoryType:
     MtNone = WHOLEMEMORY_MT_NONE
@@ -179,6 +198,11 @@ cpdef enum WholeMemoryMemoryLocation:
     MlNone = WHOLEMEMORY_ML_NONE
     MlDevice = WHOLEMEMORY_ML_DEVICE
     MlHost = WHOLEMEMORY_ML_HOST
+
+cpdef enum WholeMemoryDistributedBackend:
+    DbNone = WHOLEMEMORY_DB_NONE
+    DbNCCL = WHOLEMEMORY_DB_NCCL
+    DbNVSHMEM = WHOLEMEMORY_DB_NVSHMEM
 
 cdef check_wholememory_error_code(wholememory_error_code_t err):
     cdef WholeMemoryErrorCode err_code = int(err)
@@ -351,13 +375,13 @@ cdef class GlobalContextWrapper:
         if output_global_context:
             self.output_global_context = <PyObject *> output_global_context
             Py_INCREF(self.output_global_context)
-        self.env_func.temporary_fns.create_memory_context_fn = <wholememory_create_memory_context_func_t>&python_cb_wrapper_temp_create_context
-        self.env_func.temporary_fns.destroy_memory_context_fn = <wholememory_destroy_memory_context_func_t>&python_cb_wrapper_temp_destroy_context
-        self.env_func.temporary_fns.malloc_fn = <wholememory_malloc_func_t>&python_cb_wrapper_temp_malloc
-        self.env_func.temporary_fns.free_fn = <wholememory_free_func_t>&python_cb_wrapper_temp_free
+        self.env_func.temporary_fns.create_memory_context_fn = <wholememory_create_memory_context_func_t> &python_cb_wrapper_temp_create_context
+        self.env_func.temporary_fns.destroy_memory_context_fn = <wholememory_destroy_memory_context_func_t> &python_cb_wrapper_temp_destroy_context
+        self.env_func.temporary_fns.malloc_fn = <wholememory_malloc_func_t> &python_cb_wrapper_temp_malloc
+        self.env_func.temporary_fns.free_fn = <wholememory_free_func_t> &python_cb_wrapper_temp_free
         self.env_func.temporary_fns.global_context = <PyObject *> self
-        self.env_func.output_fns.malloc_fn = <wholememory_malloc_func_t>&python_cb_wrapper_output_malloc
-        self.env_func.output_fns.free_fn = <wholememory_free_func_t>&python_cb_wrapper_output_free
+        self.env_func.output_fns.malloc_fn = <wholememory_malloc_func_t> &python_cb_wrapper_output_malloc
+        self.env_func.output_fns.free_fn = <wholememory_free_func_t> &python_cb_wrapper_output_free
         self.env_func.output_fns.global_context = <PyObject *> self
 
     cpdef int64_t get_env_fns(self):
@@ -952,7 +976,7 @@ cdef class PyWholeMemoryUniqueID:
         dlm_tensor.manager_ctx = <void *> self
         cpython.Py_INCREF(self)
         dlm_tensor.deleter = deleter
-        return cpython.PyCapsule_New(dlm_tensor, 'dltensor', <cpython.PyCapsule_Destructor>&pycapsule_deleter)
+        return cpython.PyCapsule_New(dlm_tensor, 'dltensor', <cpython.PyCapsule_Destructor> &pycapsule_deleter)
 
     def __dlpack_device__(self):
         return (kDLCPU, 0)
@@ -1192,6 +1216,13 @@ cdef class PyWholeMemoryComm:
     def get_c_handle(self):
         return <int64_t> self.comm_id
 
+    def support_type_location(self,
+                              WholeMemoryMemoryType memory_type,
+                              WholeMemoryMemoryLocation memory_location):
+        cdef WholeMemoryErrorCode err_code = int(
+            wholememory_communicator_support_type_location(self.comm_id, int(memory_type), int(memory_location)))
+        return err_code == Success
+
     def get_rank(self):
         cdef int world_rank = -1
         check_wholememory_error_code(wholememory_communicator_get_rank(&world_rank, self.comm_id))
@@ -1202,6 +1233,12 @@ cdef class PyWholeMemoryComm:
         return world_size
     def barrier(self):
         check_wholememory_error_code(wholememory_communicator_barrier(self.comm_id))
+
+    def get_distributed_backend(self):
+        return WholeMemoryDistributedBackend(wholememory_communicator_get_distributed_backend(self.comm_id))
+
+    def set_distributed_backend(self,WholeMemoryDistributedBackend distributed_backend):
+        check_wholememory_error_code(wholememory_communicator_set_distributed_backend(self.comm_id,int(distributed_backend)))
 
 cdef class PyWholeMemoryHandle:
     cdef wholememory_handle_t wholememory_handle
@@ -1553,6 +1590,10 @@ def create_communicator(PyWholeMemoryUniqueID py_uid, int world_rank, int world_
 def destroy_communicator(PyWholeMemoryComm py_comm):
     check_wholememory_error_code(wholememory_destroy_communicator(py_comm.comm_id))
 
+
+def communicator_set_distributed_backend(PyWholeMemoryComm py_comm,WholeMemoryDistributedBackend distributed_backend):
+    check_wholememory_error_code(wholememory_communicator_set_distributed_backend(py_comm.comm_id,int(distributed_backend)))
+
 def determine_partition_plan(int64_t entry_count,
                              int world_size):
     cdef size_t per_rank_count
@@ -1866,7 +1907,6 @@ cpdef void host_generate_random_positive_int(
         <wholememory_tensor_t> <int64_t> output.get_c_handle()
     ))
 
-
 cpdef void host_generate_exponential_distribution_negative_float(
         int64_t random_seed,
         int64_t subsequence,
@@ -1887,12 +1927,11 @@ cdef extern from "wholememory/graph_op.h":
                                                       wholememory_env_func_t * p_env_fns,
                                                       void * stream)
 
-
     cdef wholememory_error_code_t csr_add_self_loop(wholememory_tensor_t csr_row_ptr_tensor,
                                                     wholememory_tensor_t csr_col_ptr_tensor,
                                                     wholememory_tensor_t output_csr_row_ptr_tensor,
                                                     wholememory_tensor_t output_csr_col_ptr_tensor,
-                                                    void* stream)
+                                                    void * stream)
 
 
 cpdef void append_unique(
@@ -1911,16 +1950,15 @@ cpdef void append_unique(
         <void *> stream_int
     ))
 
-
 cpdef void add_csr_self_loop(
-    WrappedLocalTensor csr_row_ptr_tensor,
-    WrappedLocalTensor csr_col_ptr_tensor,
-    WrappedLocalTensor csr_row_ptr_self_tensor,
-    WrappedLocalTensor csr_col_ptr_self_tensor,
-    int64_t stream_int):
+        WrappedLocalTensor csr_row_ptr_tensor,
+        WrappedLocalTensor csr_col_ptr_tensor,
+        WrappedLocalTensor csr_row_ptr_self_tensor,
+        WrappedLocalTensor csr_col_ptr_self_tensor,
+        int64_t stream_int):
     check_wholememory_error_code(csr_add_self_loop(
         <wholememory_tensor_t> <int64_t> csr_row_ptr_tensor.get_c_handle(),
         <wholememory_tensor_t> <int64_t> csr_col_ptr_tensor.get_c_handle(),
         <wholememory_tensor_t> <int64_t> csr_row_ptr_self_tensor.get_c_handle(),
         <wholememory_tensor_t> <int64_t> csr_col_ptr_self_tensor.get_c_handle(),
-        <void*> stream_int))
+        <void *> stream_int))

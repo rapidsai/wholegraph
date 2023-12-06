@@ -18,6 +18,11 @@ import pylibwholegraph.binding.wholememory_binding as wmb
 from .comm import set_world_info, get_global_communicator, get_local_node_communicator
 
 
+def init(world_rank: int, world_size: int, local_rank: int, local_size: int):
+    wmb.init(0)
+    set_world_info(world_rank, world_size, local_rank, local_size)
+
+
 def init_torch_env(world_rank: int, world_size: int, local_rank: int, local_size: int):
     r"""Init WholeGraph environment for PyTorch.
     :param world_rank: world rank of current process
@@ -47,7 +52,7 @@ def init_torch_env(world_rank: int, world_size: int, local_rank: int, local_size
 
 
 def init_torch_env_and_create_wm_comm(
-    world_rank: int, world_size: int, local_rank: int, local_size: int
+    world_rank: int, world_size: int, local_rank: int, local_size: int , distributed_backend_type="nccl"
 ):
     r"""Init WholeGraph environment for PyTorch and create single communicator for all ranks.
     :param world_rank: world rank of current process
@@ -57,7 +62,7 @@ def init_torch_env_and_create_wm_comm(
     :return: global and local node Communicator
     """
     init_torch_env(world_rank, world_size, local_rank, local_size)
-    global_comm = get_global_communicator()
+    global_comm = get_global_communicator(distributed_backend_type)
     local_comm = get_local_node_communicator()
 
     return global_comm, local_comm

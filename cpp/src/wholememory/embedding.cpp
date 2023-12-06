@@ -28,6 +28,7 @@
 #include "error.hpp"
 #include "integer_utils.hpp"
 #include "logger.hpp"
+#include "wholememory/wholememory.h"
 #include "wholememory_ops/functions/embedding_cache_func.h"
 #include "wholememory_ops/functions/exchange_embeddings_nccl_func.h"
 #include "wholememory_ops/functions/exchange_ids_nccl_func.h"
@@ -868,6 +869,13 @@ wholememory_error_code_t wholememory_create_embedding(
           "For device cached host memory, raw embedding should cover cache's address modes.");
         return WHOLEMEMORY_INVALID_INPUT;
       }
+      if (wholememory_communicator_is_bind_to_nvshmem(comm) &&
+          cache_policy->cache_memory_type == WHOLEMEMORY_MT_DISTRIBUTED) {
+        WHOLEMEMORY_ERROR(
+          "Cache is not supported if the communicator is bound to nvshmem and the cache memory "
+          "type is distributed.");
+        return WHOLEMEMORY_INVALID_INPUT;
+      }
       embedding_impl_ptr = new wholememory::device_cached_host_embedding();
     } else {
       int const cache_world_size = 1;
@@ -878,6 +886,13 @@ wholememory_error_code_t wholememory_create_embedding(
         WHOLEMEMORY_ERROR(
           "For local cached global readonly embedding, cache_memory_type should be chunked or "
           "continuous.");
+        return WHOLEMEMORY_INVALID_INPUT;
+      }
+      if (wholememory_communicator_is_bind_to_nvshmem(comm) &&
+          memory_type == WHOLEMEMORY_MT_DISTRIBUTED) {
+        WHOLEMEMORY_ERROR(
+          "Local_cached_global_readonly_embedding is not supported if the communicator is bound to "
+          "nvshmem and the  memory type is distributed.");
         return WHOLEMEMORY_INVALID_INPUT;
       }
       if (cache_policy->access_type != WHOLEMEMORY_AT_READONLY) {

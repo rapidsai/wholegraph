@@ -64,9 +64,11 @@ class CuGraphSAGEConv(torch.nn.Module):  # pragma: no cover
         self.reset_parameters()
 
     def reset_parameters(self):
+        gain = torch.nn.init.calculate_gain("relu")
+        torch.nn.init.xavier_uniform_(self.lin.weight, gain=gain)
         if self.project:
-            self.pre_lin.reset_parameters()
-        self.lin.reset_parameters()
+            torch.nn.init.xavier_uniform_(self.pre_lin.weight, gain=gain)
+        torch.nn.init.xavier_uniform_(self.lin.weight, gain=gain)
 
     def forward(
         self,

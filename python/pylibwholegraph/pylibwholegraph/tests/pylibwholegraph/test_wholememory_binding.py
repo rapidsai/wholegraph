@@ -110,7 +110,8 @@ def routine_func(world_rank: int, world_size: int):
             wmb.WholeMemoryMemoryLocation.MlHost,
             wmb.WholeMemoryMemoryLocation.MlDevice,
         ]:
-            single_test_case(wm_comm, mt, ml, malloc_size, granularity)
+            if wm_comm.support_type_location(mt, ml):
+                single_test_case(wm_comm, mt, ml, malloc_size, granularity)
     wmb.finalize()
 
 

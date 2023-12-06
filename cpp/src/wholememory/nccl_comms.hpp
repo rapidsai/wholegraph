@@ -48,6 +48,8 @@ class nccl_comms {
 
   void barrier() const;
 
+  void abort() const;
+
   void allreduce(const void* sendbuff,
                  void* recvbuff,
                  size_t count,

@@ -37,8 +37,8 @@ void scatter_integer_int64_temp_func(const void* input,
 
 REGISTER_DISPATCH_TWO_TYPES(ScatterFuncIntegerInt64,
                             scatter_integer_int64_temp_func,
-                            HALF_FLOAT_DOUBLE,
-                            HALF_FLOAT_DOUBLE)
+                            ALLSINT,
+                            ALLSINT)
 
 wholememory_error_code_t scatter_integer_int64_func(const void* input,
                                                     wholememory_matrix_description_t input_desc,

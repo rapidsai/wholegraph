@@ -15,9 +15,14 @@ import torch
 import torch.distributed as dist
 import torch.utils.dlpack
 import pylibwholegraph.binding.wholememory_binding as wmb
+from .utils import (
+    str_to_wmb_wholememory_distributed_backend_type,
+    wholememory_distributed_backend_type_to_str,
+    str_to_wmb_wholememory_memory_type,
+    str_to_wmb_wholememory_location
+)
 
-
-global_communicator = None
+global_communicators = {}
 local_node_communicator = None
 local_device_communicator = None
 
@@ -73,9 +78,27 @@ class WholeMemoryCommunicator(object):
         """
         return self.wmb_comm.barrier()
 
+    def support_type_location(self,
+                              memory_type: str,
+                              memory_location: str):
+        """
+        Return True if Communicator supports combination of memory_type and memory_location.
+        """
+        wm_memory_type = str_to_wmb_wholememory_memory_type(memory_type)
+        wm_location = str_to_wmb_wholememory_location(memory_location)
+        return self.wmb_comm.support_type_location(wm_memory_type, wm_location)
+
     def destroy(self):
         wmb.destroy_communicator(self.wmb_comm)
         self.wmb_comm = None
+
+    @property
+    def distributed_backend(self):
+        return wholememory_distributed_backend_type_to_str(self.wmb_comm.get_distributed_backend())
+
+    @distributed_backend.setter
+    def distributed_backend(self, value):
+        self.wmb_comm.set_distributed_backend(str_to_wmb_wholememory_distributed_backend_type(value))
 
 
 def create_group_communicator(group_size: int = -1, comm_stride: int = 1):
@@ -127,22 +150,23 @@ def destroy_communicator(wm_comm: WholeMemoryCommunicator):
         wm_comm.wmb_comm = None
 
 
-def get_global_communicator():
+def get_global_communicator(distributed_backend='nccl'):
     """
     Get the global communicator of this job
     :return: WholeMemoryCommunicator that has all GPUs in it.
     """
-    global global_communicator, local_node_communicator, local_device_communicator
+    global global_communicators, local_node_communicator, local_device_communicator
     global all_comm_local_size, all_comm_world_size
-    if global_communicator is None:
+    if distributed_backend not in global_communicators:
         global_communicator = create_group_communicator()
-        if all_comm_local_size == all_comm_world_size:
-            assert local_node_communicator is None
-            local_node_communicator = global_communicator
-        if all_comm_world_size == 1:
-            assert local_device_communicator is None
-            local_device_communicator = global_communicator
-    return global_communicator
+        comm_set_distributed_backend(global_communicator, distributed_backend)
+        global_communicators[distributed_backend] = global_communicator
+        if distributed_backend == 'nccl':  # local_node/device_communicator can only be nccl backend for now
+            if local_node_communicator is None and all_comm_local_size == all_comm_world_size:
+                local_node_communicator = global_communicator
+            if local_device_communicator is None and all_comm_world_size == 1:
+                local_device_communicator = global_communicator
+    return global_communicators[distributed_backend]
 
 
 def get_local_node_communicator():
@@ -150,13 +174,13 @@ def get_local_node_communicator():
     Get the local node communicator of this job
     :return: WholeMemoryCommunicator that has GPUs in the same node.
     """
-    global global_communicator, local_node_communicator, local_device_communicator
+    global global_communicators, local_node_communicator, local_device_communicator
     global all_comm_local_size, all_comm_world_size
     if local_node_communicator is None:
         local_node_communicator = create_group_communicator(all_comm_local_size)
         if all_comm_local_size == all_comm_world_size:
-            assert global_communicator is None
-            global_communicator = local_node_communicator
+            assert 'nccl' not in global_communicators
+            global_communicators['nccl'] = local_node_communicator
         if all_comm_local_size == 1:
             assert local_device_communicator is None
             local_device_communicator = local_node_communicator
@@ -168,7 +192,7 @@ def get_local_device_communicator():
     Get the local device communicator of this job
     :return: WholeMemoryCommunicator that has only the GPU belonging to current process.
     """
-    global global_communicator, local_node_communicator, local_device_communicator
+    global global_communicators, local_node_communicator, local_device_communicator
     global all_comm_local_size, all_comm_world_size
     if local_device_communicator is None:
         local_device_communicator = create_group_communicator(1)
@@ -176,6 +200,13 @@ def get_local_device_communicator():
             assert local_node_communicator is None
             local_node_communicator = local_device_communicator
         if all_comm_world_size == 1:
-            assert global_communicator is None
-            global_communicator = local_device_communicator
+            assert 'nccl' not in global_communicators
+            global_communicators['nccl'] = local_device_communicator
     return local_device_communicator
+
+
+def comm_set_distributed_backend(wm_comm: WholeMemoryCommunicator, distributed_backend: str):
+
+    wmb.communicator_set_distributed_backend(wm_comm.wmb_comm,
+                                             str_to_wmb_wholememory_distributed_backend_type(distributed_backend))
+    return

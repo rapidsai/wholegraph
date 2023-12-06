@@ -150,26 +150,19 @@ def create_sub_graph(
         return edge_index
     elif framework_name == "dgl":
         if add_self_loop:
-            self_loop_ids = torch.arange(
-                0,
-                target_gid_1.numel(),
-                dtype=edge_data[0].dtype,
-                device=target_gid.device,
-            )
-            block = dgl.create_block(
+            csr_row_ptr, csr_col_ind = add_csr_self_loop(csr_row_ptr, csr_col_ind)
+        block = dgl.create_block(
+            (
+                'csc',
                 (
-                    torch.cat([edge_data[0], self_loop_ids]),
-                    torch.cat([edge_data[1], self_loop_ids]),
+                    csr_row_ptr,
+                    csr_col_ind,
+                    torch.empty(0, dtype=torch.int),
                 ),
-                num_src_nodes=target_gid.size(0),
-                num_dst_nodes=target_gid_1.size(0),
-            )
-        else:
-            block = dgl.create_block(
-                (edge_data[0], edge_data[1]),
-                num_src_nodes=target_gid.size(0),
-                num_dst_nodes=target_gid_1.size(0),
-            )
+            ),
+            num_src_nodes=target_gid.size(0),
+            num_dst_nodes=target_gid_1.size(0),
+        )
         return block
     elif framework_name == "cugraph":
         if add_self_loop:
@@ -200,33 +193,35 @@ class HomoGNNModel(torch.nn.Module):
         self,
         graph_structure: GraphStructure,
         node_embedding: WholeMemoryEmbedding,
-        options,
+        args,
     ):
         super().__init__()
-        hidden_feat_dim = options.hiddensize
+        hidden_feat_dim = args.hiddensize
         self.graph_structure = graph_structure
         self.node_embedding = node_embedding
-        self.num_layer = options.layernum
-        self.hidden_feat_dim = options.hiddensize
-        num_head = options.heads if (options.model == "gat") else 1
+        self.num_layer = args.layernum
+        self.hidden_feat_dim = args.hiddensize
+        num_head = args.heads if (args.model == "gat") else 1
         assert hidden_feat_dim % num_head == 0
         in_feat_dim = self.node_embedding.shape[1]
         self.gnn_layers = create_gnn_layers(
             in_feat_dim,
             hidden_feat_dim,
-            options.classnum,
-            options.layernum,
+            args.classnum,
+            args.layernum,
             num_head,
-            options.model,
+            args.model,
         )
-        self.mean_output = True if options.model == "gat" else False
-        self.add_self_loop = True if options.model == "gat" else False
+        self.mean_output = True if args.model == "gat" else False
+        self.add_self_loop = True if args.model == "gat" else False
         self.gather_fn = WholeMemoryEmbeddingModule(self.node_embedding)
-        self.dropout = options.dropout
-        self.max_neighbors = parse_max_neighbors(options.layernum, options.neighbors)
+        self.dropout = args.dropout
+        self.max_neighbors = parse_max_neighbors(args.layernum, args.neighbors)
+        self.max_inference_neighbors = parse_max_neighbors(args.layernum, args.inferencesample)
 
     def forward(self, ids):
         global framework_name
+        max_neighbors = self.max_neighbors if self.training else self.max_inference_neighbors
         ids = ids.to(self.graph_structure.csr_col_ind.dtype).cuda()
         (
             target_gids,
@@ -234,9 +229,9 @@ class HomoGNNModel(torch.nn.Module):
             csr_row_ptrs,
             csr_col_inds,
         ) = self.graph_structure.multilayer_sample_without_replacement(
-            ids, self.max_neighbors
+            ids, max_neighbors
         )
-        x_feat = self.gather_fn(target_gids[0])
+        x_feat = self.gather_fn(target_gids[0], force_dtype=torch.float32)
         for i in range(self.num_layer):
             x_target_feat = x_feat[: target_gids[i + 1].numel()]
             sub_graph = create_sub_graph(
@@ -245,7 +240,7 @@ class HomoGNNModel(torch.nn.Module):
                 edge_indice[i],
                 csr_row_ptrs[i],
                 csr_col_inds[i],
-                self.max_neighbors[i],
+                max_neighbors[self.num_layer - 1 - i],
                 self.add_self_loop,
             )
             x_feat = layer_forward(

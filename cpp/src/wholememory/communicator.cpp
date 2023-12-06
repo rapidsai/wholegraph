@@ -15,6 +15,7 @@
  */
 #include "communicator.hpp"
 
+#include <cstdlib>
 #include <sys/stat.h>
 #include <unistd.h>
 
@@ -28,7 +29,17 @@
 #include "cuda_macros.hpp"
 #include "logger.hpp"
 #include "memory_handle.hpp"
+#include "system_info.hpp"
 #include "wholememory/nccl_comms.hpp"
+
+#ifdef WITH_NVSHMEM_SUPPORT
+
+#include "nvshmem.h"
+#include "nvshmemx.h"
+
+extern bool nvshmemi_is_nvshmem_bootstrapped;
+
+#endif
 
 wholememory_comm_::wholememory_comm_(ncclComm_t nccl_comm,
                                      int num_ranks,
@@ -85,6 +96,8 @@ static ncclDataType_t get_nccl_dtype_same_size(const wholememory_dtype_t dtype)
 }
 
 void wholememory_comm_::barrier() const { raft_nccl_comm->barrier(); }
+
+void wholememory_comm_::abort() const { raft_nccl_comm->abort(); }
 
 void wholememory_comm_::allreduce(const void* sendbuff,
                                   void* recvbuff,
@@ -337,6 +350,26 @@ void wholememory_comm_::device_multicast_sendrecv(const void* sendbuf,
     sendbuf, sendsizes, sendoffsets, dests, recvbuf, recvsizes, recvoffsets, sources, stream);
 }
 
+bool wholememory_comm_::is_intranode() const { return intra_node_rank_num == world_size; }
+
+bool wholememory_comm_::support_type_location(wholememory_memory_type_t memory_type,
+                                              wholememory_memory_location_t memory_location) const
+{
+  if (memory_location == WHOLEMEMORY_ML_HOST) {
+    if (is_intranode() || memory_type == WHOLEMEMORY_MT_DISTRIBUTED) return true;
+    return SupportMNNVLForEGM();
+  } else if (memory_location == WHOLEMEMORY_ML_DEVICE) {
+    if (memory_type == WHOLEMEMORY_MT_DISTRIBUTED) return true;
+    if (is_intranode()) {
+      return DevicesCanAccessP2P(&local_gpu_ids[0], intra_node_rank_num);
+    } else {
+      return DevicesCanAccessP2P(&local_gpu_ids[0], intra_node_rank_num) && SupportMNNVL();
+    }
+  } else {
+    return false;
+  }
+}
+
 void wholememory_comm_::group_start() const { raft_nccl_comm->group_start(); }
 
 void wholememory_comm_::group_end() const { raft_nccl_comm->group_end(); }
@@ -345,6 +378,10 @@ namespace wholememory {
 
 static std::mutex comm_mu;
 static std::map<int, wholememory_comm_t> communicator_map;
+
+#ifdef WITH_NVSHMEM_SUPPORT
+static bool nvshmem_has_initalized = false;
+#endif
 
 enum wm_comm_op : int32_t {
   WM_COMM_OP_STARTING = 0xEEC0EE,
@@ -384,6 +421,7 @@ struct rank_info {
   pid_t pid;
   int rank;
   int size;
+  int gpu_id;
 };
 
 static void get_host_name(char* hostname, int maxlen, const char delim)
@@ -453,9 +491,10 @@ void exchange_rank_info(wholememory_comm_t wm_comm)
 {
   rank_info ri;
   get_host_info(&ri.rank_host_info);
-  ri.rank = wm_comm->world_rank;
-  ri.size = wm_comm->world_size;
-  ri.pid  = getpid();
+  ri.rank   = wm_comm->world_rank;
+  ri.size   = wm_comm->world_size;
+  ri.pid    = getpid();
+  ri.gpu_id = wm_comm->dev_id;
 
   std::unique_ptr<rank_info[]> p_rank_info(new rank_info[ri.size]);
   wm_comm->host_allgather(&ri, p_rank_info.get(), sizeof(rank_info), WHOLEMEMORY_DT_INT8);
@@ -470,6 +509,7 @@ void exchange_rank_info(wholememory_comm_t wm_comm)
         wm_comm->intra_node_first_rank_pid = p_rank_info.get()[r].pid;
         wm_comm->intra_node_first_rank     = r;
       }
+      wm_comm->local_gpu_ids[wm_comm->intra_node_rank_num] = p_rank_info.get()[r].gpu_id;
       wm_comm->intra_node_rank_num++;
     }
   }
@@ -579,7 +619,7 @@ wholememory_error_code_t create_communicator(wholememory_comm_t* comm,
       ncclCommInitRank(&nccl_comm, world_size, (ncclUniqueId&)unique_id, world_rank) ==
       ncclSuccess);
     cudaStream_t cuda_stream;
-    WM_CUDA_CHECK(cudaStreamCreate(&cuda_stream));
+    WM_CUDA_CHECK(cudaStreamCreateWithFlags(&cuda_stream, cudaStreamNonBlocking));
     auto* wm_comm = new wholememory_comm_(nccl_comm, world_size, world_rank, cuda_stream);
     *comm         = wm_comm;
     WM_COMM_CHECK_ALL_SAME(wm_comm, WM_COMM_OP_STARTING);
@@ -635,7 +675,11 @@ wholememory_error_code_t destroy_communicator_locked(wholememory_comm_t comm) no
     if (communicator_map.find(comm->comm_id) == communicator_map.end()) {
       return WHOLEMEMORY_INVALID_INPUT;
     }
+
     destroy_all_wholememory(comm);
+#ifdef WITH_NVSHMEM_SUPPORT
+    if (comm->bind_to_nvshmem) { finalize_nvshmem_locked(comm); }
+#endif
     WM_COMM_CHECK_ALL_SAME(comm, WM_COMM_OP_DESTROY_COMM);
     communicator_map.erase(comm->comm_id);
     auto* raw_nccl_comm = comm->raw_nccl_comm;
@@ -665,6 +709,15 @@ wholememory_error_code_t destroy_communicator(wholememory_comm_t comm) noexcept
   return destroy_communicator_locked(comm);
 }
 
+wholememory_error_code_t communicator_support_type_location(
+  wholememory_comm_t comm,
+  wholememory_memory_type_t memory_type,
+  wholememory_memory_location_t memory_location) noexcept
+{
+  return comm->support_type_location(memory_type, memory_location) ? WHOLEMEMORY_SUCCESS
+                                                                   : WHOLEMEMORY_NOT_SUPPORTED;
+}
+
 wholememory_error_code_t destroy_all_communicators() noexcept
 {
   std::unique_lock<std::mutex> mlock(comm_mu);
@@ -687,6 +740,21 @@ wholememory_error_code_t communicator_get_size(int* size, wholememory_comm_t com
   return WHOLEMEMORY_SUCCESS;
 }
 
+bool communicator_is_bind_to_nvshmem(wholememory_comm_t comm) noexcept
+{
+#ifdef WITH_NVSHMEM_SUPPORT
+  return comm->bind_to_nvshmem;
+#else
+  return false;
+#endif
+}
+
+wholememory_distributed_backend_t communicator_get_distributed_backend(
+  wholememory_comm_t comm) noexcept
+{
+  return comm->distributed_backend;
+}
+
 void communicator_barrier(wholememory_comm_t comm)
 {
   try {
@@ -702,9 +770,116 @@ void communicator_barrier(wholememory_comm_t comm)
   }
 }
 
-bool is_intranode_communicator(wholememory_comm_t comm) noexcept
+bool is_intranode_communicator(wholememory_comm_t comm) noexcept { return comm->is_intranode(); }
+
+#ifdef WITH_NVSHMEM_SUPPORT
+wholememory_error_code_t init_nvshmem_with_comm(wholememory_comm_t comm) noexcept
 {
-  return comm->intra_node_rank_num == comm->world_size;
+  try {
+    std::unique_lock<std::mutex> mlock(comm_mu);
+
+    WHOLEMEMORY_CHECK(comm != nullptr);
+    WHOLEMEMORY_EXPECTS(comm->bind_to_nvshmem == true,
+                        "The distributed_backend should be WHOLEMEMORY_DB_NVSHMEM.");
+    if (nvshmem_has_initalized) return WHOLEMEMORY_SUCCESS;
+
+    WM_COMM_CHECK_ALL_SAME(comm, nvshmem_has_initalized);
+
+    WHOLEMEMORY_EXPECTS(nvshmem_has_initalized == false,
+                        "A wholememory_comm_t has been used to init nvshmem. To init nvshmem with "
+                        "other wholememory_coomm_t, call finalize_nvshmem first.");
+
+    auto set_env_if_not_exist = [](std::string_view env_name, std::string_view value) {
+      if (getenv(env_name.data()) == nullptr || strcmp(getenv(env_name.data()), "") == 0) {
+        setenv(env_name.data(), value.data(), 1);
+      }
+      if (strcmp(getenv(env_name.data()), value.data()) != 0) {
+        WHOLEMEMORY_WARN("When using wholegraph, the environment variable %s is best set to %s",
+                         env_name.data(),
+                         value.data());
+      }
+    };
+    set_env_if_not_exist("NVSHMEM_BOOTSTRAP", "mpi");
+    set_env_if_not_exist("NVSHMEM_BOOTSTRAP_MPI_PLUGIN", "libnvshmem_wholememory_bootstrap.so");
+    nvshmemx_init_attr_t attr;
+    attr.mpi_comm = &comm;
+    nvshmemx_init_attr(NVSHMEMX_INIT_WITH_MPI_COMM, &attr);
+    WHOLEMEMORY_CHECK(nvshmem_my_pe() == comm->world_rank);
+    WHOLEMEMORY_CHECK(nvshmem_n_pes() == comm->world_size);
+    nvshmem_has_initalized = true;
+    comm->bind_to_nvshmem  = true;
+
+    return WHOLEMEMORY_SUCCESS;
+
+  } catch (const wholememory::logic_error& wle) {
+    WHOLEMEMORY_FAIL_NOTHROW("%s", wle.what());
+  } catch (const wholememory::cuda_error& wce) {
+    WHOLEMEMORY_FAIL_NOTHROW("%s", wce.what());
+  } catch (const raft::exception& re) {
+    WHOLEMEMORY_FAIL_NOTHROW("%s", re.what());
+  } catch (...) {
+    WHOLEMEMORY_FAIL_NOTHROW("Unknown exception.");
+  }
 }
 
+wholememory_error_code_t finalize_nvshmem_locked(wholememory_comm_t comm) noexcept
+{
+  try {
+    WHOLEMEMORY_CHECK(comm != nullptr);
+
+    WM_COMM_CHECK_ALL_SAME(comm, nvshmem_has_initalized);
+    WHOLEMEMORY_EXPECTS(comm->bind_to_nvshmem == true,
+                        "The wholememory_comm_t must be the one previously used to init nvshmem.");
+    WHOLEMEMORY_EXPECTS(
+      nvshmem_has_initalized == true,
+      "To call finalize_nvshmem,please use wholememory_comm_t to init nvshmem first.");
+    // destroy all memory allocated by nvshmem
+    nvshmem_finalize();
+    nvshmemi_is_nvshmem_bootstrapped = false;  // so we can bootstrap again.
+    nvshmem_has_initalized           = false;
+    comm->bind_to_nvshmem            = false;
+    return WHOLEMEMORY_SUCCESS;
+
+  } catch (const wholememory::logic_error& wle) {
+    WHOLEMEMORY_FAIL_NOTHROW("%s", wle.what());
+  } catch (const wholememory::cuda_error& wce) {
+    WHOLEMEMORY_FAIL_NOTHROW("%s", wce.what());
+  } catch (const raft::exception& re) {
+    WHOLEMEMORY_FAIL_NOTHROW("%s", re.what());
+  } catch (...) {
+    WHOLEMEMORY_FAIL_NOTHROW("Unknown exception.");
+  }
+}
+
+#endif
+
+wholememory_error_code_t communicator_set_distributed_backend(
+  wholememory_comm_t comm, wholememory_distributed_backend_t distributed_backend) noexcept
+{
+  try {
+    std::unique_lock<std::mutex> mlock(comm_mu);
+
+    WHOLEMEMORY_CHECK(comm != nullptr);
+    WM_COMM_CHECK_ALL_SAME(comm, distributed_backend);
+
+    for (auto&& [id, handle] : comm->wholememory_map) {
+      WHOLEMEMORY_EXPECTS(wholememory_get_memory_type(handle) != WHOLEMEMORY_MT_DISTRIBUTED,
+                          "Please set distributed_backend before creating any whole_memory with "
+                          "distributed memory type if need to change distriubted_backend");
+    }
+    comm->distributed_backend = distributed_backend;
+#ifdef WITH_NVSHMEM_SUPPORT
+    if (distributed_backend == WHOLEMEMORY_DB_NVSHMEM) { comm->bind_to_nvshmem = true; }
+#endif
+    return WHOLEMEMORY_SUCCESS;
+  } catch (const wholememory::logic_error& wle) {
+    WHOLEMEMORY_FAIL_NOTHROW("%s", wle.what());
+  } catch (const wholememory::cuda_error& wce) {
+    WHOLEMEMORY_FAIL_NOTHROW("%s", wce.what());
+  } catch (const raft::exception& re) {
+    WHOLEMEMORY_FAIL_NOTHROW("%s", re.what());
+  } catch (...) {
+    WHOLEMEMORY_FAIL_NOTHROW("Unknown exception.");
+  }
+}
 }  // namespace wholememory
