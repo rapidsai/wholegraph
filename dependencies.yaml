@@ -68,10 +68,10 @@ dependencies:
         packages:
           - c-compiler
           - cmake>=3.26.4
-          - cudnn=8.4
+          - cudnn=8.8
           - cxx-compiler
-          - cython
-          - doxygen=1.8.20
+          - cython>=3.0.0
+          - &doxygen doxygen==1.9.1
           - libraft-headers==24.2.*
           - librmm==24.2.*
           - nanobind>=0.2.0
@@ -252,7 +252,7 @@ dependencies:
       - output_types: [conda, requirements]
         packages:
           - breathe
-          - doxygen=1.8.20
+          - *doxygen
           - graphviz
           - ipython
           - ipykernel
@@ -274,15 +274,15 @@ dependencies:
     common:
       - output_types: [conda, requirements]
         packages:
-          - clangxx=16.0.0
-          - clang-tools=16.0.0
+          - clangxx==16.0.6
+          - clang-tools==16.0.6
           - gitpython
   python_build_wheel:
     common:
       - output_types: [pyproject]
         packages:
           - cmake>=3.26.4
-          - cython>=0.29,<0.30
+          - cython>=3.0.0
           - ninja
           - setuptools
           - scikit-build>=0.13.1
