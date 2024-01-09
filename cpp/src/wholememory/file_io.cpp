@@ -74,6 +74,23 @@ static size_t get_handle_partial_size(size_t handle_size,
   return partial_size;
 }
 
+/*!
+ * Read from file list to local memory of WholeMemory. File list are binary files, which are
+ * considered to be concatenated together. All ranks in WholeMemory will read the files in parallel
+ * and load each part into local memory of each rank.
+ * @param local_ptr : Pointer to local memory of WholeMemory
+ * @param local_size : Local memory size
+ * @param local_offset : The offset of local memory in WholeMemory.
+ * @param entry_size : The entry size of each data entry.
+ * @param memory_entry_stride : The stride of each entry in WholeMemory
+ * @param memory_offset : The start offset to place the read data. Should be in range [0,
+ * memory_entry_stride)
+ * @param file_count : Total file count of the file list
+ * @param file_names : File names of the file list.
+ * @param file_sizes : Sizes of each file.
+ * @param suggested_buffer_size : Suggested buffer size to read.
+ * @param wm_rank : WholeMemory rank.
+ */
 static void read_file_list_to_local_memory(char* local_ptr,
                                            size_t local_size,
                                            size_t local_offset,
@@ -188,6 +205,24 @@ static void read_file_list_to_local_memory(char* local_ptr,
     "Rank=%d done reading total %ld bytes from needed files.", wm_rank, total_read_bytes);
 }
 
+/*!
+ * Read from file list to local memory of WholeMemory using DirectIO. Using DirectIO may have better
+ * performance by bypassing system cache if it is bottleneck. File list are binary files, which are
+ * considered to be concatenated together. All ranks in WholeMemory will read the files in parallel
+ * and load each part into local memory of each rank.
+ * @param local_ptr : Pointer to local memory of WholeMemory
+ * @param local_size : Local memory size
+ * @param local_offset : The offset of local memory in WholeMemory.
+ * @param entry_size : The entry size of each data entry.
+ * @param memory_entry_stride : The stride of each entry in WholeMemory
+ * @param memory_offset : The start offset to place the read data. Should be in range [0,
+ * memory_entry_stride)
+ * @param file_count : Total file count of the file list
+ * @param file_names : File names of the file list.
+ * @param file_sizes : Sizes of each file.
+ * @param suggested_buffer_size : Suggested buffer size to read.
+ * @param wm_rank : WholeMemory rank.
+ */
 static void read_file_list_to_local_memory_directio(char* local_ptr,
                                                     size_t local_size,
                                                     size_t local_offset,
