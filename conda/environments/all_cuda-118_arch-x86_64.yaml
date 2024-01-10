@@ -13,6 +13,7 @@ dependencies:
 - clangxx==16.0.6
 - cmake>=3.26.4
 - cuda-nvtx=11.8
+- cuda-version=11.8
 - cudatoolkit=11.8
 - cudnn=8.8
 - cxx-compiler

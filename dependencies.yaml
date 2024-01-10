@@ -8,7 +8,8 @@ files:
     includes:
       - checks
       - build
-      - cudatoolkit
+      - cuda
+      - cuda_version
       - py_version
       - run
       - test_python
@@ -17,11 +18,11 @@ files:
   test_cpp:
     output: none
     includes:
-      - cudatoolkit
+      - cuda_version
   test_python:
     output: none
     includes:
-      - cudatoolkit
+      - cuda_version
       - py_version
       - test_python
   checks:
@@ -40,7 +41,8 @@ files:
     output: none
     includes:
       - build
-      - cudatoolkit
+      - cuda
+      - cuda_version
       - py_version
       - run
       - pytorch_cpu
@@ -108,11 +110,34 @@ dependencies:
             packages:
               - nvcc_linux-aarch64=11.8
           - matrix:
+              cuda: "12.*"
+            packages:
+              - cuda-nvcc
+  cuda_version:
+    specific:
+      - output_types: conda
+        matrices:
+          - matrix:
+              cuda: "11.2"
+            packages:
+              - cuda-version=11.2
+          - matrix:
+              cuda: "11.4"
+            packages:
+              - cuda-version=11.4
+          - matrix:
+              cuda: "11.5"
+            packages:
+              - cuda-version=11.5
+          - matrix:
+              cuda: "11.8"
+            packages:
+              - cuda-version=11.8
+          - matrix:
               cuda: "12.0"
             packages:
               - cuda-version=12.0
-              - cuda-nvcc
-  cudatoolkit:
+  cuda:
     specific:
       - output_types: conda
         matrices:
@@ -137,9 +162,8 @@ dependencies:
               - cudatoolkit=11.8
               - cuda-nvtx=11.8
           - matrix:
-              cuda: "12.0"
+              cuda: "12.*"
             packages:
-              - cuda-version=12.0
               - cuda-cudart-dev
               - cuda-nvtx
   checks:
