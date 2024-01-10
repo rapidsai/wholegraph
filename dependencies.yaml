@@ -33,7 +33,7 @@ files:
   docs:
     output: none
     includes:
-      - cudatoolkit
+      - cuda_version
       - docs
       - py_version
       - pytorch_cpu
