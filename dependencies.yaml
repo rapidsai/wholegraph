@@ -144,22 +144,22 @@ dependencies:
           - matrix:
               cuda: "11.2"
             packages:
-              - cudatoolkit=11.2
+              - cudatoolkit
               - cuda-nvtx=11.4 # oldest available
           - matrix:
               cuda: "11.4"
             packages:
-              - cudatoolkit=11.4
+              - cudatoolkit
               - cuda-nvtx=11.4 # oldest available
           - matrix:
               cuda: "11.5"
             packages:
-              - cudatoolkit=11.5
+              - cudatoolkit
               - cuda-nvtx=11.5
           - matrix:
               cuda: "11.8"
             packages:
-              - cudatoolkit=11.8
+              - cudatoolkit
               - cuda-nvtx=11.8
           - matrix:
               cuda: "12.*"
