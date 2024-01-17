@@ -185,6 +185,7 @@ wholememory_error_code_t wholememory_gather_nvshmem(
                                      p_env_fns,
                                      stream);
     // ungistre
+    WM_CUDA_CHECK(cudaStreamSynchronize(stream));
     if (nvshmemx_buffer_unregister(temp_output_ptr) != 0) {
       WHOLEMEMORY_ERROR("nvshmemx_buffer_unregister error in wholememory_gather_nvshmem");
     }
