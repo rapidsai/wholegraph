@@ -276,6 +276,7 @@ dependencies:
   docs:
     common:
       - output_types: [conda]
+        packages:
           - *doxygen
       - output_types: [conda, requirements]
         packages:
