@@ -9,15 +9,16 @@ channels:
 dependencies:
 - breathe
 - c-compiler
-- clang-tools=16.0.0
-- clangxx=16.0.0
+- clang-tools==16.0.6
+- clangxx==16.0.6
 - cmake>=3.26.4
 - cuda-nvtx=11.8
-- cudatoolkit=11.8
-- cudnn=8.4
+- cuda-version=11.8
+- cudatoolkit
+- cudnn=8.8
 - cxx-compiler
-- cython
-- doxygen=1.8.20
+- cython>=3.0.0
+- doxygen==1.9.1
 - gcc_linux-64=11.*
 - gitpython
 - graphviz

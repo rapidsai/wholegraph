@@ -29,7 +29,7 @@ class nvshmem_device_reference {
     : pointer_(static_cast<DataTypeT*>(nvshmem_ref.pointer)),
       typed_stride_(nvshmem_ref.stride / sizeof(DataTypeT))
   {
-    assert(gref.stride % sizeof(DataTypeT) == 0);
+    assert(nvshmem_ref.stride % sizeof(DataTypeT) == 0);
   }
 
   __device__ nvshmem_device_reference() = delete;

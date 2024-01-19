@@ -132,7 +132,7 @@ def add_common_sampler_options(argparser: ArgumentParser):
     argparser.add_argument(
         "-s",
         "--inferencesample",
-        type=int,
+        type=str,
         dest="inferencesample",
         default="30",
         help="inference sample count, -1 is all",

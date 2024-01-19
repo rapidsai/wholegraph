@@ -113,7 +113,9 @@ include(../../cpp/cmake/thirdparty/get_raft.cmake)
 #include(${CMAKE_CURRENT_LIST_DIR}/../cmake/thirdparty/nanobind.cmake)
 
 # use <package>_ROOT here to take precedence over any other package
-set(wholegraph_ROOT "$ENV{LIBWHOLEGRAPH_DIR}")
+if (DEFINED ENV{LIBWHOLEGRAPH_DIR})
+  set(wholegraph_ROOT "$ENV{LIBWHOLEGRAPH_DIR}")
+endif()
 find_package(wholegraph "${RAPIDS_VERSION}.0" EXACT)
 message("WholeGraph")
 if (WHOLEGRAPH_FOUND)
