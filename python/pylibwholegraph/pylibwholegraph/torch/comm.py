@@ -44,6 +44,7 @@ def reset_communicators():
     all_comm_local_rank = 0
     all_comm_local_size = 1
 
+
 def set_world_info(world_rank: int, world_size: int, local_rank: int, local_size: int):
     """
     Set the global world's information. This is used for create common used communicators, like local node communicator,
