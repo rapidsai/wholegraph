@@ -25,7 +25,10 @@
 extern "C" {
 #endif
 
-wholememory_error_code_t wholememory_init(unsigned int flags) { return wholememory::init(flags); }
+wholememory_error_code_t wholememory_init(unsigned int flags, unsigned int wm_log_level)
+{
+  return wholememory::init(flags, wm_log_level);
+}
 
 wholememory_error_code_t wholememory_finalize() { return wholememory::finalize(); }
 

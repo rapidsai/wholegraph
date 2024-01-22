@@ -17,6 +17,7 @@
 
 #include <cuda.h>
 #include <cuda_runtime_api.h>
+#include <math.h>
 #include <nccl.h>
 
 #include "communicator.hpp"
@@ -32,7 +33,7 @@ static bool is_wm_init = false;
 static const std::string RAFT_NAME  = "wholememory";
 static cudaDeviceProp* device_props = nullptr;
 
-wholememory_error_code_t init(unsigned int flags) noexcept
+wholememory_error_code_t init(unsigned int flags, unsigned int wm_log_level) noexcept
 {
   try {
     std::unique_lock<std::mutex> lock(mu);
@@ -50,6 +51,7 @@ wholememory_error_code_t init(unsigned int flags) noexcept
       WM_CUDA_CHECK(cudaGetDeviceProperties(device_props + i, i));
     }
     is_wm_init = true;
+    wholememory::set_log_level(std::pow(10, wm_log_level));
     return WHOLEMEMORY_SUCCESS;
   } catch (raft::logic_error& logic_error) {
     WHOLEMEMORY_ERROR("init failed, logic_error=%s", logic_error.what());

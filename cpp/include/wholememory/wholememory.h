@@ -85,7 +85,7 @@ enum wholememory_distributed_backend_t {
  * @param flags : reserved should be 0
  * @return : wholememory_error_code_t
  */
-wholememory_error_code_t wholememory_init(unsigned int flags);
+wholememory_error_code_t wholememory_init(unsigned int flags, unsigned int wm_log_level = 3);
 
 /**
  * Finalize WholeMemory library

@@ -21,7 +21,7 @@
 
 namespace wholememory {
 
-wholememory_error_code_t init(unsigned int flags) noexcept;
+wholememory_error_code_t init(unsigned int flags, unsigned int wm_log_level) noexcept;
 
 wholememory_error_code_t finalize() noexcept;
 

@@ -71,7 +71,7 @@ cdef extern from "wholememory/wholememory.h":
         WHOLEMEMORY_DB_NONE                 "WHOLEMEMORY_DB_NONE"
         WHOLEMEMORY_DB_NCCL                 "WHOLEMEMORY_DB_NCCL"
         WHOLEMEMORY_DB_NVSHMEM              "WHOLEMEMORY_DB_NVSHMEM"
-    cdef wholememory_error_code_t wholememory_init(unsigned int flags)
+    cdef wholememory_error_code_t wholememory_init(unsigned int flags, unsigned int wm_log_level)
 
     cdef wholememory_error_code_t wholememory_finalize()
 
@@ -981,8 +981,8 @@ cdef class PyWholeMemoryUniqueID:
     def __dlpack_device__(self):
         return (kDLCPU, 0)
 
-def init(unsigned int flags):
-    check_wholememory_error_code(wholememory_init(flags))
+def init(unsigned int flags, unsigned int wm_log_level = 3):
+    check_wholememory_error_code(wholememory_init(flags, wm_log_level))
 
 def finalize():
     check_wholememory_error_code(wholememory_finalize())
