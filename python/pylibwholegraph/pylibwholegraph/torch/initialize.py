@@ -15,7 +15,7 @@ import os
 import torch
 import torch.utils.dlpack
 import pylibwholegraph.binding.wholememory_binding as wmb
-from .comm import set_world_info, get_global_communicator, get_local_node_communicator
+from .comm import set_world_info, get_global_communicator, get_local_node_communicator, reset_communicators
 
 
 def init(world_rank: int, world_size: int, local_rank: int, local_size: int):
@@ -73,3 +73,5 @@ def finalize():
     :return: None
     """
     wmb.finalize()
+    reset_communicators()
+    torch.distributed.destroy_process_group() if torch.distributed.is_initialized() else None
