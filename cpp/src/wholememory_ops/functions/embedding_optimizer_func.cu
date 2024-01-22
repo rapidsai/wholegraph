@@ -214,7 +214,8 @@ __global__ void sgd_optimizer_step_kernel(const IndiceT* indices_ptr,
     int local_dim_idx = threadIdx.x;
     float grad_value  = 0.0f;
     int embedding_idx = local_dim_idx + loop_start_idx;
-    if (embedding_idx < embedding_dim) { grad_value = grads_ptr[embedding_idx]; }
+    if (embedding_idx >= embedding_dim) { break; }
+    grad_value            = grads_ptr[embedding_idx];
     float embedding_value = embedding_ptr[embedding_idx];
     grad_value += weight_decay * embedding_value;
     embedding_value -= lr * grad_value;
@@ -392,7 +393,8 @@ __global__ void lazy_adam_optimizer_step_kernel(const IndiceT* indices_ptr,
     int local_dim_idx = threadIdx.x;
     float grad_value  = 0.0f;
     int embedding_idx = local_dim_idx + loop_start_idx;
-    if (embedding_idx < embedding_dim) { grad_value = grads_ptr[local_dim_idx + loop_start_idx]; }
+    if (embedding_idx >= embedding_dim) { break; }
+    grad_value            = grads_ptr[local_dim_idx + loop_start_idx];
     float embedding_value = embedding_ptr[embedding_idx];
     if (AdamW) {
       embedding_value -= lr * weight_decay * embedding_value;
@@ -644,7 +646,8 @@ __global__ void ada_grad_optimizer_step_kernel(const IndiceT* indices_ptr,
     int local_dim_idx = threadIdx.x;
     float grad_value  = 0.0f;
     int embedding_idx = local_dim_idx + loop_start_idx;
-    if (embedding_idx < embedding_dim) { grad_value = grads_ptr[embedding_idx]; }
+    if (embedding_idx >= embedding_dim) { break; }
+    grad_value                   = grads_ptr[embedding_idx];
     float embedding_value        = embedding_ptr[embedding_idx];
     grad_value                   = grad_value + weight_decay * embedding_value;
     float state_sum              = state_sum_ptr[embedding_idx];
@@ -841,7 +844,8 @@ __global__ void rms_prop_optimizer_step_kernel(const IndiceT* indices_ptr,
     int local_dim_idx = threadIdx.x;
     float grad_value  = 0.0f;
     int embedding_idx = local_dim_idx + loop_start_idx;
-    if (embedding_idx < embedding_dim) { grad_value = grads_ptr[local_dim_idx + loop_start_idx]; }
+    if (embedding_idx >= embedding_dim) { break; }
+    grad_value                   = grads_ptr[local_dim_idx + loop_start_idx];
     float embedding_value        = embedding_ptr[embedding_idx];
     grad_value                   = grad_value + weight_decay * embedding_value;
     float v                      = v_ptr[embedding_idx];
