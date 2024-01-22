@@ -192,21 +192,23 @@ dependencies:
         packages: []
   test_cpp:
     common:
-      - output_types: [conda, requirements]
+      - output_types: [conda]
         packages:
           - nccl
   test_python:
     common:
-      - output_types: [conda, requirements]
+      - output_types: [conda]
         packages:
           - c-compiler
           - cxx-compiler
+          - nccl
+      - output_types: [conda, requirements]
+        packages:
           - ninja
           - numpy>=1.17
           - pytest
           - pytest-forked
           - pytest-xdist
-          - nccl
     specific:
       - output_types: [conda, requirements]
         matrices:
@@ -273,10 +275,12 @@ dependencies:
             packages:
   docs:
     common:
+      - output_types: [conda]
+        packages:
+          - *doxygen
       - output_types: [conda, requirements]
         packages:
           - breathe
-          - *doxygen
           - graphviz
           - ipython
           - ipykernel
@@ -298,9 +302,11 @@ dependencies:
     common:
       - output_types: [conda, requirements]
         packages:
+          - gitpython
+      - output_types: conda
+        packages:
           - clangxx==16.0.6
           - clang-tools==16.0.6
-          - gitpython
   python_build_wheel:
     common:
       - output_types: [pyproject]
