@@ -27,7 +27,8 @@ wholememory_error_code_t gather_func(wholememory_gref_t embedding_gref,
                                      wholememory_array_description_t indices_desc,
                                      void* output,
                                      wholememory_matrix_description_t output_desc,
-                                     cudaStream_t stream);
+                                     cudaStream_t stream,
+                                     int gather_sms = -1);
 
 wholememory_error_code_t scatter_func(const void* input,
                                       wholememory_matrix_description_t input_desc,
@@ -35,6 +36,7 @@ wholememory_error_code_t scatter_func(const void* input,
                                       wholememory_array_description_t indices_desc,
                                       wholememory_gref_t embedding_gref,
                                       wholememory_matrix_description_t embedding_desc,
-                                      cudaStream_t stream);
+                                      cudaStream_t stream,
+                                      int scatter_sms = -1);
 
 }  // namespace wholememory_ops

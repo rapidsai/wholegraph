@@ -30,10 +30,17 @@ wholememory_error_code_t wholememory_scatter_mapped(
   wholememory_gref_t wholememory_gref,
   wholememory_matrix_description_t wholememory_desc,
   wholememory_env_func_t* p_env_fns,
-  cudaStream_t stream)
+  cudaStream_t stream,
+  int scatter_sms)
 {
-  return scatter_func(
-    input, input_desc, indices, indices_desc, wholememory_gref, wholememory_desc, stream);
+  return scatter_func(input,
+                      input_desc,
+                      indices,
+                      indices_desc,
+                      wholememory_gref,
+                      wholememory_desc,
+                      stream,
+                      scatter_sms);
 }
 
 }  // namespace wholememory_ops

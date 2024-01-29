@@ -406,6 +406,7 @@ def create_embedding(
     optimizer: Union[WholeMemoryOptimizer, None] = None,
     cache_policy: Union[WholeMemoryCachePolicy, None] = None,
     random_init: bool = False,
+    gather_sms: int = -1,
 ):
     r"""
     Create embedding
@@ -416,6 +417,7 @@ def create_embedding(
     :param sizes: size of the embedding, must be 2D
     :param optimizer: optimizer
     :param cache_policy: cache policy
+    :param gather_sms: the number of SMs used in gather process
     :return: WholeMemoryEmbedding
     """
     if optimizer is None:
@@ -446,6 +448,7 @@ def create_embedding(
             str_to_wmb_wholememory_location(memory_location),
             wmb_optimizer,
             wmb_cache_policy,
+            user_defined_sms=gather_sms,
         ),
         optimizer,
         cache_policy,
@@ -472,6 +475,7 @@ def create_embedding_from_filelist(
     *,
     optimizer: Union[WholeMemoryOptimizer, None] = None,
     cache_policy: Union[WholeMemoryCachePolicy, None] = None,
+    gather_sms: int = -1,
 ):
     r"""
     Create embedding from file list
@@ -483,6 +487,7 @@ def create_embedding_from_filelist(
     :param last_dim_size: size of last dim
     :param optimizer: optimizer
     :param cache_policy: cache policy
+    :param gather_sms: the number of SMs used in gather process
     :return:
     """
     if isinstance(filelist, str):
@@ -508,6 +513,7 @@ def create_embedding_from_filelist(
         [total_entry_count, last_dim_size],
         optimizer=optimizer,
         cache_policy=cache_policy,
+        gather_sms=gather_sms
     )
     wm_embedding.get_embedding_tensor().from_filelist(filelist)
     return wm_embedding
