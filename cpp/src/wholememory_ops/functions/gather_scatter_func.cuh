@@ -367,7 +367,7 @@ void gather_temp_func(wholememory_gref_t embedding_gref,
   int block_size  = 1024;
   int block_count = indice_count > 1568 ? 1568 : indice_count;
   if (gather_sms != -1) block_count = gather_sms;
-  printf("the gather kernel sm number is %d\n", block_count);
+  // printf("the gather kernel sm number is %d\n", block_count);
   kernel_fn<<<block_count, block_size, 0, stream>>>(embedding_gref,
                                                     embedding_desc,
                                                     static_cast<const IndexT*>(indices),
