@@ -149,7 +149,7 @@ struct EmbeddingBackwardTestParams {
   wholememory_optimizer_type_t optimizer_type         = WHOLEMEMORY_OPT_SGD;
   float cache_ratio                                   = 0.2;
   bool use_cache                                      = false;
-  int run_count                                       = 1;
+  int run_count                                       = 3;
 
   float lr_ = 0.1;
 
@@ -428,7 +428,7 @@ void prepare_data_and_reference(
                    int64_t end_entry = (thread_rank + 1) * total_entry_count / thread_world_size;
                    CPUOptimizer cpu_optimizer(&params, start_entry, end_entry);
                    int embedding_dim = params.grad_description.sizes[1];
-                   for (int step = 0; step <= params.run_count; step++) {
+                   for (int step = 0; step < params.run_count; step++) {
                      int step_id = std::min(step, params.run_count - 1);
                      std::vector<int64_t> indices;
                      std::vector<std::vector<float>> grads;
@@ -625,7 +625,7 @@ TEST_P(WholeMemoryEmbeddingBackwardParameterTests, EmbeddingGatherGradientApplyT
       EXPECT_EQ(cudaStreamSynchronize(nullptr), cudaSuccess);
       EXPECT_EQ(wholememory_communicator_barrier(wm_comm), WHOLEMEMORY_SUCCESS);
 
-      for (int run = 0; run <= params.run_count; run++) {
+      for (int run = 0; run < params.run_count; run++) {
         int step_id            = std::min(run, params.run_count - 1);
         auto& rank_indices_vec = step_rank_indices[step_id][world_rank];
         auto& rank_grads_vec   = step_rank_grads[step_id][world_rank];
@@ -737,6 +737,8 @@ INSTANTIATE_TEST_SUITE_P(
         EmbeddingBackwardTestParams().set_use_cache().set_indice_count(10000127).set_optimizer_type(WHOLEMEMORY_OPT_ADAGRAD),
         EmbeddingBackwardTestParams().set_use_cache().set_indice_count(10000127).set_optimizer_type(WHOLEMEMORY_OPT_LAZY_ADAM),
 #endif
+    EmbeddingBackwardTestParams().set_entry_count(500).set_indice_count(400).set_embedding_dim(4),
+    EmbeddingBackwardTestParams().set_embedding_dim(3),
     EmbeddingBackwardTestParams().set_use_cache().set_grad_stride(131),
     EmbeddingBackwardTestParams().set_use_cache().set_grad_stride(131).set_optimizer_type(
       WHOLEMEMORY_OPT_RMSPROP),
