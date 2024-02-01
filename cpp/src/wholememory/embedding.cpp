@@ -405,7 +405,16 @@ wholememory_error_code_t embedding_base::destroy_optimizer_states() noexcept
 
 wholememory_error_code_t embedding_base::set_gather_sms(int sms) noexcept
 {
-  gather_sms = sms;
+  if (sms != -1) {
+    if (sms <= 0) {
+      WHOLEMEMORY_WARN("Illegal SM number for gather/scatter! Will use default size.");
+      sms = -1;
+    } else if (sms > 1568) {
+      WHOLEMEMORY_WARN("SM number for gather/scatter is too large! Will use default size.");
+      sms = -1;
+    }
+  }
+  gather_sms_ = sms;
   return WHOLEMEMORY_SUCCESS;
 }
 
@@ -483,7 +492,7 @@ wholememory_error_code_t noncached_embedding::gather(wholememory_tensor_t indice
                                                      cudaStream_t stream) noexcept
 {
   WHOLEMEMORY_RETURN_ON_FAIL(
-    wholememory_gather(allocated_embedding, indices, output, p_env_fns, stream, gather_sms));
+    wholememory_gather(allocated_embedding, indices, output, p_env_fns, stream, gather_sms_));
   return WHOLEMEMORY_SUCCESS;
 }
 
