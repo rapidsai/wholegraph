@@ -452,7 +452,7 @@ void nvshmem_gather_temp_get_mem_sort_idx_func(wholememory_comm_t wm_comm,
   }
 
   WM_CUDA_CHECK(cudaGetLastError());
-  void(gather_sms);
+  (void)gather_sms;
 }
 
 template <typename EmbeddingT, typename IndexT, int ALIGNMENT = 1, bool USE_IBGDA = true>
@@ -697,7 +697,7 @@ void nvshmem_scatter_temp_put_mem_sort_idx_func(wholememory_comm_t wm_comm,
   }
 
   WM_CUDA_CHECK(cudaGetLastError());
-  void(scatter_sms);
+  (void)scatter_sms;
 }
 
 };  // namespace wholememory_ops
