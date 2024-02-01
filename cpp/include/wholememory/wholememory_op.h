@@ -55,7 +55,7 @@ wholememory_error_code_t wholememory_scatter(wholememory_tensor_t input_tensor,
                                              wholememory_tensor_t wholememory_tensor,
                                              wholememory_env_func_t* p_env_fns,
                                              void* stream,
-                                             int gather_sms = -1);
+                                             int scatter_sms = -1);
 
 /**
  * Just a test function,
