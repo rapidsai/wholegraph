@@ -86,13 +86,14 @@ outputs:
       host:
         - cuda-version ={{ cuda_version }}
         {% if cuda_major != "11" %}
-        - cuda-cudart-dev
         - cuda-driver-dev
         {% endif %}
       run:
         - {{ pin_compatible('cuda-version', max_pin='x', min_pin='x') }}
         {% if cuda_major == "11" %}
         - cudatoolkit
+        {% else %}
+        - cuda-cudart
         {% endif %}
         - libraft ={{ minor_version }}
         - nccl {{ nccl_version }}
@@ -119,7 +120,6 @@ outputs:
       host:
         - cuda-version ={{ cuda_version }}
         {% if cuda_major != "11" %}
-        - cuda-cudart-dev
         - cuda-driver-dev
         {% endif %}
       run:
@@ -127,6 +127,8 @@ outputs:
         - {{ pin_subpackage('libwholegraph', exact=True) }}
         {% if cuda_major == "11" %}
         - cudatoolkit
+        {% else %}
+        - cuda-cudart
         {% endif %}
         - gmock {{ gtest_version }}
         - gtest {{ gtest_version }}
