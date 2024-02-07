@@ -50,7 +50,8 @@ setup(
         include=[
             "pylibwholegraph",
             "pylibwholegraph.*",
-        ]
+        ],
+        exclude=["*tests*"],
     ),
     package_data={
         "pylibwholegraph": ["VERSION", "torch_cpp_ext/*.cpp",
