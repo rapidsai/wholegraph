@@ -79,6 +79,7 @@ outputs:
         - {{ compiler('cuda11') }}
         {% else %}
         - {{ compiler('cuda') }}
+        - cuda-cudart-dev
         {% endif %}
     requirements:
       build:
@@ -86,6 +87,7 @@ outputs:
       host:
         - cuda-version ={{ cuda_version }}
         {% if cuda_major != "11" %}
+        - cuda-cudart-dev
         - cuda-driver-dev
         {% endif %}
       run:
@@ -113,6 +115,7 @@ outputs:
         - {{ compiler('cuda11') }}
         {% else %}
         - {{ compiler('cuda') }}
+        - cuda-cudart-dev
         {% endif %}
     requirements:
       build:
@@ -120,6 +123,7 @@ outputs:
       host:
         - cuda-version ={{ cuda_version }}
         {% if cuda_major != "11" %}
+        - cuda-cudart-dev
         - cuda-driver-dev
         {% endif %}
       run:
