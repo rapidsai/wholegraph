@@ -53,10 +53,6 @@ sed_runner 's/'"RAPIDS_VERSION \".*\")"'/'"RAPIDS_VERSION \"${NEXT_SHORT_TAG}\")
 # Python CMakeLists updates
 sed_runner '/set(RAPIDS_VERSION/ s/".*"/'\"${NEXT_SHORT_TAG}\"'/g' python/pylibwholegraph/CMakeLists.txt
 
-# RTD update
-sed_runner 's/version = .*/version = '"'${NEXT_SHORT_TAG}'"'/g' docs/wholegraph/source/conf.py
-sed_runner 's/release = .*/release = '"'${NEXT_FULL_TAG}'"'/g' docs/wholegraph/source/conf.py
-
 # Centralized version file update
 echo "${NEXT_FULL_TAG}" > VERSION
 
@@ -72,10 +68,10 @@ DEPENDENCIES=(
 )
 for DEP in "${DEPENDENCIES[@]}"; do
   for FILE in dependencies.yaml conda/environments/*.yaml; do
-    sed_runner "/-.* ${DEP}==/ s/==.*/==${NEXT_SHORT_TAG_PEP440}.*/g" ${FILE}
+    sed_runner "/-.* ${DEP}\(-cu[[:digit:]]\{2\}\)\{0,1\}==/ s/==.*/==${NEXT_SHORT_TAG_PEP440}.*/g" ${FILE}
   done
   for FILE in python/**/pyproject.toml; do
-    sed_runner "/\"${DEP}==/ s/==.*\"/==${NEXT_SHORT_TAG_PEP440}.*\"/g" ${FILE}
+    sed_runner "/\"${DEP}\(-cu[[:digit:]]\{2\}\)\{0,1\}==/ s/==.*\"/==${NEXT_SHORT_TAG_PEP440}.*\"/g" ${FILE}
   done
 done
 
