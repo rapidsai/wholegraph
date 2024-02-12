@@ -18,12 +18,13 @@ import pylibwholegraph.binding.wholememory_binding as wmb
 from .comm import set_world_info, get_global_communicator, get_local_node_communicator, reset_communicators
 
 
-def init(world_rank: int, world_size: int, local_rank: int, local_size: int):
-    wmb.init(0)
+def init(world_rank: int, world_size: int, local_rank: int, local_size: int, wm_log_level="info"):
+    log_level_dic = {"error": 1, "warn": 2, "info": 3, "debug": 4, "trace": 5}
+    wmb.init(0, log_level_dic[wm_log_level])
     set_world_info(world_rank, world_size, local_rank, local_size)
 
 
-def init_torch_env(world_rank: int, world_size: int, local_rank: int, local_size: int):
+def init_torch_env(world_rank: int, world_size: int, local_rank: int, local_size: int, wm_log_level):
     r"""Init WholeGraph environment for PyTorch.
     :param world_rank: world rank of current process
     :param world_size: world size of all processes
@@ -44,7 +45,8 @@ def init_torch_env(world_rank: int, world_size: int, local_rank: int, local_size
             print("[WARNING] MASTER_PORT not set, resetting to 12335")
         os.environ["MASTER_PORT"] = "12335"
 
-    wmb.init(0)
+    log_level_dic = {"error": 1, "warn": 2, "info": 3, "debug": 4, "trace": 5}
+    wmb.init(0, log_level_dic[wm_log_level])
     torch.set_num_threads(1)
     torch.cuda.set_device(local_rank)
     torch.distributed.init_process_group(backend="nccl", init_method="env://")
@@ -52,7 +54,12 @@ def init_torch_env(world_rank: int, world_size: int, local_rank: int, local_size
 
 
 def init_torch_env_and_create_wm_comm(
-    world_rank: int, world_size: int, local_rank: int, local_size: int , distributed_backend_type="nccl"
+    world_rank: int,
+    world_size: int,
+    local_rank: int,
+    local_size: int,
+    distributed_backend_type="nccl",
+    wm_log_level="info"
 ):
     r"""Init WholeGraph environment for PyTorch and create single communicator for all ranks.
     :param world_rank: world rank of current process
@@ -61,7 +68,7 @@ def init_torch_env_and_create_wm_comm(
     :param local_size: local size
     :return: global and local node Communicator
     """
-    init_torch_env(world_rank, world_size, local_rank, local_size)
+    init_torch_env(world_rank, world_size, local_rank, local_size, wm_log_level)
     global_comm = get_global_communicator(distributed_backend_type)
     local_comm = get_local_node_communicator()
 
