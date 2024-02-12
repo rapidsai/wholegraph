@@ -315,9 +315,8 @@ void nvshmem_gather_temp_get_mem_sort_idx_func(wholememory_comm_t wm_comm,
                                                wholememory_matrix_description_t output_desc,
                                                size_t embedding_entry_count_per_rank,
                                                wholememory_env_func_t* p_env_fns,
-                                               cudaStream_t stream
-
-)
+                                               cudaStream_t stream,
+                                               int gather_sms)
 {
   wm_thrust_allocator thrust_allocator(p_env_fns);
 
@@ -453,6 +452,7 @@ void nvshmem_gather_temp_get_mem_sort_idx_func(wholememory_comm_t wm_comm,
   }
 
   WM_CUDA_CHECK(cudaGetLastError());
+  (void)gather_sms;
 }
 
 template <typename EmbeddingT, typename IndexT, int ALIGNMENT = 1, bool USE_IBGDA = true>
@@ -556,7 +556,8 @@ void nvshmem_scatter_temp_put_mem_sort_idx_func(wholememory_comm_t wm_comm,
                                                 wholememory_matrix_description_t embedding_desc,
                                                 size_t embedding_entry_count_per_rank,
                                                 wholememory_env_func_t* p_env_fns,
-                                                cudaStream_t stream)
+                                                cudaStream_t stream,
+                                                int scatter_sms)
 {
   wm_thrust_allocator thrust_allocator(p_env_fns);
 
@@ -696,6 +697,7 @@ void nvshmem_scatter_temp_put_mem_sort_idx_func(wholememory_comm_t wm_comm,
   }
 
   WM_CUDA_CHECK(cudaGetLastError());
+  (void)scatter_sms;
 }
 
 };  // namespace wholememory_ops

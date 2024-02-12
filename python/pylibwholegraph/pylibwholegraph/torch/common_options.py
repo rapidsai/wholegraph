@@ -9,7 +9,7 @@
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
-# limitations under the License.
+# limitations under the License.ß
 
 from argparse import ArgumentParser
 
@@ -67,6 +67,12 @@ def add_training_options(argparser: ArgumentParser):
         dest="distributed_backend_type",
         default="nccl",
         help="distributed backend type, should be: nccl, nvshmem ",
+    )
+    argparser.add_argument(
+        "--log-level",
+        dest="log_level",
+        default="info",
+        help="Logging level of wholegraph, should be: trace, debug, info, warn, error"
     )
 
 

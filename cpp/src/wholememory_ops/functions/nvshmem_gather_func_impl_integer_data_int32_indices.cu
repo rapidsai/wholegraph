@@ -33,7 +33,8 @@ void nvshmem_gather_integer_int32_temp_func(wholememory_comm_t wm_comm,
                                             wholememory_matrix_description_t output_desc,
                                             size_t embedding_entry_count_per_rank,
                                             wholememory_env_func_t* p_env_fns,
-                                            cudaStream_t stream)
+                                            cudaStream_t stream,
+                                            int gather_sms)
 {
   nvshmem_gather_temp_get_mem_sort_idx_func<EmbeddingT, int32_t, OutputT>(
     wm_comm,
@@ -46,7 +47,8 @@ void nvshmem_gather_integer_int32_temp_func(wholememory_comm_t wm_comm,
     output_desc,
     embedding_entry_count_per_rank,
     p_env_fns,
-    stream);
+    stream,
+    gather_sms);
 }
 
 REGISTER_DISPATCH_TWO_TYPES(NvshmemGatherFuncIntegerInt32,
@@ -65,7 +67,8 @@ wholememory_error_code_t nvshmem_gather_integer_int32_func(
   wholememory_matrix_description_t output_desc,
   size_t embedding_entry_count_per_rank,
   wholememory_env_func_t* p_env_fns,
-  cudaStream_t stream)
+  cudaStream_t stream,
+  int gather_sms)
 {
   try {
     WHOLEMEMORY_CHECK(wholememory_dtype_is_integer_number(embedding_desc.dtype));
@@ -85,7 +88,8 @@ wholememory_error_code_t nvshmem_gather_integer_int32_func(
                        output_desc,
                        embedding_entry_count_per_rank,
                        p_env_fns,
-                       stream);
+                       stream,
+                       gather_sms);
   } catch (const wholememory::cuda_error& wle) {
     WHOLEMEMORY_ERROR("gather CUDA LOGIC Error %s\n", wle.what());
     return WHOLEMEMORY_LOGIC_ERROR;

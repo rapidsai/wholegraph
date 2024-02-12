@@ -31,10 +31,17 @@ wholememory_error_code_t wholememory_gather_mapped(
   void* output,
   wholememory_matrix_description_t output_desc,
   wholememory_env_func_t* p_env_fns,
-  cudaStream_t stream)
+  cudaStream_t stream,
+  int gather_sms)
 {
-  WHOLEMEMORY_RETURN_ON_FAIL(gather_func(
-    wholememory_gref, wholememory_desc, indices, indice_desc, output, output_desc, stream));
+  WHOLEMEMORY_RETURN_ON_FAIL(gather_func(wholememory_gref,
+                                         wholememory_desc,
+                                         indices,
+                                         indice_desc,
+                                         output,
+                                         output_desc,
+                                         stream,
+                                         gather_sms));
   WM_CUDA_DEBUG_SYNC_STREAM(stream);
   return WHOLEMEMORY_SUCCESS;
 }

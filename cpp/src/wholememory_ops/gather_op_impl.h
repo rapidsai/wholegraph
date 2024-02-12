@@ -28,7 +28,8 @@ wholememory_error_code_t wholememory_gather_mapped(
   void* output,
   wholememory_matrix_description_t output_desc,
   wholememory_env_func_t* p_env_fns,
-  cudaStream_t stream);
+  cudaStream_t stream,
+  int gather_sms);
 
 wholememory_error_code_t wholememory_gather_nccl(wholememory_handle_t wholememory_handle,
                                                  wholememory_matrix_description_t wholememory_desc,
@@ -37,7 +38,8 @@ wholememory_error_code_t wholememory_gather_nccl(wholememory_handle_t wholememor
                                                  void* output,
                                                  wholememory_matrix_description_t output_desc,
                                                  wholememory_env_func_t* p_env_fns,
-                                                 cudaStream_t stream);
+                                                 cudaStream_t stream,
+                                                 int gather_sms);
 
 wholememory_error_code_t wholememory_gather_distributed(
   wholememory_handle_t wholememory_handle,
@@ -47,7 +49,8 @@ wholememory_error_code_t wholememory_gather_distributed(
   void* output,
   wholememory_matrix_description_t output_desc,
   wholememory_env_func_t* p_env_fns,
-  cudaStream_t stream);
+  cudaStream_t stream,
+  int gather_sms);
 
 #ifdef WITH_NVSHMEM_SUPPORT
 
@@ -59,6 +62,7 @@ wholememory_error_code_t wholememory_gather_nvshmem(
   void* output,
   wholememory_matrix_description_t output_desc,
   wholememory_env_func_t* p_env_fns,
-  cudaStream_t stream);
+  cudaStream_t stream,
+  int gather_sms);
 #endif
 }  // namespace wholememory_ops
