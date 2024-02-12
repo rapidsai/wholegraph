@@ -33,7 +33,8 @@ void nvshmem_scatter_integer_int32_temp_func(wholememory_comm_t wm_comm,
                                              wholememory_matrix_description_t embedding_desc,
                                              size_t embedding_entry_count_per_rank,
                                              wholememory_env_func_t* p_env_fns,
-                                             cudaStream_t stream)
+                                             cudaStream_t stream,
+                                             int scatter_sms)
 {
   nvshmem_scatter_temp_put_mem_sort_idx_func<InputT, int32_t, EmbeddingT>(
     wm_comm,
@@ -46,7 +47,8 @@ void nvshmem_scatter_integer_int32_temp_func(wholememory_comm_t wm_comm,
     embedding_desc,
     embedding_entry_count_per_rank,
     p_env_fns,
-    stream);
+    stream,
+    scatter_sms);
 }
 
 REGISTER_DISPATCH_TWO_TYPES(NvshmemScatterFuncIntegerInt32,
@@ -65,7 +67,8 @@ wholememory_error_code_t nvshmem_scatter_integer_int32_func(
   wholememory_matrix_description_t embedding_desc,
   size_t embedding_entry_count_per_rank,
   wholememory_env_func_t* p_env_fns,
-  cudaStream_t stream)
+  cudaStream_t stream,
+  int scatter_sms)
 {
   try {
     WHOLEMEMORY_CHECK(wholememory_dtype_is_floating_number(embedding_desc.dtype));
@@ -85,7 +88,8 @@ wholememory_error_code_t nvshmem_scatter_integer_int32_func(
                        embedding_desc,
                        embedding_entry_count_per_rank,
                        p_env_fns,
-                       stream);
+                       stream,
+                       scatter_sms);
   } catch (const wholememory::cuda_error& wle) {
     WHOLEMEMORY_ERROR("scatter CUDA LOGIC Error %s\n", wle.what());
     return WHOLEMEMORY_LOGIC_ERROR;

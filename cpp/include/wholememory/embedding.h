@@ -130,6 +130,7 @@ wholememory_error_code_t wholememory_destroy_embedding_cache_policy(
  * @param memory_location : Memory Location of the underlying WholeMemory
  * @param optimizer : Optimizer to use for training, if don't train embedding, use nullptr
  * @param cache_policy : Cache policy for this embedding, if don't use cache, use nullptr
+ * @param user_defined_sms : User-defined sms number for raw embedding gather/scatter
  * @return : wholememory_error_code_t
  */
 wholememory_error_code_t wholememory_create_embedding(
@@ -139,7 +140,8 @@ wholememory_error_code_t wholememory_create_embedding(
   wholememory_memory_type_t memory_type,
   wholememory_memory_location_t memory_location,
   wholememory_embedding_optimizer_t optimizer,
-  wholememory_embedding_cache_policy_t cache_policy);
+  wholememory_embedding_cache_policy_t cache_policy,
+  int user_defined_sms = -1);
 
 /**
  * Destroy WholeMemory Embedding

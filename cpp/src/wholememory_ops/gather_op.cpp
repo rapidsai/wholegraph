@@ -24,7 +24,8 @@ wholememory_error_code_t wholememory_gather(wholememory_tensor_t wholememory_ten
                                             wholememory_tensor_t indices_tensor,
                                             wholememory_tensor_t output_tensor,
                                             wholememory_env_func_t* p_env_fns,
-                                            void* stream)
+                                            void* stream,
+                                            int gather_sms)
 {
   bool const has_handle                 = wholememory_tensor_has_handle(wholememory_tensor);
   wholememory_memory_type_t memory_type = WHOLEMEMORY_MT_NONE;
@@ -86,7 +87,8 @@ wholememory_error_code_t wholememory_gather(wholememory_tensor_t wholememory_ten
       output,
       output_desc,
       p_env_fns,
-      static_cast<cudaStream_t>(stream));
+      static_cast<cudaStream_t>(stream),
+      gather_sms);
   }
 
   WHOLEMEMORY_EXPECTS_NOTHROW(!has_handle || memory_type == WHOLEMEMORY_MT_CHUNKED ||
@@ -103,5 +105,6 @@ wholememory_error_code_t wholememory_gather(wholememory_tensor_t wholememory_ten
                                                     output,
                                                     output_desc,
                                                     p_env_fns,
-                                                    static_cast<cudaStream_t>(stream));
+                                                    static_cast<cudaStream_t>(stream),
+                                                    gather_sms);
 }

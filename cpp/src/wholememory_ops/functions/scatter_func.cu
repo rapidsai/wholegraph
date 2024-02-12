@@ -27,14 +27,16 @@ wholememory_error_code_t scatter_integer_int32_func(const void* input,
                                                     wholememory_array_description_t indices_desc,
                                                     wholememory_gref_t embedding_gref,
                                                     wholememory_matrix_description_t embedding_desc,
-                                                    cudaStream_t stream);
+                                                    cudaStream_t stream,
+                                                    int scatter_sms);
 wholememory_error_code_t scatter_integer_int64_func(const void* input,
                                                     wholememory_matrix_description_t input_desc,
                                                     void* indices,
                                                     wholememory_array_description_t indices_desc,
                                                     wholememory_gref_t embedding_gref,
                                                     wholememory_matrix_description_t embedding_desc,
-                                                    cudaStream_t stream);
+                                                    cudaStream_t stream,
+                                                    int scatter_sms);
 wholememory_error_code_t scatter_floating_int32_func(
   const void* input,
   wholememory_matrix_description_t input_desc,
@@ -42,7 +44,8 @@ wholememory_error_code_t scatter_floating_int32_func(
   wholememory_array_description_t indices_desc,
   wholememory_gref_t embedding_gref,
   wholememory_matrix_description_t embedding_desc,
-  cudaStream_t stream);
+  cudaStream_t stream,
+  int scatter_sms);
 wholememory_error_code_t scatter_floating_int64_func(
   const void* input,
   wholememory_matrix_description_t input_desc,
@@ -50,7 +53,8 @@ wholememory_error_code_t scatter_floating_int64_func(
   wholememory_array_description_t indices_desc,
   wholememory_gref_t embedding_gref,
   wholememory_matrix_description_t embedding_desc,
-  cudaStream_t stream);
+  cudaStream_t stream,
+  int scatter_sms);
 
 wholememory_error_code_t scatter_func(const void* input,
                                       wholememory_matrix_description_t input_desc,
@@ -58,7 +62,8 @@ wholememory_error_code_t scatter_func(const void* input,
                                       wholememory_array_description_t indices_desc,
                                       wholememory_gref_t embedding_gref,
                                       wholememory_matrix_description_t embedding_desc,
-                                      cudaStream_t stream)
+                                      cudaStream_t stream,
+                                      int scatter_sms)
 {
   try {
     bool embedding_is_float = wholememory_dtype_is_floating_number(embedding_desc.dtype);
@@ -76,7 +81,8 @@ wholememory_error_code_t scatter_func(const void* input,
                                                wholememory_array_description_t,
                                                wholememory_gref_t,
                                                wholememory_matrix_description_t,
-                                               cudaStream_t) = nullptr;
+                                               cudaStream_t,
+                                               int) = nullptr;
     if (embedding_is_float) {
       if (indices_desc.dtype == WHOLEMEMORY_DT_INT) {
         p_scatter_func = scatter_floating_int32_func;
@@ -90,8 +96,14 @@ wholememory_error_code_t scatter_func(const void* input,
         p_scatter_func = scatter_integer_int64_func;
       }
     }
-    return p_scatter_func(
-      input, input_desc, indices, indices_desc, embedding_gref, embedding_desc, stream);
+    return p_scatter_func(input,
+                          input_desc,
+                          indices,
+                          indices_desc,
+                          embedding_gref,
+                          embedding_desc,
+                          stream,
+                          scatter_sms);
   } catch (const wholememory::cuda_error& wle) {
     WHOLEMEMORY_ERROR("scatter CUDA LOGIC Error %s\n", wle.what());
     return WHOLEMEMORY_LOGIC_ERROR;

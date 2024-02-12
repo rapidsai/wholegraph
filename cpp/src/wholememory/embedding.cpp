@@ -403,6 +403,21 @@ wholememory_error_code_t embedding_base::destroy_optimizer_states() noexcept
   return WHOLEMEMORY_SUCCESS;
 }
 
+wholememory_error_code_t embedding_base::set_gather_sms(int sms) noexcept
+{
+  if (sms != -1) {
+    if (sms <= 0) {
+      WHOLEMEMORY_WARN("Illegal SM number for gather/scatter! Will use default size.");
+      sms = -1;
+    } else if (sms > 1568) {
+      WHOLEMEMORY_WARN("SM number for gather/scatter is too large! Will use default size.");
+      sms = -1;
+    }
+  }
+  gather_sms_ = sms;
+  return WHOLEMEMORY_SUCCESS;
+}
+
 void embedding_base::deallocate() noexcept
 {
   if (optimizer != nullptr) {
@@ -477,7 +492,7 @@ wholememory_error_code_t noncached_embedding::gather(wholememory_tensor_t indice
                                                      cudaStream_t stream) noexcept
 {
   WHOLEMEMORY_RETURN_ON_FAIL(
-    wholememory_gather(allocated_embedding, indices, output, p_env_fns, stream));
+    wholememory_gather(allocated_embedding, indices, output, p_env_fns, stream, gather_sms_));
   return WHOLEMEMORY_SUCCESS;
 }
 
@@ -845,7 +860,8 @@ wholememory_error_code_t wholememory_create_embedding(
   wholememory_memory_type_t memory_type,
   wholememory_memory_location_t memory_location,
   wholememory_embedding_optimizer_t optimizer,
-  wholememory_embedding_cache_policy_t cache_policy)
+  wholememory_embedding_cache_policy_t cache_policy,
+  int user_defined_sms)
 {
   wholememory_matrix_description_t embedding_matrix_description;
   if (!wholememory_convert_tensor_desc_to_matrix(&embedding_matrix_description,
@@ -909,10 +925,9 @@ wholememory_error_code_t wholememory_create_embedding(
   } else {
     embedding_impl_ptr = new wholememory::noncached_embedding();
   }
-
   WHOLEMEMORY_RETURN_ON_FAIL(embedding_impl_ptr->allocate(
     &embedding_matrix_description, comm, memory_type, memory_location, cache_policy, optimizer));
-
+  embedding_impl_ptr->set_gather_sms(user_defined_sms);
   *wholememory_embedding = static_cast<wholememory_embedding_t>(embedding_impl_ptr);
   return WHOLEMEMORY_SUCCESS;
 }

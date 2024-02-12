@@ -30,13 +30,15 @@ extern "C" {
  * @param output_tensor : output tensor to gather to, should NOT be WholeMemoryTensor
  * @param p_env_fns : pointers to environment functions.
  * @param stream : cudaStream_t to use.
+ * @param gather_sms : the number of stream multiprocessor used in gather kernel
  * @return : wholememory_error_code_t
  */
 wholememory_error_code_t wholememory_gather(wholememory_tensor_t wholememory_tensor,
                                             wholememory_tensor_t indices_tensor,
                                             wholememory_tensor_t output_tensor,
                                             wholememory_env_func_t* p_env_fns,
-                                            void* stream);
+                                            void* stream,
+                                            int gather_sms = -1);
 
 /**
  * Scatter Op
@@ -45,13 +47,15 @@ wholememory_error_code_t wholememory_gather(wholememory_tensor_t wholememory_ten
  * @param wholememory_tensor : WholeMemory Tensor of embedding table.
  * @param p_env_fns : pointers to environment functions.
  * @param stream : cudaStream_t to use.
+ * @param scatter_sms : the number of stream multiprocessor used in scatter kernel
  * @return : wholememory_error_code_t
  */
 wholememory_error_code_t wholememory_scatter(wholememory_tensor_t input_tensor,
                                              wholememory_tensor_t indices_tensor,
                                              wholememory_tensor_t wholememory_tensor,
                                              wholememory_env_func_t* p_env_fns,
-                                             void* stream);
+                                             void* stream,
+                                             int scatter_sms = -1);
 
 /**
  * Just a test function,
