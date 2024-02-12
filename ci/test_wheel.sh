@@ -27,8 +27,9 @@ rapids-logger "Installing PyTorch"
 rapids-retry python -m pip install --pre torch --index-url ${INDEX_URL}
 rapids-retry python -m pip install pytest pytest-forked numpy
 rapids-logger "pytest pylibwholegraph"
+cd python/pylibwholegraph/pylibwholegraph/tests
 python -m pytest \
   --cache-clear \
   --forked \
   --import-mode=append \
-  python/pylibwholegraph/pylibwholegraph
+  .
