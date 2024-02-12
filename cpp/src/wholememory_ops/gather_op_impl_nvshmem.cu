@@ -55,7 +55,8 @@ wholememory_error_code_t nvshmem_gather_floating_int32_func(
   wholememory_matrix_description_t output_desc,
   size_t embedding_entry_count_per_rank,
   wholememory_env_func_t* p_env_fns,
-  cudaStream_t stream);
+  cudaStream_t stream,
+  int gather_sms);
 wholememory_error_code_t nvshmem_gather_floating_int64_func(
   wholememory_comm_t wm_comm,
   wholememory_nvshmem_ref_t embeding_nvshmem_ptr,
@@ -67,7 +68,8 @@ wholememory_error_code_t nvshmem_gather_floating_int64_func(
   wholememory_matrix_description_t output_desc,
   size_t embedding_entry_count_per_rank,
   wholememory_env_func_t* p_env_fns,
-  cudaStream_t stream);
+  cudaStream_t stream,
+  int gather_sms);
 
 wholememory_error_code_t nvshmem_gather_integer_int64_func(
   wholememory_comm_t wm_comm,
@@ -80,7 +82,8 @@ wholememory_error_code_t nvshmem_gather_integer_int64_func(
   wholememory_matrix_description_t output_desc,
   size_t embedding_entry_count_per_rank,
   wholememory_env_func_t* p_env_fns,
-  cudaStream_t stream);
+  cudaStream_t stream,
+  int gather_sms);
 wholememory_error_code_t nvshmem_gather_integer_int32_func(
   wholememory_comm_t wm_comm,
   wholememory_nvshmem_ref_t embeding_nvshmem_ptr,
@@ -92,7 +95,8 @@ wholememory_error_code_t nvshmem_gather_integer_int32_func(
   wholememory_matrix_description_t output_desc,
   size_t embedding_entry_count_per_rank,
   wholememory_env_func_t* p_env_fns,
-  cudaStream_t stream);
+  cudaStream_t stream,
+  int gather_sms);
 
 wholememory_error_code_t wholememory_gather_nvshmem(
   wholememory_handle_t wholememory_handle,
@@ -102,7 +106,8 @@ wholememory_error_code_t wholememory_gather_nvshmem(
   void* output,
   wholememory_matrix_description_t output_desc,
   wholememory_env_func_t* p_env_fns,
-  cudaStream_t stream)
+  cudaStream_t stream,
+  int gather_sms)
 {
   try {
     bool embedding_is_float = wholememory_dtype_is_floating_number(wholememory_desc.dtype);
@@ -158,7 +163,8 @@ wholememory_error_code_t wholememory_gather_nvshmem(
                                                       wholememory_matrix_description_t,
                                                       size_t,
                                                       wholememory_env_func_t*,
-                                                      cudaStream_t) = nullptr;
+                                                      cudaStream_t,
+                                                      int) = nullptr;
 
     if (embedding_is_float) {
       if (indice_desc.dtype == WHOLEMEMORY_DT_INT) {
@@ -183,7 +189,8 @@ wholememory_error_code_t wholememory_gather_nvshmem(
                                      output_desc,
                                      embedding_entry_count_per_rank,
                                      p_env_fns,
-                                     stream);
+                                     stream,
+                                     gather_sms);
     // ungistre
     WM_CUDA_CHECK(cudaStreamSynchronize(stream));
     if (nvshmemx_buffer_unregister(temp_output_ptr) != 0) {

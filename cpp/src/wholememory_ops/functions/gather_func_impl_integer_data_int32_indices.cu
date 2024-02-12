@@ -29,10 +29,11 @@ void gather_integer_int32_temp_func(wholememory_gref_t embedding_gref,
                                     int64_t indice_count,
                                     void* output,
                                     wholememory_matrix_description_t output_desc,
-                                    cudaStream_t stream)
+                                    cudaStream_t stream,
+                                    int gather_sms)
 {
   gather_temp_func<EmbeddingT, int32_t, OutputT>(
-    embedding_gref, embedding_desc, indices, indice_count, output, output_desc, stream);
+    embedding_gref, embedding_desc, indices, indice_count, output, output_desc, stream, gather_sms);
 }
 
 REGISTER_DISPATCH_TWO_TYPES(GatherFuncIntegerInt32,
@@ -46,7 +47,8 @@ wholememory_error_code_t gather_integer_int32_func(wholememory_gref_t embedding_
                                                    wholememory_array_description_t indices_desc,
                                                    void* output,
                                                    wholememory_matrix_description_t output_desc,
-                                                   cudaStream_t stream)
+                                                   cudaStream_t stream,
+                                                   int gather_sms)
 {
   try {
     WHOLEMEMORY_CHECK(wholememory_dtype_is_integer_number(embedding_desc.dtype));
@@ -63,7 +65,8 @@ wholememory_error_code_t gather_integer_int32_func(wholememory_gref_t embedding_
       indices_desc.size,
       output,
       output_desc,
-      stream);
+      stream,
+      gather_sms);
   } catch (const wholememory::cuda_error& wle) {
     WHOLEMEMORY_ERROR("gather CUDA LOGIC Error %s\n", wle.what());
     return WHOLEMEMORY_LOGIC_ERROR;

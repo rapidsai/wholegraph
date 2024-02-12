@@ -26,28 +26,32 @@ wholememory_error_code_t gather_integer_int32_func(wholememory_gref_t embedding_
                                                    wholememory_array_description_t indices_desc,
                                                    void* output,
                                                    wholememory_matrix_description_t output_desc,
-                                                   cudaStream_t stream);
+                                                   cudaStream_t stream,
+                                                   int gather_sms);
 wholememory_error_code_t gather_integer_int64_func(wholememory_gref_t embedding_gref,
                                                    wholememory_matrix_description_t embedding_desc,
                                                    void* indices,
                                                    wholememory_array_description_t indices_desc,
                                                    void* output,
                                                    wholememory_matrix_description_t output_desc,
-                                                   cudaStream_t stream);
+                                                   cudaStream_t stream,
+                                                   int gather_sms);
 wholememory_error_code_t gather_floating_int32_func(wholememory_gref_t embedding_gref,
                                                     wholememory_matrix_description_t embedding_desc,
                                                     void* indices,
                                                     wholememory_array_description_t indices_desc,
                                                     void* output,
                                                     wholememory_matrix_description_t output_desc,
-                                                    cudaStream_t stream);
+                                                    cudaStream_t stream,
+                                                    int gather_sms);
 wholememory_error_code_t gather_floating_int64_func(wholememory_gref_t embedding_gref,
                                                     wholememory_matrix_description_t embedding_desc,
                                                     void* indices,
                                                     wholememory_array_description_t indices_desc,
                                                     void* output,
                                                     wholememory_matrix_description_t output_desc,
-                                                    cudaStream_t stream);
+                                                    cudaStream_t stream,
+                                                    int gather_sms);
 
 wholememory_error_code_t gather_func(wholememory_gref_t embedding_gref,
                                      wholememory_matrix_description_t embedding_desc,
@@ -55,7 +59,8 @@ wholememory_error_code_t gather_func(wholememory_gref_t embedding_gref,
                                      wholememory_array_description_t indices_desc,
                                      void* output,
                                      wholememory_matrix_description_t output_desc,
-                                     cudaStream_t stream)
+                                     cudaStream_t stream,
+                                     int gather_sms)
 {
   try {
     bool embedding_is_float = wholememory_dtype_is_floating_number(embedding_desc.dtype);
@@ -73,7 +78,8 @@ wholememory_error_code_t gather_func(wholememory_gref_t embedding_gref,
                                               wholememory_array_description_t,
                                               void*,
                                               wholememory_matrix_description_t,
-                                              cudaStream_t) = nullptr;
+                                              cudaStream_t,
+                                              int) = nullptr;
     if (embedding_is_float) {
       if (indices_desc.dtype == WHOLEMEMORY_DT_INT) {
         p_gather_func = gather_floating_int32_func;
@@ -87,8 +93,14 @@ wholememory_error_code_t gather_func(wholememory_gref_t embedding_gref,
         p_gather_func = gather_integer_int64_func;
       }
     }
-    return p_gather_func(
-      embedding_gref, embedding_desc, indices, indices_desc, output, output_desc, stream);
+    return p_gather_func(embedding_gref,
+                         embedding_desc,
+                         indices,
+                         indices_desc,
+                         output,
+                         output_desc,
+                         stream,
+                         gather_sms);
   } catch (const wholememory::cuda_error& rle) {
     return WHOLEMEMORY_LOGIC_ERROR;
   } catch (const wholememory::logic_error& le) {
