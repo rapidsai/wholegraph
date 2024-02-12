@@ -1,3 +1,28 @@
+# wholegraph 24.02.00 (12 Feb 2024)
+
+## 🐛 Bug Fixes
+
+- Revert &quot;Exclude tests from builds ([#127)&quot; (#130](https://github.com/rapidsai/wholegraph/pull/127)&quot; (#130)) [@raydouglass](https://github.com/raydouglass)
+- Exclude tests from builds ([#127](https://github.com/rapidsai/wholegraph/pull/127)) [@vyasr](https://github.com/vyasr)
+- fix a bug for embedding optimizer, which leads to undefined behavior ([#108](https://github.com/rapidsai/wholegraph/pull/108)) [@linhu-nv](https://github.com/linhu-nv)
+- fix inferencesample option ([#107](https://github.com/rapidsai/wholegraph/pull/107)) [@chuangz0](https://github.com/chuangz0)
+
+## 🚀 New Features
+
+- allow users to control gather/scatter sms ([#124](https://github.com/rapidsai/wholegraph/pull/124)) [@linhu-nv](https://github.com/linhu-nv)
+
+## 🛠️ Improvements
+
+- Logging level ([#123](https://github.com/rapidsai/wholegraph/pull/123)) [@linhu-nv](https://github.com/linhu-nv)
+- Fix pip dependencies ([#118](https://github.com/rapidsai/wholegraph/pull/118)) [@trxcllnt](https://github.com/trxcllnt)
+- Remove usages of rapids-env-update ([#117](https://github.com/rapidsai/wholegraph/pull/117)) [@KyleFromNVIDIA](https://github.com/KyleFromNVIDIA)
+- refactor CUDA versions in dependencies.yaml ([#115](https://github.com/rapidsai/wholegraph/pull/115)) [@jameslamb](https://github.com/jameslamb)
+- Don&#39;t overwrite wholegraph_ROOT if provided ([#114](https://github.com/rapidsai/wholegraph/pull/114)) [@vyasr](https://github.com/vyasr)
+- added Direct IO support for WholeMemory loading ([#113](https://github.com/rapidsai/wholegraph/pull/113)) [@dongxuy04](https://github.com/dongxuy04)
+- Align versions for cudnn, clang-tools, cython, and doxygen with the rest of RAPIDS. ([#112](https://github.com/rapidsai/wholegraph/pull/112)) [@bdice](https://github.com/bdice)
+- Reset WholeGraph communicators during the finalize call ([#111](https://github.com/rapidsai/wholegraph/pull/111)) [@chang-l](https://github.com/chang-l)
+- Forward-merge branch-23.12 to branch-24.02 ([#102](https://github.com/rapidsai/wholegraph/pull/102)) [@bdice](https://github.com/bdice)
+
 # wholegraph 23.12.00 (6 Dec 2023)
 
 ## 🐛 Bug Fixes
