@@ -71,7 +71,7 @@ cdef extern from "wholememory/wholememory.h":
         WHOLEMEMORY_DB_NONE                 "WHOLEMEMORY_DB_NONE"
         WHOLEMEMORY_DB_NCCL                 "WHOLEMEMORY_DB_NCCL"
         WHOLEMEMORY_DB_NVSHMEM              "WHOLEMEMORY_DB_NVSHMEM"
-    cdef wholememory_error_code_t wholememory_init(unsigned int flags)
+    cdef wholememory_error_code_t wholememory_init(unsigned int flags, unsigned int wm_log_level)
 
     cdef wholememory_error_code_t wholememory_finalize()
 
@@ -607,7 +607,8 @@ cdef extern from "wholememory/embedding.h":
             wholememory_memory_type_t memory_type,
             wholememory_memory_location_t memory_location,
             wholememory_embedding_optimizer_t optimizer,
-            wholememory_embedding_cache_policy_t cache_policy)
+            wholememory_embedding_cache_policy_t cache_policy,
+            int user_defined_sms)
 
     cdef wholememory_error_code_t wholememory_destroy_embedding(
             wholememory_embedding_t wholememory_embedding)
@@ -770,7 +771,8 @@ cdef class PyWholeMemoryEmbedding:
                          WholeMemoryMemoryType memory_type,
                          WholeMemoryMemoryLocation memory_location,
                          WholeMemoryOptimizer optimizer,
-                         WholeMemoryCachePolicy cache_policy):
+                         WholeMemoryCachePolicy cache_policy,
+                         int user_defined_sms):
         self.memory_type = <wholememory_memory_type_t> <int> memory_type
         self.memory_location = <wholememory_memory_location_t> <int> memory_location
         check_wholememory_error_code(wholememory_create_embedding(&self.wm_embedding,
@@ -779,7 +781,8 @@ cdef class PyWholeMemoryEmbedding:
                                                                   self.memory_type,
                                                                   self.memory_location,
                                                                   optimizer.wm_optimizer,
-                                                                  cache_policy.cache_policy))
+                                                                  cache_policy.cache_policy,
+                                                                  user_defined_sms))
 
     def destroy_embedding(self):
         check_wholememory_error_code(wholememory_destroy_embedding(self.wm_embedding))
@@ -824,14 +827,16 @@ def create_embedding(PyWholeMemoryTensorDescription tensor_desc,
                      WholeMemoryMemoryType memory_type,
                      WholeMemoryMemoryLocation memory_location,
                      WholeMemoryOptimizer optimizer,
-                     WholeMemoryCachePolicy cache_policy):
+                     WholeMemoryCachePolicy cache_policy,
+                     int user_defined_sms):
     wm_embedding = PyWholeMemoryEmbedding()
     wm_embedding.create_embedding(tensor_desc,
                                   comm,
                                   memory_type,
                                   memory_location,
                                   optimizer,
-                                  cache_policy)
+                                  cache_policy,
+                                  user_defined_sms)
     return wm_embedding
 
 cpdef void EmbeddingGatherForward(PyWholeMemoryEmbedding wm_embedding,
@@ -981,8 +986,8 @@ cdef class PyWholeMemoryUniqueID:
     def __dlpack_device__(self):
         return (kDLCPU, 0)
 
-def init(unsigned int flags):
-    check_wholememory_error_code(wholememory_init(flags))
+def init(unsigned int flags, unsigned int wm_log_level = 3):
+    check_wholememory_error_code(wholememory_init(flags, wm_log_level))
 
 def finalize():
     check_wholememory_error_code(wholememory_finalize())

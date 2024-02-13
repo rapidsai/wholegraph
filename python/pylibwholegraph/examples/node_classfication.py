@@ -130,7 +130,8 @@ def main_func():
         wgth.get_world_size(),
         wgth.get_local_rank(),
         wgth.get_local_size(),
-        args.distributed_backend_type
+        args.distributed_backend_type,
+        args.log_level
     )
 
     if args.use_cpp_ext:

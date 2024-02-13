@@ -316,7 +316,8 @@ void gather_temp_func(wholememory_gref_t embedding_gref,
                       int64_t indice_count,
                       void* output,
                       wholememory_matrix_description_t output_desc,
-                      cudaStream_t stream)
+                      cudaStream_t stream,
+                      int gather_sms)
 {
   WHOLEMEMORY_EXPECTS(output_desc.sizes[0] == indice_count,
                       "gather_func, output shape[0]=%ld, but indice_count=%ld",
@@ -365,6 +366,7 @@ void gather_temp_func(wholememory_gref_t embedding_gref,
   }
   int block_size  = 1024;
   int block_count = indice_count > 1568 ? 1568 : indice_count;
+  if (gather_sms != -1) block_count = gather_sms;
   kernel_fn<<<block_count, block_size, 0, stream>>>(embedding_gref,
                                                     embedding_desc,
                                                     static_cast<const IndexT*>(indices),
@@ -461,7 +463,8 @@ void scatter_temp_func(const void* input,
                        int64_t indice_count,
                        wholememory_gref_t embedding_gref,
                        wholememory_matrix_description_t embedding_desc,
-                       cudaStream_t stream)
+                       cudaStream_t stream,
+                       int scatter_sms)
 {
   WHOLEMEMORY_EXPECTS(input_desc.sizes[0] == indice_count,
                       "scatter_func, input shape[0]=%ld, but indice_count=%ld",
@@ -506,6 +509,7 @@ void scatter_temp_func(const void* input,
   }
   int block_size  = 256;
   int block_count = indice_count > 1568 ? 1568 : indice_count;
+  if (scatter_sms != -1) block_count = scatter_sms;
   kernel_fn<<<block_count, block_size, 0, stream>>>(static_cast<const InputT*>(input),
                                                     input_desc,
                                                     static_cast<const IndexT*>(indices),

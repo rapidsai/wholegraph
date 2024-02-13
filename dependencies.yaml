@@ -8,7 +8,8 @@ files:
     includes:
       - checks
       - build
-      - cudatoolkit
+      - cuda
+      - cuda_version
       - py_version
       - run
       - test_python
@@ -17,11 +18,11 @@ files:
   test_cpp:
     output: none
     includes:
-      - cudatoolkit
+      - cuda_version
   test_python:
     output: none
     includes:
-      - cudatoolkit
+      - cuda_version
       - py_version
       - test_python
   checks:
@@ -32,7 +33,7 @@ files:
   docs:
     output: none
     includes:
-      - cudatoolkit
+      - cuda_version
       - docs
       - py_version
       - pytorch_cpu
@@ -40,7 +41,8 @@ files:
     output: none
     includes:
       - build
-      - cudatoolkit
+      - cuda
+      - cuda_version
       - py_version
       - run
       - pytorch_cpu
@@ -68,12 +70,12 @@ dependencies:
         packages:
           - c-compiler
           - cmake>=3.26.4
-          - cudnn=8.4
+          - cudnn=8.8
           - cxx-compiler
-          - cython
-          - doxygen=1.8.20
-          - libraft-headers==23.12.*
-          - librmm==23.12.*
+          - cython>=3.0.0
+          - &doxygen doxygen==1.9.1
+          - libraft-headers==24.2.*
+          - librmm==24.2.*
           - nanobind>=0.2.0
           - nccl
           - scikit-build
@@ -108,38 +110,60 @@ dependencies:
             packages:
               - nvcc_linux-aarch64=11.8
           - matrix:
-              cuda: "12.0"
+              cuda: "12.*"
             packages:
-              - cuda-version=12.0
               - cuda-nvcc
-  cudatoolkit:
+  cuda_version:
     specific:
       - output_types: conda
         matrices:
           - matrix:
               cuda: "11.2"
             packages:
-              - cudatoolkit=11.2
-              - cuda-nvtx=11.4 # oldest available
+              - cuda-version=11.2
           - matrix:
               cuda: "11.4"
             packages:
-              - cudatoolkit=11.4
-              - cuda-nvtx=11.4 # oldest available
+              - cuda-version=11.4
           - matrix:
               cuda: "11.5"
             packages:
-              - cudatoolkit=11.5
-              - cuda-nvtx=11.5
+              - cuda-version=11.5
           - matrix:
               cuda: "11.8"
             packages:
-              - cudatoolkit=11.8
-              - cuda-nvtx=11.8
+              - cuda-version=11.8
           - matrix:
               cuda: "12.0"
             packages:
               - cuda-version=12.0
+  cuda:
+    specific:
+      - output_types: conda
+        matrices:
+          - matrix:
+              cuda: "11.2"
+            packages:
+              - cudatoolkit
+              - cuda-nvtx=11.4 # oldest available
+          - matrix:
+              cuda: "11.4"
+            packages:
+              - cudatoolkit
+              - cuda-nvtx=11.4 # oldest available
+          - matrix:
+              cuda: "11.5"
+            packages:
+              - cudatoolkit
+              - cuda-nvtx=11.5
+          - matrix:
+              cuda: "11.8"
+            packages:
+              - cudatoolkit
+              - cuda-nvtx=11.8
+          - matrix:
+              cuda: "12.*"
+            packages:
               - cuda-cudart-dev
               - cuda-nvtx
   checks:
@@ -168,21 +192,23 @@ dependencies:
         packages: []
   test_cpp:
     common:
-      - output_types: [conda, requirements]
+      - output_types: [conda]
         packages:
           - nccl
   test_python:
     common:
-      - output_types: [conda, requirements]
+      - output_types: [conda]
         packages:
           - c-compiler
           - cxx-compiler
+          - nccl
+      - output_types: [conda, requirements]
+        packages:
           - ninja
           - numpy>=1.17
           - pytest
           - pytest-forked
           - pytest-xdist
-          - nccl
     specific:
       - output_types: [conda, requirements]
         matrices:
@@ -249,10 +275,12 @@ dependencies:
             packages:
   docs:
     common:
+      - output_types: [conda]
+        packages:
+          - *doxygen
       - output_types: [conda, requirements]
         packages:
           - breathe
-          - doxygen=1.8.20
           - graphviz
           - ipython
           - ipykernel
@@ -274,15 +302,17 @@ dependencies:
     common:
       - output_types: [conda, requirements]
         packages:
-          - clangxx=16.0.0
-          - clang-tools=16.0.0
           - gitpython
+      - output_types: conda
+        packages:
+          - clangxx==16.0.6
+          - clang-tools==16.0.6
   python_build_wheel:
     common:
       - output_types: [pyproject]
         packages:
           - cmake>=3.26.4
-          - cython>=0.29,<0.30
+          - cython>=3.0.0
           - ninja
           - setuptools
           - scikit-build>=0.13.1

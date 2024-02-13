@@ -29,10 +29,11 @@ void scatter_integer_int64_temp_func(const void* input,
                                      int64_t indice_count,
                                      wholememory_gref_t embedding_gref,
                                      wholememory_matrix_description_t embedding_desc,
-                                     cudaStream_t stream)
+                                     cudaStream_t stream,
+                                     int scatter_sms)
 {
   scatter_temp_func<InputT, int64_t, EmbeddingT>(
-    input, input_desc, indices, indice_count, embedding_gref, embedding_desc, stream);
+    input, input_desc, indices, indice_count, embedding_gref, embedding_desc, stream, scatter_sms);
 }
 
 REGISTER_DISPATCH_TWO_TYPES(ScatterFuncIntegerInt64,
@@ -46,7 +47,8 @@ wholememory_error_code_t scatter_integer_int64_func(const void* input,
                                                     wholememory_array_description_t indices_desc,
                                                     wholememory_gref_t embedding_gref,
                                                     wholememory_matrix_description_t embedding_desc,
-                                                    cudaStream_t stream)
+                                                    cudaStream_t stream,
+                                                    int scatter_sms)
 {
   try {
     WHOLEMEMORY_CHECK(wholememory_dtype_is_integer_number(embedding_desc.dtype));
@@ -63,7 +65,8 @@ wholememory_error_code_t scatter_integer_int64_func(const void* input,
       indices_desc.size,
       embedding_gref,
       embedding_desc,
-      stream);
+      stream,
+      scatter_sms);
   } catch (const wholememory::cuda_error& wle) {
     WHOLEMEMORY_ERROR("scatter CUDA LOGIC Error %s\n", wle.what());
     return WHOLEMEMORY_LOGIC_ERROR;

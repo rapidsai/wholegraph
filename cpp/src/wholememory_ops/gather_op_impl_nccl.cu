@@ -38,7 +38,8 @@ wholememory_error_code_t wholememory_gather_nccl(wholememory_handle_t wholememor
                                                  void* output,
                                                  wholememory_matrix_description_t output_desc,
                                                  wholememory_env_func_t* p_env_fns,
-                                                 cudaStream_t stream)
+                                                 cudaStream_t stream,
+                                                 int gather_sms)
 {
   try {
     if (wholememory_desc.storage_offset < 0 ||
@@ -122,7 +123,8 @@ wholememory_error_code_t wholememory_gather_nccl(wholememory_handle_t wholememor
                                            dev_recv_indice_desc,
                                            dev_local_gather_buffer_ptr,
                                            local_gather_buffer_desc,
-                                           stream));
+                                           stream,
+                                           gather_sms));
     // AllToAllV for embeddings
     size_t embedding_size =
       wholememory_desc.sizes[1] * wholememory_dtype_get_element_size(output_desc.dtype);
@@ -152,7 +154,7 @@ wholememory_error_code_t wholememory_gather_nccl(wholememory_handle_t wholememor
                                             output_desc,
                                             stream));
     WM_CUDA_CHECK(cudaGetLastError());
-    WM_CUDA_CHECK(cudaStreamSynchronize(stream));
+    // WM_CUDA_CHECK(cudaStreamSynchronize(stream));
   } catch (wholememory::cuda_error& wce) {
     WHOLEMEMORY_ERROR("CUDA logic Error %s\n", wce.what());
     return WHOLEMEMORY_CUDA_ERROR;
@@ -174,7 +176,8 @@ wholememory_error_code_t wholememory_gather_distributed(
   void* output,
   wholememory_matrix_description_t output_desc,
   wholememory_env_func_t* p_env_fns,
-  cudaStream_t stream)
+  cudaStream_t stream,
+  int gather_sms)
 {
 #ifdef WITH_NVSHMEM_SUPPORT
 
@@ -186,7 +189,8 @@ wholememory_error_code_t wholememory_gather_distributed(
                                       output,
                                       output_desc,
                                       p_env_fns,
-                                      stream);
+                                      stream,
+                                      gather_sms);
   }
 #endif
   return wholememory_gather_nccl(wholememory_handle,
@@ -196,6 +200,7 @@ wholememory_error_code_t wholememory_gather_distributed(
                                  output,
                                  output_desc,
                                  p_env_fns,
-                                 stream);
+                                 stream,
+                                 gather_sms);
 }
 }  // namespace wholememory_ops

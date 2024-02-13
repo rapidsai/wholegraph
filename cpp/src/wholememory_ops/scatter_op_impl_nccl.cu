@@ -38,7 +38,8 @@ wholememory_error_code_t wholememory_scatter_nccl(void* input,
                                                   wholememory_handle_t wholememory_handle,
                                                   wholememory_matrix_description_t wholememory_desc,
                                                   wholememory_env_func_t* p_env_fns,
-                                                  cudaStream_t stream)
+                                                  cudaStream_t stream,
+                                                  int scatter_sms)
 {
   try {
     if (wholememory_desc.storage_offset < 0 ||
@@ -148,7 +149,8 @@ wholememory_error_code_t wholememory_scatter_nccl(void* input,
                                             recv_indices_desc,
                                             local_fake_embedding_gref,
                                             wholememory_desc,
-                                            stream));
+                                            stream,
+                                            scatter_sms));
     WM_CUDA_CHECK(cudaGetLastError());
     WM_CUDA_CHECK(cudaStreamSynchronize(stream));
   } catch (wholememory::cuda_error& wce) {
@@ -173,7 +175,8 @@ wholememory_error_code_t wholememory_scatter_distributed(
   wholememory_handle_t wholememory_handle,
   wholememory_matrix_description_t wholememory_desc,
   wholememory_env_func_t* p_env_fns,
-  cudaStream_t stream)
+  cudaStream_t stream,
+  int scatter_sms)
 {
 #ifdef WITH_NVSHMEM_SUPPORT
   if (wholememory_get_distributed_backend(wholememory_handle) == WHOLEMEMORY_DB_NVSHMEM) {
@@ -184,7 +187,8 @@ wholememory_error_code_t wholememory_scatter_distributed(
                                        wholememory_handle,
                                        wholememory_desc,
                                        p_env_fns,
-                                       stream);
+                                       stream,
+                                       scatter_sms);
   }
 #endif
 
@@ -195,6 +199,7 @@ wholememory_error_code_t wholememory_scatter_distributed(
                                   wholememory_handle,
                                   wholememory_desc,
                                   p_env_fns,
-                                  stream);
+                                  stream,
+                                  scatter_sms);
 }
 }  // namespace wholememory_ops
