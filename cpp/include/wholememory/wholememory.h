@@ -80,13 +80,23 @@ enum wholememory_distributed_backend_t {
   WHOLEMEMORY_DB_NCCL,
   WHOLEMEMORY_DB_NVSHMEM,
 };
+
+enum LogLevel {
+  LEVEL_FATAL = 0, /*!< Fatal */
+  LEVEL_ERROR,     /*!< Error */
+  LEVEL_WARN,      /*!< Warn */
+  LEVEL_INFO,      /*!< Info */
+  LEVEL_DEBUG,     /*!< Debug*/
+  LEVEL_TRACE      /*!< Trace */
+};
+
 /**
  * Initialize WholeMemory library
  * @param flags : reserved should be 0
  * @param wm_log_level : wholememory log level, the default level is "info"
  * @return : wholememory_error_code_t
  */
-wholememory_error_code_t wholememory_init(unsigned int flags, unsigned int wm_log_level = 3);
+wholememory_error_code_t wholememory_init(unsigned int flags, LogLevel log_level = LEVEL_INFO);
 
 /**
  * Finalize WholeMemory library
