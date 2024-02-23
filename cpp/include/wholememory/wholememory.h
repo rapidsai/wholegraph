@@ -93,7 +93,7 @@ enum LogLevel {
 /**
  * Initialize WholeMemory library
  * @param flags : reserved should be 0
- * @param wm_log_level : wholememory log level, the default level is "info"
+ * @param log_level : wholememory log level, the default level is "info"
  * @return : wholememory_error_code_t
  */
 wholememory_error_code_t wholememory_init(unsigned int flags, LogLevel log_level = LEVEL_INFO);
