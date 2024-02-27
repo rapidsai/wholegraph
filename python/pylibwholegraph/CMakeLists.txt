@@ -31,9 +31,6 @@ include(rapids-cmake)
 include(rapids-cuda)
 include(rapids-cpm)
 
-if (NOT DEFINED CMAKE_CUDA_ARCHITECTURES)
-    set(CMAKE_CUDA_ARCHITECTURES 70-real 80-real 86)
-endif ()
 rapids_cuda_init_architectures(PYLIBWHOLEGRAPH)
 
 project(PYLIBWHOLEGRAPH VERSION ${WHOLEGRAPH_VERSION} LANGUAGES C CXX CUDA)
