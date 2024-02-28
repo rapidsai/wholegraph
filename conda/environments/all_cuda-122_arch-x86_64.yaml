@@ -31,7 +31,7 @@ dependencies:
 - nbsphinx
 - nccl
 - ninja
-- numpy>=1.17
+- numpy>=1.23
 - numpydoc
 - pre-commit
 - pydata-sphinx-theme
