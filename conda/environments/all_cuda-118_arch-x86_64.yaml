@@ -24,13 +24,13 @@ dependencies:
 - graphviz
 - ipykernel
 - ipython
-- libraft-headers==24.2.*
-- librmm==24.2.*
+- libraft-headers==24.4.*
+- librmm==24.4.*
 - nanobind>=0.2.0
 - nbsphinx
 - nccl
 - ninja
-- numpy>=1.17
+- numpy>=1.23
 - numpydoc
 - nvcc_linux-64=11.8
 - pre-commit
@@ -38,7 +38,7 @@ dependencies:
 - pytest
 - pytest-forked
 - pytest-xdist
-- python>=3.9,<3.11
+- python>=3.9,<3.12
 - pytorch-cuda=11.8
 - pytorch=2.0.0
 - recommonmark
