@@ -71,7 +71,16 @@ cdef extern from "wholememory/wholememory.h":
         WHOLEMEMORY_DB_NONE                 "WHOLEMEMORY_DB_NONE"
         WHOLEMEMORY_DB_NCCL                 "WHOLEMEMORY_DB_NCCL"
         WHOLEMEMORY_DB_NVSHMEM              "WHOLEMEMORY_DB_NVSHMEM"
-    cdef wholememory_error_code_t wholememory_init(unsigned int flags, unsigned int wm_log_level)
+
+    ctypedef enum LogLevel:
+        LEVEL_FATAL                         "LEVEL_FATAL"
+        LEVEL_ERROR                         "LEVEL_ERROR"
+        LEVEL_WARN                          "LEVEL_WARN"
+        LEVEL_INFO                          "LEVEL_INFO"
+        LEVEL_DEBUG                         "LEVEL_DEBUG"
+        LEVEL_TRACE                         "LEVEL_TRACE"
+
+    cdef wholememory_error_code_t wholememory_init(unsigned int flags, LogLevel log_level)
 
     cdef wholememory_error_code_t wholememory_finalize()
 
@@ -203,6 +212,14 @@ cpdef enum WholeMemoryDistributedBackend:
     DbNone = WHOLEMEMORY_DB_NONE
     DbNCCL = WHOLEMEMORY_DB_NCCL
     DbNVSHMEM = WHOLEMEMORY_DB_NVSHMEM
+
+cpdef enum WholeMemoryLogLevel:
+    LevFatal = LEVEL_FATAL
+    LevError = LEVEL_ERROR
+    LevWarn = LEVEL_WARN
+    LevInfo = LEVEL_INFO
+    LevDebug = LEVEL_DEBUG
+    LevTrace = LEVEL_TRACE
 
 cdef check_wholememory_error_code(wholememory_error_code_t err):
     cdef WholeMemoryErrorCode err_code = int(err)
@@ -986,8 +1003,8 @@ cdef class PyWholeMemoryUniqueID:
     def __dlpack_device__(self):
         return (kDLCPU, 0)
 
-def init(unsigned int flags, unsigned int wm_log_level = 3):
-    check_wholememory_error_code(wholememory_init(flags, wm_log_level))
+def init(unsigned int flags, LogLevel log_level = LEVEL_INFO):
+    check_wholememory_error_code(wholememory_init(flags, log_level))
 
 def finalize():
     check_wholememory_error_code(wholememory_finalize())

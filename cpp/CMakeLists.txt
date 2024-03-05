@@ -33,9 +33,6 @@ include(rapids-cuda)
 include(rapids-export)
 include(rapids-find)
 
-if (NOT DEFINED CMAKE_CUDA_ARCHITECTURES)
-    set(CMAKE_CUDA_ARCHITECTURES 70-real 80-real 86)
-endif ()
 rapids_cuda_init_architectures(WHOLEGRAPH)
 
 project(WHOLEGRAPH VERSION ${WHOLEGRAPH_VERSION} LANGUAGES CXX CUDA)
