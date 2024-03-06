@@ -99,6 +99,24 @@ def str_to_wmb_wholememory_memory_type(str_wmb_type: str):
         )
 
 
+def str_to_wmb_wholememory_log_level(str_log_level: str):
+    if str_log_level == "error":
+        return wmb.WholeMemoryLogLevel.LevError
+    elif str_log_level == "warn":
+        return wmb.WholeMemoryLogLevel.LevWarn
+    elif str_log_level == "info":
+        return wmb.WholeMemoryLogLevel.LevInfo
+    elif str_log_level == "debug":
+        return wmb.WholeMemoryLogLevel.LevDebug
+    elif str_log_level == "trace":
+        return wmb.WholeMemoryLogLevel.LevTrace
+    else:
+        raise ValueError(
+            "WholeMemory log level %s not supported, shold be (error, warn, info, debug, trace)"
+            % (str_log_level,)
+        )
+
+
 def str_to_wmb_wholememory_location(str_wmb_location: str):
     if str_wmb_location == "cuda":
         return wmb.WholeMemoryMemoryLocation.MlDevice
