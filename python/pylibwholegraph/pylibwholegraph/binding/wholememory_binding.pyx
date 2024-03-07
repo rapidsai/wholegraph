@@ -832,7 +832,8 @@ def create_embedding(PyWholeMemoryTensorDescription tensor_desc,
                      WholeMemoryMemoryLocation memory_location,
                      WholeMemoryOptimizer optimizer,
                      WholeMemoryCachePolicy cache_policy,
-                     int user_defined_sms):
+                     int user_defined_sms,
+                     int round_robin_size):
     wm_embedding = PyWholeMemoryEmbedding()
     wm_embedding.create_embedding(tensor_desc,
                                   comm,
@@ -840,7 +841,8 @@ def create_embedding(PyWholeMemoryTensorDescription tensor_desc,
                                   memory_location,
                                   optimizer,
                                   cache_policy,
-                                  user_defined_sms)
+                                  user_defined_sms,
+                                  round_robin_size)
     return wm_embedding
 
 cpdef void EmbeddingGatherForward(PyWholeMemoryEmbedding wm_embedding,

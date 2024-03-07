@@ -157,6 +157,7 @@ static void read_file_list_to_local_memory_roundrobin(char* local_ptr,
     size_t left_entry_count = round_robin_size > local_entry_count - total_read_entry
                                 ? local_entry_count - total_read_entry
                                 : round_robin_size;
+    total_read_entry += left_entry_count;
     while (left_entry_count > 0) {
       size_t read_entry_count = std::min(left_entry_count, buffer_entry_count);
       int ret                 = fread(file_read_buffer.data(), entry_size, read_entry_count, fp);
@@ -189,7 +190,6 @@ static void read_file_list_to_local_memory_roundrobin(char* local_ptr,
       local_write_ptr += read_entry_count * memory_entry_stride;
       left_entry_count -= read_entry_count;
     }
-    total_read_entry += left_entry_count;
     if (total_read_entry > local_entry_count) {
       WHOLEMEMORY_ERROR(
         "file read error from rank %d, should read %lu entries, infact %lu entries.",
@@ -200,7 +200,7 @@ static void read_file_list_to_local_memory_roundrobin(char* local_ptr,
     } else if (total_read_entry == local_entry_count) {
       break;
     }
-    size_t skip_entry_count = wm_world_size * round_robin_size;
+    size_t skip_entry_count = (wm_world_size - 1) * round_robin_size;
     size_t skip_bytes       = skip_entry_count * entry_size;
     if (fseeko(fp, skip_bytes, SEEK_CUR) != 0) {
       WHOLEMEMORY_ERROR("File %s seek to %ld failed.", file_names[0], skip_bytes);
