@@ -98,6 +98,14 @@ def add_common_graph_options(argparser: ArgumentParser):
         default=100,
         help="default feature dim",
     )
+    argparser.add_argument(
+        "--round-robin-size",
+        type=int,
+        dest="round_robin_size",
+        default=0,
+        help="continuous embedding number for each rank whiling using round-robin sharding strategy, \
+                0 for not using round-robin shard strategy",
+    )
 
 
 def add_common_model_options(argparser: ArgumentParser):

@@ -81,7 +81,9 @@ class embedding_base : public wholememory_embedding_ {
   virtual wholememory_error_code_t drop_all_caches(cudaStream_t stream) const noexcept;
 
   wholememory::embedding_cache_base* get_cache_ptr() const { return cache_ptr_; }
+  wholememory_error_code_t set_shard_method(int round_robin_size) noexcept;
   wholememory_error_code_t set_gather_sms(int sms) noexcept;
+  int get_round_robin_size() noexcept;
 
  protected:
   virtual wholememory_error_code_t init_optimizer_states() noexcept
@@ -98,6 +100,7 @@ class embedding_base : public wholememory_embedding_ {
   wholememory_error_code_t destroy_optimizer_states() noexcept;
 
   int gather_sms_;
+  int round_robin_size_;
   wholememory_comm_t raw_embedding_comm_                           = nullptr;
   wholememory::embedding_cache_base* cache_ptr_                    = nullptr;
   wholememory::embedding_optimizer_impl_base* optimizer_impl_base_ = nullptr;

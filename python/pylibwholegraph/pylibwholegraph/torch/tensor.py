@@ -152,7 +152,7 @@ class WholeMemoryTensor(object):
                 torch.cuda.current_device(),
             )
 
-    def from_filelist(self, filelist: Union[List[str], str]):
+    def from_filelist(self, filelist: Union[List[str], str], round_robin_size: int = 0):
         """
         Load WholeMemory Tensor from file lists
         :param filelist: file list to load from
@@ -160,7 +160,7 @@ class WholeMemoryTensor(object):
         """
         if isinstance(filelist, str):
             filelist = [filelist]
-        self.wmb_tensor.from_filelist(filelist)
+        self.wmb_tensor.from_filelist(filelist, round_robin_size)
 
     def from_file_prefix(self, file_prefix: str, part_count: Union[int, None] = None):
         """

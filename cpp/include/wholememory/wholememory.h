@@ -350,6 +350,7 @@ int fork_get_device_count();
  * @param file_entry_size : entry size in file, should be less than or equal to memory_entry_size
  * @param file_names : file names, all binary files will be logically concatenated and loaded.
  * @param file_count : number of files.
+ * @param round_robin_size : continuous embedding number for a rank under round-robin shard mode
  * @return : wholememory_error_code_t
  */
 wholememory_error_code_t wholememory_load_from_file(wholememory_handle_t wholememory_handle,
@@ -357,7 +358,8 @@ wholememory_error_code_t wholememory_load_from_file(wholememory_handle_t wholeme
                                                     size_t memory_entry_size,
                                                     size_t file_entry_size,
                                                     const char** file_names,
-                                                    int file_count);
+                                                    int file_count,
+                                                    int round_robin_size);
 
 /**
  * Store local WholeMemory to file, this should be called by all ranks, with different

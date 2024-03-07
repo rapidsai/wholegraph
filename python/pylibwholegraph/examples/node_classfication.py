@@ -219,6 +219,7 @@ def main_func():
             args.feat_dim,
             optimizer=wm_optimizer,
             cache_policy=cache_policy,
+            round_robin_size=args.round_robin_size,
         )
     else:
         node_feat_wm_embedding = wgth.create_embedding(
@@ -230,6 +231,7 @@ def main_func():
             optimizer=wm_optimizer,
             cache_policy=cache_policy,
             random_init=True,
+            round_robin_size=args.round_robin_size,
         )
     wgth.set_framework(args.framework)
     model = wgth.HomoGNNModel(graph_structure, node_feat_wm_embedding, args)

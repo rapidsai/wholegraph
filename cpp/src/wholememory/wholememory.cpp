@@ -224,10 +224,16 @@ wholememory_error_code_t wholememory_load_from_file(wholememory_handle_t wholeme
                                                     size_t memory_entry_size,
                                                     size_t file_entry_size,
                                                     const char** file_names,
-                                                    int file_count)
+                                                    int file_count,
+                                                    int round_robin_size)
 {
-  return wholememory::load_file_to_handle(
-    wholememory_handle, memory_offset, memory_entry_size, file_entry_size, file_names, file_count);
+  return wholememory::load_file_to_handle(wholememory_handle,
+                                          memory_offset,
+                                          memory_entry_size,
+                                          file_entry_size,
+                                          file_names,
+                                          file_count,
+                                          round_robin_size);
 }
 
 wholememory_error_code_t wholememory_store_to_file(wholememory_handle_t wholememory_handle,

@@ -407,6 +407,7 @@ def create_embedding(
     cache_policy: Union[WholeMemoryCachePolicy, None] = None,
     random_init: bool = False,
     gather_sms: int = -1,
+    round_robin_size=0,
 ):
     r"""
     Create embedding
@@ -449,6 +450,7 @@ def create_embedding(
             wmb_optimizer,
             wmb_cache_policy,
             user_defined_sms=gather_sms,
+            round_robin_size=round_robin_size,
         ),
         optimizer,
         cache_policy,
@@ -476,6 +478,7 @@ def create_embedding_from_filelist(
     optimizer: Union[WholeMemoryOptimizer, None] = None,
     cache_policy: Union[WholeMemoryCachePolicy, None] = None,
     gather_sms: int = -1,
+    round_robin_size: int = 0,
 ):
     r"""
     Create embedding from file list
@@ -505,6 +508,13 @@ def create_embedding_from_filelist(
             )
         total_file_size += file_size
     total_entry_count = total_file_size // file_entry_size
+    if round_robin_size != 0:
+        rank_0_extra_entry = total_entry_count % (comm.get_size() * round_robin_size)
+        if rank_0_extra_entry > round_robin_size:
+            rank_0_extra_entry = round_robin_size
+        rank_0_entry_size = total_entry_count // (comm.get_size() * round_robin_size) * round_robin_size
+        rank_0_entry_size += rank_0_extra_entry
+        total_entry_count = rank_0_entry_size * comm.get_size()
     wm_embedding = create_embedding(
         comm,
         memory_type,
@@ -513,9 +523,10 @@ def create_embedding_from_filelist(
         [total_entry_count, last_dim_size],
         optimizer=optimizer,
         cache_policy=cache_policy,
-        gather_sms=gather_sms
+        gather_sms=gather_sms,
+        round_robin_size=round_robin_size,
     )
-    wm_embedding.get_embedding_tensor().from_filelist(filelist)
+    wm_embedding.get_embedding_tensor().from_filelist(filelist, round_robin_size)
     return wm_embedding
 
 

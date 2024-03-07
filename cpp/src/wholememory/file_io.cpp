@@ -90,6 +90,144 @@ static size_t get_handle_partial_size(size_t handle_size,
  * @param file_sizes : Sizes of each file.
  * @param suggested_buffer_size : Suggested buffer size to read.
  * @param wm_rank : WholeMemory rank.
+ * @param wm_work_size : WholeMemory world size.
+ * @param round_robin_size : continuous embedding size of a rank using round robin shard stratehy.
+ */
+static void read_file_list_to_local_memory_roundrobin(char* local_ptr,
+                                                      size_t local_size,
+                                                      size_t local_offset,
+                                                      size_t entry_size,
+                                                      size_t memory_entry_stride,
+                                                      size_t memory_offset,
+                                                      int file_count,
+                                                      const char** file_names,
+                                                      const std::vector<size_t>& file_sizes,
+                                                      size_t suggested_buffer_size,
+                                                      int wm_rank,
+                                                      int wm_world_size,
+                                                      int round_robin_size)
+{
+  size_t buffer_size;
+  size_t buffer_entry_count = 1;
+  if (suggested_buffer_size < entry_size) {
+    buffer_size = entry_size;
+  } else {
+    buffer_entry_count = suggested_buffer_size / entry_size;
+    buffer_size        = buffer_entry_count * entry_size;
+  }
+  std::vector<char> file_read_buffer(buffer_size);
+
+  if (file_count > 1 || file_count <= 0)
+    WHOLEMEMORY_ERROR("round-robin sharding strategy only supports reading one file now.");
+  if (memory_offset >= memory_entry_stride)
+    WHOLEMEMORY_ERROR("memory offset %lu should be less than memory entry stride %lu.",
+                      memory_offset,
+                      memory_entry_stride);
+  size_t file_entry_count = file_sizes[0] / entry_size;
+  if (round_robin_size <= 0 || round_robin_size > file_entry_count / wm_world_size)
+    WHOLEMEMORY_ERROR("illegal round_robin_size.");
+
+  size_t local_entry_memory_start_index = wm_rank * round_robin_size;
+  size_t local_entry_file_start_index =
+    local_entry_memory_start_index - memory_offset / memory_entry_stride;
+
+  size_t extra_entry       = file_entry_count % (wm_world_size * round_robin_size);
+  size_t local_extra_entry = (extra_entry > (wm_rank + 1) * round_robin_size)
+                               ? round_robin_size
+                               : extra_entry - wm_rank * round_robin_size;
+  local_extra_entry        = local_extra_entry > 0 ? local_extra_entry : 0;
+  size_t local_entry_count =
+    file_entry_count / (wm_world_size * round_robin_size) * round_robin_size;
+  local_entry_count += local_extra_entry;
+
+  char* local_write_ptr = local_ptr + memory_offset % memory_entry_stride;
+  if (wm_rank == 0) {
+    local_entry_count -= memory_offset / memory_entry_stride;
+    local_write_ptr += (memory_offset / memory_entry_stride) * memory_entry_stride;
+  }
+  // TODO: support reading multiple files
+  FILE* fp = fopen(file_names[0], "rb");
+  if (fp == nullptr) { WHOLEMEMORY_ERROR("Open file %s for read failed.", file_names[0]); }
+  size_t file_read_start_offset = local_entry_file_start_index * entry_size;
+  if (fseeko(fp, file_read_start_offset, SEEK_SET) != 0) {
+    WHOLEMEMORY_ERROR("File %s seek to %ld failed.", file_names[0], file_read_start_offset);
+  }
+  size_t total_read_entry = 0;
+  while (total_read_entry < local_entry_count) {
+    size_t left_entry_count = round_robin_size > local_entry_count - total_read_entry
+                                ? local_entry_count - total_read_entry
+                                : round_robin_size;
+    while (left_entry_count > 0) {
+      size_t read_entry_count = std::min(left_entry_count, buffer_entry_count);
+      int ret                 = fread(file_read_buffer.data(), entry_size, read_entry_count, fp);
+      if (ret != read_entry_count) {
+        WHOLEMEMORY_ERROR(
+          "File %s line %d: reading from file %s, read_entry_count=%ld, entry_size=%ld, "
+          "returned %d, error=%s\n",
+          __FILE__,
+          __LINE__,
+          file_names[0],
+          read_entry_count,
+          entry_size,
+          ret,
+          strerror(errno));
+      }
+      if (entry_size != memory_entry_stride) {
+        WM_CUDA_CHECK(cudaMemcpy2D(local_write_ptr,
+                                   memory_entry_stride,
+                                   file_read_buffer.data(),
+                                   entry_size,
+                                   entry_size,
+                                   read_entry_count,
+                                   cudaMemcpyDefault));
+      } else {
+        WM_CUDA_CHECK(cudaMemcpy(local_write_ptr,
+                                 file_read_buffer.data(),
+                                 read_entry_count * entry_size,
+                                 cudaMemcpyDefault));
+      }
+      local_write_ptr += read_entry_count * memory_entry_stride;
+      left_entry_count -= read_entry_count;
+    }
+    total_read_entry += left_entry_count;
+    if (total_read_entry > local_entry_count) {
+      WHOLEMEMORY_ERROR(
+        "file read error from rank %d, should read %lu entries, infact %lu entries.",
+        wm_rank,
+        local_entry_count,
+        total_read_entry);
+      break;
+    } else if (total_read_entry == local_entry_count) {
+      break;
+    }
+    size_t skip_entry_count = wm_world_size * round_robin_size;
+    size_t skip_bytes       = skip_entry_count * entry_size;
+    if (fseeko(fp, skip_bytes, SEEK_CUR) != 0) {
+      WHOLEMEMORY_ERROR("File %s seek to %ld failed.", file_names[0], skip_bytes);
+    }
+  }
+  fclose(fp);
+  WHOLEMEMORY_INFO("Rank=%d done reading total %ld bytes from needed files.",
+                   wm_rank,
+                   total_read_entry * entry_size);
+}
+
+/*!
+ * Read from file list to local memory of WholeMemory. File list are binary files, which are
+ * considered to be concatenated together. All ranks in WholeMemory will read the files in parallel
+ * and load each part into local memory of each rank.
+ * @param local_ptr : Pointer to local memory of WholeMemory
+ * @param local_size : Local memory size
+ * @param local_offset : The offset of local memory in WholeMemory.
+ * @param entry_size : The entry size of each data entry.
+ * @param memory_entry_stride : The stride of each entry in WholeMemory
+ * @param memory_offset : The start offset to place the read data. Should be in range [0,
+ * memory_entry_stride)
+ * @param file_count : Total file count of the file list
+ * @param file_names : File names of the file list.
+ * @param file_sizes : Sizes of each file.
+ * @param suggested_buffer_size : Suggested buffer size to read.
+ * @param wm_rank : WholeMemory rank.
  */
 static void read_file_list_to_local_memory(char* local_ptr,
                                            size_t local_size,
@@ -390,7 +528,8 @@ wholememory_error_code_t load_file_to_handle(wholememory_handle_t wholememory_ha
                                              size_t memory_entry_stride,
                                              size_t entry_size,
                                              const char** file_names,
-                                             int file_count) noexcept
+                                             int file_count,
+                                             int round_robin_size) noexcept
 {
   if (entry_size <= 0 || memory_offset < 0 || memory_offset + entry_size > memory_entry_stride) {
     WHOLEMEMORY_ERROR("Invalid input, entry_size=%ld, memory_entry_stride=%ld, memory_offset=%ld",
@@ -460,9 +599,10 @@ wholememory_error_code_t load_file_to_handle(wholememory_handle_t wholememory_ha
     WHOLEMEMORY_CHECK(wholememory_get_communicator(&wm_comm, wholememory_handle) ==
                       WHOLEMEMORY_SUCCESS);
 
-    int wm_rank;
+    int wm_rank, wm_world_size;
     WHOLEMEMORY_CHECK(wholememory_communicator_get_rank(&wm_rank, wm_comm) == WHOLEMEMORY_SUCCESS);
-
+    WHOLEMEMORY_CHECK(wholememory_communicator_get_size(&wm_world_size, wm_comm) ==
+                      WHOLEMEMORY_SUCCESS);
     WM_COMM_CHECK_ALL_SAME(wm_comm, file_count);
 
     for (int i = 0; i < file_count; i++) {
@@ -503,7 +643,21 @@ wholememory_error_code_t load_file_to_handle(wholememory_handle_t wholememory_ha
     if (directio_env_var != nullptr && directio_env_var[0] == '1' && directio_env_var[1] == '\0') {
       use_direct_io = true;
     }
-    if (!use_direct_io) {
+    if (round_robin_size != 0) {
+      read_file_list_to_local_memory_roundrobin(local_ptr,
+                                                local_size,
+                                                local_offset,
+                                                entry_size,
+                                                memory_entry_stride,
+                                                memory_offset,
+                                                file_count,
+                                                file_names,
+                                                file_sizes,
+                                                suggested_buffer_size,
+                                                wm_rank,
+                                                wm_world_size,
+                                                round_robin_size);
+    } else if (!use_direct_io) {
       read_file_list_to_local_memory(local_ptr,
                                      local_size,
                                      local_offset,
