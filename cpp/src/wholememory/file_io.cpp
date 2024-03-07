@@ -117,8 +117,6 @@ static void read_file_list_to_local_memory_roundrobin(char* local_ptr,
   }
   std::vector<char> file_read_buffer(buffer_size);
 
-  if (file_count > 1 || file_count <= 0)
-    WHOLEMEMORY_ERROR("round-robin sharding strategy only supports reading one file now.");
   if (memory_offset >= memory_entry_stride)
     WHOLEMEMORY_ERROR("memory offset %lu should be less than memory entry stride %lu.",
                       memory_offset,
@@ -145,21 +143,46 @@ static void read_file_list_to_local_memory_roundrobin(char* local_ptr,
     local_entry_count -= memory_offset / memory_entry_stride;
     local_write_ptr += (memory_offset / memory_entry_stride) * memory_entry_stride;
   }
-  // TODO: support reading multiple files
-  FILE* fp = fopen(file_names[0], "rb");
-  if (fp == nullptr) { WHOLEMEMORY_ERROR("Open file %s for read failed.", file_names[0]); }
-  size_t file_read_start_offset = local_entry_file_start_index * entry_size;
-  if (fseeko(fp, file_read_start_offset, SEEK_SET) != 0) {
-    WHOLEMEMORY_ERROR("File %s seek to %ld failed.", file_names[0], file_read_start_offset);
-  }
+
   size_t total_read_entry = 0;
-  while (total_read_entry < local_entry_count) {
-    size_t left_entry_count = round_robin_size > local_entry_count - total_read_entry
-                                ? local_entry_count - total_read_entry
-                                : round_robin_size;
-    total_read_entry += left_entry_count;
-    while (left_entry_count > 0) {
-      size_t read_entry_count = std::min(left_entry_count, buffer_entry_count);
+
+  size_t remained_entry_gap          = local_entry_file_start_index;
+  size_t left_continuous_entry_count = round_robin_size > local_entry_count - total_read_entry
+                                         ? local_entry_count - total_read_entry
+                                         : round_robin_size;
+  for (int i = 0; i < file_count; i++) {
+    size_t file_entry_count = file_sizes[i] / entry_size;
+    if (file_entry_count <= remained_entry_gap) {
+      remained_entry_gap -= file_entry_count;
+      continue;
+    }
+    //$open file get fp
+    FILE* fp = fopen(file_names[i], "rb");
+    if (fp == nullptr) { WHOLEMEMORY_ERROR("Open file %s for read failed.", file_names[i]); }
+    //$fseek by remain_entry_gap
+    size_t file_read_start_offset = remained_entry_gap * entry_size;
+    if (fseeko(fp, file_read_start_offset, SEEK_SET) != 0) {
+      WHOLEMEMORY_ERROR("File %s seek to %ld failed.", file_names[i], file_read_start_offset);
+    }
+    size_t cur_file_read_entry_count;
+    if (file_entry_count - remained_entry_gap >= left_continuous_entry_count) {
+      cur_file_read_entry_count   = left_continuous_entry_count;
+      left_continuous_entry_count = round_robin_size > local_entry_count - total_read_entry
+                                      ? local_entry_count - total_read_entry
+                                      : round_robin_size;
+      remained_entry_gap          = (wm_world_size - 1) * round_robin_size -
+                           (file_entry_count - remained_entry_gap - cur_file_read_entry_count);
+    } else {
+      cur_file_read_entry_count = file_entry_count - remained_entry_gap;
+      left_continuous_entry_count -= cur_file_read_entry_count;
+      remained_entry_gap = 0;
+    }
+
+    total_read_entry += cur_file_read_entry_count;
+    // read cur_file_read_entry_count of embeddings
+
+    while (cur_file_read_entry_count > 0) {
+      size_t read_entry_count = std::min(cur_file_read_entry_count, buffer_entry_count);
       int ret                 = fread(file_read_buffer.data(), entry_size, read_entry_count, fp);
       if (ret != read_entry_count) {
         WHOLEMEMORY_ERROR(
@@ -167,7 +190,7 @@ static void read_file_list_to_local_memory_roundrobin(char* local_ptr,
           "returned %d, error=%s\n",
           __FILE__,
           __LINE__,
-          file_names[0],
+          file_names[i],
           read_entry_count,
           entry_size,
           ret,
@@ -188,8 +211,17 @@ static void read_file_list_to_local_memory_roundrobin(char* local_ptr,
                                  cudaMemcpyDefault));
       }
       local_write_ptr += read_entry_count * memory_entry_stride;
-      left_entry_count -= read_entry_count;
+      cur_file_read_entry_count -= read_entry_count;
     }
+
+    fclose(fp);
+    WHOLEMEMORY_INFO(
+      "Rank=%d done Reading %ld bytes from file %s size=%ld, starting from offset=%ld.",
+      wm_rank,
+      cur_file_read_entry_count * entry_size,
+      file_names[i],
+      file_sizes[i],
+      remained_entry_gap * entry_size);
     if (total_read_entry > local_entry_count) {
       WHOLEMEMORY_ERROR(
         "file read error from rank %d, should read %lu entries, infact %lu entries.",
@@ -200,16 +232,7 @@ static void read_file_list_to_local_memory_roundrobin(char* local_ptr,
     } else if (total_read_entry == local_entry_count) {
       break;
     }
-    size_t skip_entry_count = (wm_world_size - 1) * round_robin_size;
-    size_t skip_bytes       = skip_entry_count * entry_size;
-    if (fseeko(fp, skip_bytes, SEEK_CUR) != 0) {
-      WHOLEMEMORY_ERROR("File %s seek to %ld failed.", file_names[0], skip_bytes);
-    }
   }
-  fclose(fp);
-  WHOLEMEMORY_INFO("Rank=%d done reading total %ld bytes from needed files.",
-                   wm_rank,
-                   total_read_entry * entry_size);
 }
 
 /*!
