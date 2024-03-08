@@ -388,6 +388,255 @@ static void read_file_list_to_local_memory(char* local_ptr,
  * Read from file list to local memory of WholeMemory using DirectIO. Using DirectIO may have better
  * performance by bypassing system cache if it is bottleneck. File list are binary files, which are
  * considered to be concatenated together. All ranks in WholeMemory will read the files in parallel
+ * and load each part into local memory of each rank. Wholememory uses round-robin sharding strategy
+ * here.
+ * @param local_ptr : Pointer to local memory of WholeMemory
+ * @param local_size : Local memory size
+ * @param local_offset : The offset of local memory in WholeMemory.
+ * @param entry_size : The entry size of each data entry.
+ * @param memory_entry_stride : The stride of each entry in WholeMemory
+ * @param memory_offset : The start offset to place the read data. Should be in range [0,
+ * memory_entry_stride)
+ * @param file_count : Total file count of the file list
+ * @param file_names : File names of the file list.
+ * @param file_sizes : Sizes of each file.
+ * @param suggested_buffer_size : Suggested buffer size to read.
+ * @param wm_rank : WholeMemory rank.
+ * @param wm_world_size : WholeMemory world size.
+ * @param round_robin_size : continuous embedding size of a rank using round robin shard stratehy.
+ */
+static void read_file_list_to_local_memory_roundrobin_directio(
+  char* local_ptr,
+  size_t local_size,
+  size_t local_offset,
+  size_t entry_size,
+  size_t memory_entry_stride,
+  size_t memory_offset,
+  int file_count,
+  const char** file_names,
+  const std::vector<size_t>& file_sizes,
+  size_t suggested_buffer_size,
+  int wm_rank,
+  int wm_world_size,
+  int round_robin_size)
+{
+  if (memory_offset + entry_size > memory_entry_stride)
+    WHOLEMEMORY_FAIL_NOTHROW("Direct io mode only support reading all entries.");
+
+  static size_t kAlignSize = 16 * 1024 * 1024;
+  suggested_buffer_size    = round_up_unsafe<size_t>(suggested_buffer_size, kAlignSize);
+
+  char* block_buffer;
+  WHOLEMEMORY_CHECK_NOTHROW(posix_memalign(reinterpret_cast<void**>(&block_buffer),
+                                           kAlignSize,
+                                           suggested_buffer_size) == 0);
+
+  size_t total_file_sizes = 0;
+  for (int i = 0; i < file_count; i++)
+    total_file_sizes += file_sizes[i];
+  size_t total_file_entry_count = total_file_sizes / entry_size;
+  if (round_robin_size <= 0 || round_robin_size > total_file_entry_count / wm_world_size)
+    WHOLEMEMORY_ERROR("illegal round_robin_size.");
+
+  size_t local_entry_memory_start_index = wm_rank * round_robin_size;
+  size_t local_entry_file_start_index =
+    local_entry_memory_start_index - memory_offset / memory_entry_stride;
+
+  size_t extra_entry       = total_file_entry_count % (wm_world_size * round_robin_size);
+  size_t local_extra_entry = (extra_entry > (wm_rank + 1) * round_robin_size)
+                               ? round_robin_size
+                               : extra_entry - wm_rank * round_robin_size;
+  local_extra_entry        = local_extra_entry > 0 ? local_extra_entry : 0;
+  size_t local_entry_count =
+    total_file_entry_count / (wm_world_size * round_robin_size) * round_robin_size;
+  local_entry_count += local_extra_entry;
+
+  char* local_write_ptr = local_ptr + memory_offset % memory_entry_stride;
+  if (wm_rank == 0) {
+    local_entry_count -= memory_offset / memory_entry_stride;
+    local_write_ptr += (memory_offset / memory_entry_stride) * memory_entry_stride;
+  }
+
+  size_t total_read_entry            = 0;
+  size_t next_entry_gap              = local_entry_file_start_index;
+  size_t next_continuous_entry_count = round_robin_size > local_entry_count - total_read_entry
+                                         ? local_entry_count - total_read_entry
+                                         : round_robin_size;
+  size_t read_file_begin_entry_off   = 0;
+  for (int i = 0; i < file_count; i++) {
+    size_t file_entry_count = file_sizes[i] / entry_size;
+    if (file_entry_count <= next_entry_gap) {
+      next_entry_gap -= file_entry_count;
+      continue;
+    }
+
+    auto block_size = StatFileBlockSize(file_names[i]);
+    if (block_size == 0 || block_size == (size_t)-1 || kAlignSize % block_size != 0) {
+      WHOLEMEMORY_FAIL_NOTHROW(
+        "block_size=%ld for file %s, but alignment is %ld", block_size, file_names[i], kAlignSize);
+    }
+    /*if ((round_robin_size * entry_size) % block_size != 0) {
+      WHOLEMEMORY_FAIL_NOTHROW(
+        "per rank round-robin size (%d x %ld) is not mutiple of block_size (%d)for file %d.",
+        round_robin_size,
+        entry_size,
+        block_size,
+        i
+      );
+    }*/
+    size_t buffer_block_count = suggested_buffer_size / block_size;
+    int fd                    = open(file_names[i], O_DIRECT | O_RDONLY);
+    if (fd < 0) { WHOLEMEMORY_FAIL_NOTHROW("Open file %s with direct io failed.", file_names[i]); }
+
+    size_t read_size_from_cur_file = 0;
+    size_t useful_data_bytes_read  = 0;
+    read_file_begin_entry_off      = 0;
+
+    /*|***read_file_begin_entry_off***|***entry_gap***|***cur_file_read_entry_count***|******|*/
+    while (read_file_begin_entry_off < file_entry_count) {
+      if (read_file_begin_entry_off + next_entry_gap >= file_entry_count) {
+        next_entry_gap = (read_file_begin_entry_off + next_entry_gap) - file_entry_count;
+        break;
+      }
+      size_t cur_file_read_entry_count;
+      if (read_file_begin_entry_off + next_entry_gap + next_continuous_entry_count >
+          file_entry_count) {
+        cur_file_read_entry_count = file_entry_count - read_file_begin_entry_off - next_entry_gap;
+      } else {
+        cur_file_read_entry_count = next_continuous_entry_count;
+      }
+
+      // read concerned vars
+      size_t cur_read_entry_start = read_file_begin_entry_off + next_entry_gap;
+      size_t cur_read_byte_start  = (cur_read_entry_start * entry_size) / block_size * block_size;
+      size_t cur_read_byte_end    = (cur_read_entry_start + cur_file_read_entry_count) * entry_size;
+      size_t skip_head_size       = cur_read_entry_start * entry_size - cur_read_byte_start;
+      // write concerned vars
+      char* local_mem_write_entry_for_file =
+        local_write_ptr + total_read_entry * memory_entry_stride;
+      size_t first_mem_entry_offset = 0;
+
+      while (cur_read_byte_start < cur_read_byte_end) {
+        size_t left_size          = cur_read_byte_end - cur_read_byte_start;
+        size_t left_block_count   = div_rounding_up_unsafe(left_size, block_size);
+        size_t read_block_count   = std::min(left_block_count, buffer_block_count);
+        size_t physical_read_size = read_block_count * block_size;
+        // physical_data_bytes_read += physical_read_size;
+        read_size_from_cur_file += physical_read_size;
+
+        ssize_t pread_size = pread64(fd, block_buffer, physical_read_size, cur_read_byte_start);
+        if (pread_size != physical_read_size && cur_read_byte_start + pread_size != file_sizes[i]) {
+          WHOLEMEMORY_FAIL_NOTHROW(
+            "rank=%d, pread_size=%ld, physical_read_size=%ld, file_block_read_offset=%ld, "
+            "file_sizes[i]=%ld, file=%s",
+            wm_rank,
+            pread_size,
+            physical_read_size,
+            cur_read_byte_start,
+            file_sizes[i],
+            file_names[i]);
+        }
+
+        size_t drop_tail_size = 0;
+        if (cur_read_byte_start + physical_read_size > cur_read_byte_end) {
+          drop_tail_size = cur_read_byte_start + physical_read_size - cur_read_byte_end;
+        }
+
+        char* useful_data_ptr   = block_buffer + skip_head_size;
+        size_t useful_data_size = physical_read_size - skip_head_size - drop_tail_size;
+        useful_data_bytes_read += useful_data_size;
+
+        if (first_mem_entry_offset != 0) {
+          size_t entry_left_size = entry_size - first_mem_entry_offset;
+          WM_CUDA_CHECK_NO_THROW(cudaMemcpy(local_mem_write_entry_for_file + first_mem_entry_offset,
+                                            useful_data_ptr,
+                                            entry_left_size,
+                                            cudaMemcpyDefault));
+          local_mem_write_entry_for_file += memory_entry_stride;
+          useful_data_ptr += entry_left_size;
+          useful_data_size -= entry_left_size;
+          entry_left_size = 0;
+        }
+
+        size_t full_entry_count = useful_data_size / entry_size;
+        size_t full_entry_size  = full_entry_count * entry_size;
+
+        if (full_entry_size > 0) {
+          if (entry_size != memory_entry_stride) {
+            WM_CUDA_CHECK(cudaMemcpy2D(local_mem_write_entry_for_file,
+                                       memory_entry_stride,
+                                       useful_data_ptr,
+                                       entry_size,
+                                       entry_size,
+                                       full_entry_count,
+                                       cudaMemcpyDefault));
+          } else {
+            WM_CUDA_CHECK(cudaMemcpy(
+              local_mem_write_entry_for_file, useful_data_ptr, full_entry_size, cudaMemcpyDefault));
+          }
+          local_mem_write_entry_for_file += memory_entry_stride * full_entry_count;
+          useful_data_ptr += full_entry_size;
+          useful_data_size -= full_entry_size;
+        }
+
+        size_t tail_entry_size = useful_data_size % entry_size;
+        if (tail_entry_size != 0) {
+          // process tail
+          WM_CUDA_CHECK_NO_THROW(cudaMemcpy(
+            local_mem_write_entry_for_file, useful_data_ptr, tail_entry_size, cudaMemcpyDefault));
+          first_mem_entry_offset = tail_entry_size;
+        }
+
+        cur_read_byte_start += physical_read_size;
+        skip_head_size = 0;
+      }
+
+      total_read_entry += cur_file_read_entry_count;
+      // read_size_from_cur_file += cur_file_read_entry_count * entry_size;
+      if (read_file_begin_entry_off + next_entry_gap + next_continuous_entry_count >
+          file_entry_count) {
+        read_file_begin_entry_off = file_entry_count;
+        next_continuous_entry_count -= cur_file_read_entry_count;
+        next_entry_gap = 0;
+      } else {
+        read_file_begin_entry_off += cur_file_read_entry_count + next_entry_gap;
+        next_continuous_entry_count = round_robin_size > local_entry_count - total_read_entry
+                                        ? local_entry_count - total_read_entry
+                                        : round_robin_size;
+        next_entry_gap              = (wm_world_size - 1) * round_robin_size;
+      }
+      if (total_read_entry > local_entry_count) {
+        WHOLEMEMORY_ERROR(
+          "file read error from rank %d, should read %lu entries, infact %lu entries.",
+          wm_rank,
+          local_entry_count,
+          total_read_entry);
+        break;
+      } else if (total_read_entry == local_entry_count) {
+        break;
+      }
+    }
+    close(fd);
+    WHOLEMEMORY_INFO(
+      "Rank=%d done Reading useful %ld bytes by totally reading %ld bytes from file %s size=%ld "
+      "using direct IO",
+      wm_rank,
+      useful_data_bytes_read,
+      read_size_from_cur_file,
+      file_names[i],
+      file_sizes[i]);
+    if (total_read_entry == local_entry_count) break;
+  }
+  WHOLEMEMORY_INFO("Rank=%d done Reading %ld entries, infact read %ld entries",
+                   wm_rank,
+                   total_read_entry,
+                   local_entry_count);
+}
+
+/*!
+ * Read from file list to local memory of WholeMemory using DirectIO. Using DirectIO may have better
+ * performance by bypassing system cache if it is bottleneck. File list are binary files, which are
+ * considered to be concatenated together. All ranks in WholeMemory will read the files in parallel
  * and load each part into local memory of each rank.
  * @param local_ptr : Pointer to local memory of WholeMemory
  * @param local_size : Local memory size
@@ -684,8 +933,37 @@ wholememory_error_code_t load_file_to_handle(wholememory_handle_t wholememory_ha
     if (directio_env_var != nullptr && directio_env_var[0] == '1' && directio_env_var[1] == '\0') {
       use_direct_io = true;
     }
-    if (round_robin_size != 0) {
-      read_file_list_to_local_memory_roundrobin(local_ptr,
+    if (!use_direct_io) {
+      if (round_robin_size == 0) {
+        read_file_list_to_local_memory(local_ptr,
+                                       local_size,
+                                       local_offset,
+                                       entry_size,
+                                       memory_entry_stride,
+                                       memory_offset,
+                                       file_count,
+                                       file_names,
+                                       file_sizes,
+                                       suggested_buffer_size,
+                                       wm_rank);
+      } else {
+        read_file_list_to_local_memory_roundrobin(local_ptr,
+                                                  local_size,
+                                                  local_offset,
+                                                  entry_size,
+                                                  memory_entry_stride,
+                                                  memory_offset,
+                                                  file_count,
+                                                  file_names,
+                                                  file_sizes,
+                                                  suggested_buffer_size,
+                                                  wm_rank,
+                                                  wm_world_size,
+                                                  round_robin_size);
+      }
+    } else {
+      if (round_robin_size == 0) {
+        read_file_list_to_local_memory_directio(local_ptr,
                                                 local_size,
                                                 local_offset,
                                                 entry_size,
@@ -695,33 +973,22 @@ wholememory_error_code_t load_file_to_handle(wholememory_handle_t wholememory_ha
                                                 file_names,
                                                 file_sizes,
                                                 suggested_buffer_size,
-                                                wm_rank,
-                                                wm_world_size,
-                                                round_robin_size);
-    } else if (!use_direct_io) {
-      read_file_list_to_local_memory(local_ptr,
-                                     local_size,
-                                     local_offset,
-                                     entry_size,
-                                     memory_entry_stride,
-                                     memory_offset,
-                                     file_count,
-                                     file_names,
-                                     file_sizes,
-                                     suggested_buffer_size,
-                                     wm_rank);
-    } else {
-      read_file_list_to_local_memory_directio(local_ptr,
-                                              local_size,
-                                              local_offset,
-                                              entry_size,
-                                              memory_entry_stride,
-                                              memory_offset,
-                                              file_count,
-                                              file_names,
-                                              file_sizes,
-                                              suggested_buffer_size,
-                                              wm_rank);
+                                                wm_rank);
+      } else {
+        read_file_list_to_local_memory_roundrobin_directio(local_ptr,
+                                                           local_size,
+                                                           local_offset,
+                                                           entry_size,
+                                                           memory_entry_stride,
+                                                           memory_offset,
+                                                           file_count,
+                                                           file_names,
+                                                           file_sizes,
+                                                           suggested_buffer_size,
+                                                           wm_rank,
+                                                           wm_world_size,
+                                                           round_robin_size);
+      }
     }
 
     wm_comm->barrier();
