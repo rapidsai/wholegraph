@@ -213,7 +213,7 @@ dependencies:
       - output_types: [conda, requirements]
         packages:
           - ninja
-          - numpy>=1.23
+          - numpy>=1.23,<2.0a0
           - pytest
           - pytest-forked
           - pytest-xdist
