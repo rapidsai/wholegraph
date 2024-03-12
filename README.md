@@ -7,7 +7,7 @@ It is optimized for NVLink systems like DGX A100 servers.
 By working together with cuGraph, cuGraph-Ops, cuGraph-DGL, cuGraph-PyG,
 and upstream DGL and PyG, it will be easy to build GNN applications.
 
-## Table of content
+## Table of Contents
 - Installation
   - [Getting WholeGraph Packages](https://docs.rapids.ai/api/cugraph/nightly/wholegraph/installation/getting_wholegraph/)
   - [Building from Source](https://docs.rapids.ai/api/cugraph/nightly/wholegraph/installation/source_build/)
