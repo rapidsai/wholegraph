@@ -64,7 +64,6 @@ wholememory_error_code_t storage_index2wm_embedding_index(wholememory_tensor_t i
                                                           int64_t stream_int)
 {
   if (round_robin_size == 0) return WHOLEMEMORY_SUCCESS;
-
   try {
     auto* indice_desc   = wholememory_tensor_get_tensor_description(indices);
     void* indice_ptr    = wholememory_tensor_get_data_pointer(indices);

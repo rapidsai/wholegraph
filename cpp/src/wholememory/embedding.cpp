@@ -421,9 +421,22 @@ wholememory_error_code_t embedding_base::set_gather_sms(int sms) noexcept
 
 int embedding_base::get_round_robin_size() noexcept { return round_robin_size_; }
 
-wholememory_error_code_t embedding_base::set_shard_method(int round_robin_size) noexcept
+wholememory_error_code_t embedding_base::set_shard_method(
+  wholememory_matrix_description_t* embedding_matrix_description,
+  int embedding_world_size,
+  int round_robin_size) noexcept
 {
   round_robin_size_ = round_robin_size;
+  if (round_robin_size != 0) {
+    int64_t total_entry_count  = embedding_matrix_description->sizes[0];
+    int first_rank_extra_entry = total_entry_count % (embedding_world_size * round_robin_size);
+    if (first_rank_extra_entry > round_robin_size) first_rank_extra_entry = round_robin_size;
+    int64_t first_rank_entry_size =
+      total_entry_count / (embedding_world_size * round_robin_size) * round_robin_size;
+    first_rank_entry_size += first_rank_extra_entry;
+    total_entry_count                      = first_rank_entry_size * embedding_world_size;
+    embedding_matrix_description->sizes[0] = total_entry_count;
+  }
   return WHOLEMEMORY_SUCCESS;
 }
 
@@ -935,10 +948,11 @@ wholememory_error_code_t wholememory_create_embedding(
   } else {
     embedding_impl_ptr = new wholememory::noncached_embedding();
   }
+  embedding_impl_ptr->set_shard_method(
+    &embedding_matrix_description, embedding_world_size, round_robin_size);
+  embedding_impl_ptr->set_gather_sms(user_defined_sms);
   WHOLEMEMORY_RETURN_ON_FAIL(embedding_impl_ptr->allocate(
     &embedding_matrix_description, comm, memory_type, memory_location, cache_policy, optimizer));
-  embedding_impl_ptr->set_shard_method(round_robin_size);
-  embedding_impl_ptr->set_gather_sms(user_defined_sms);
   *wholememory_embedding = static_cast<wholememory_embedding_t>(embedding_impl_ptr);
   return WHOLEMEMORY_SUCCESS;
 }
@@ -978,6 +992,10 @@ wholememory_error_code_t wholememory_embedding_gather_gradient_apply(
   int64_t stream_int)
 {
   auto* embedding_impl_ptr = static_cast<wholememory::embedding_base*>(wholememory_embedding);
+  wholememory_ops::storage_index2wm_embedding_index(indices,
+                                                    embedding_impl_ptr->allocated_embedding,
+                                                    embedding_impl_ptr->get_round_robin_size(),
+                                                    stream_int);
   return embedding_impl_ptr->gather_gradient_apply(
     indices, grads, adjust_cache, lr, p_env_fns, (cudaStream_t)stream_int);
 }

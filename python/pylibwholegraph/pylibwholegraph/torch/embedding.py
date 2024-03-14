@@ -508,13 +508,6 @@ def create_embedding_from_filelist(
             )
         total_file_size += file_size
     total_entry_count = total_file_size // file_entry_size
-    if round_robin_size != 0:
-        rank_0_extra_entry = total_entry_count % (comm.get_size() * round_robin_size)
-        if rank_0_extra_entry > round_robin_size:
-            rank_0_extra_entry = round_robin_size
-        rank_0_entry_size = total_entry_count // (comm.get_size() * round_robin_size) * round_robin_size
-        rank_0_entry_size += rank_0_extra_entry
-        total_entry_count = rank_0_entry_size * comm.get_size()
     wm_embedding = create_embedding(
         comm,
         memory_type,
