@@ -1,5 +1,5 @@
 #=============================================================================
-# Copyright (c) 2018-2023, NVIDIA CORPORATION.
+# Copyright (c) 2018-2024, NVIDIA CORPORATION.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
 # limitations under the License.
 #=============================================================================
 
-set(RAPIDS_VERSION "24.04")
+set(RAPIDS_VERSION "24.06")
 set(WHOLEGRAPH_VERSION "${RAPIDS_VERSION}.00")
 
 cmake_minimum_required(VERSION 3.23.1 FATAL_ERROR)

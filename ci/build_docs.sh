@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright (c) 2023, NVIDIA CORPORATION.
+# Copyright (c) 2023-2024, NVIDIA CORPORATION.
 
 set -euo pipefail
 
@@ -22,7 +22,7 @@ rapids-print-env
 rapids-logger "Downloading artifacts from previous jobs"
 
 CPP_CHANNEL=$(rapids-download-conda-from-s3 cpp)
-export RAPIDS_VERSION_NUMBER="24.04"
+export RAPIDS_VERSION_NUMBER="24.06"
 export RAPIDS_DOCS_DIR="$(mktemp -d)"
 
 rapids-mamba-retry install \
