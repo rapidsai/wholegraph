@@ -133,11 +133,11 @@ static void read_file_list_to_local_memory_roundrobin(char* local_ptr,
   size_t local_entry_file_start_index =
     local_entry_memory_start_index - memory_offset / memory_entry_stride;
 
-  int extra_entry          = total_file_entry_count % (wm_world_size * round_robin_size);
-  size_t local_extra_entry = (extra_entry > (wm_rank + 1) * round_robin_size)
-                               ? round_robin_size
-                               : extra_entry - wm_rank * round_robin_size;
-  local_extra_entry        = local_extra_entry > 0 ? local_extra_entry : 0;
+  int extra_entry       = total_file_entry_count % (wm_world_size * round_robin_size);
+  int local_extra_entry = (extra_entry > (wm_rank + 1) * round_robin_size)
+                            ? round_robin_size
+                            : extra_entry - wm_rank * round_robin_size;
+  local_extra_entry     = local_extra_entry > 0 ? local_extra_entry : 0;
   size_t local_entry_count =
     total_file_entry_count / (wm_world_size * round_robin_size) * round_robin_size;
   local_entry_count += local_extra_entry;
@@ -442,11 +442,11 @@ static void read_file_list_to_local_memory_roundrobin_directio(
   size_t local_entry_file_start_index =
     local_entry_memory_start_index - memory_offset / memory_entry_stride;
 
-  int extra_entry          = total_file_entry_count % (wm_world_size * round_robin_size);
-  size_t local_extra_entry = (extra_entry > (wm_rank + 1) * round_robin_size)
-                               ? round_robin_size
-                               : extra_entry - wm_rank * round_robin_size;
-  local_extra_entry        = local_extra_entry > 0 ? local_extra_entry : 0;
+  int extra_entry       = total_file_entry_count % (wm_world_size * round_robin_size);
+  int local_extra_entry = (extra_entry > (wm_rank + 1) * round_robin_size)
+                            ? round_robin_size
+                            : extra_entry - wm_rank * round_robin_size;
+  local_extra_entry     = local_extra_entry > 0 ? local_extra_entry : 0;
   size_t local_entry_count =
     total_file_entry_count / (wm_world_size * round_robin_size) * round_robin_size;
   local_entry_count += local_extra_entry;

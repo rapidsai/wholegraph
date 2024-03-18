@@ -948,6 +948,7 @@ wholememory_error_code_t wholememory_create_embedding(
   } else {
     embedding_impl_ptr = new wholememory::noncached_embedding();
   }
+  WHOLEMEMORY_RETURN_ON_FAIL(wholememory_communicator_get_size(&embedding_world_size, comm));
   embedding_impl_ptr->set_shard_method(
     &embedding_matrix_description, embedding_world_size, round_robin_size);
   embedding_impl_ptr->set_gather_sms(user_defined_sms);
