@@ -36,7 +36,7 @@ if (NOT DEFINED CMAKE_CUDA_ARCHITECTURES)
 endif ()
 rapids_cuda_init_architectures(PYLIBWHOLEGRAPH)
 
-project(PYLIBWHOLEGRAPH VERSION ${WHOLEGRAPH_VERSION} LANGUAGES C CXX CUDA)
+project(PYLIBWHOLEGRAPH VERSION ${WHOLEGRAPH_VERSION} LANGUAGES CXX CUDA)
 
 ##############################################################################
 # - User Options  ------------------------------------------------------------
@@ -135,7 +135,7 @@ execute_process(
 )
 list(APPEND CMAKE_MODULE_PATH "${SKBUILD_CMAKE_MODULE_PATH}")
 
-include(rapids-cython)
+include(rapids-cython-core)
 rapids_cython_init()
 
 ##############################################################################
