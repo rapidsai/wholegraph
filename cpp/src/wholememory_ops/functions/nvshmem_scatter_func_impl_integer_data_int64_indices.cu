@@ -89,7 +89,7 @@ wholememory_error_code_t nvshmem_scatter_integer_int64_func(
                        embedding_entry_count_per_rank,
                        p_env_fns,
                        stream,
-                       scatter_sms;
+                       scatter_sms);
   } catch (const wholememory::cuda_error& wle) {
     WHOLEMEMORY_ERROR("scatter CUDA LOGIC Error %s\n", wle.what());
     return WHOLEMEMORY_LOGIC_ERROR;

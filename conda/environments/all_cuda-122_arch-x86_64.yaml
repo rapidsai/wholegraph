@@ -31,14 +31,14 @@ dependencies:
 - nbsphinx
 - nccl
 - ninja
-- numpy>=1.17
+- numpy>=1.23,<2.0a0
 - numpydoc
 - pre-commit
 - pydata-sphinx-theme
 - pytest
 - pytest-forked
 - pytest-xdist
-- python>=3.9,<3.11
+- python>=3.9,<3.12
 - recommonmark
 - scikit-build-core>=0.7.0
 - sphinx-copybutton

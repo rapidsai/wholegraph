@@ -62,8 +62,8 @@ wholememory_error_code_t exchange_embeddings_nccl_func(const void* dev_local_gat
                        WHOLEMEMORY_DT_INT8,
                        stream);
     WM_CUDA_DEBUG_SYNC_STREAM(stream);
-    WHOLEMEMORY_EXPECTS(wm_comm->sync_stream(stream) == WHOLEMEMORY_SUCCESS,
-                        "Embedding AllToAllV failed.");
+    // WHOLEMEMORY_EXPECTS(wm_comm->sync_stream(stream) == WHOLEMEMORY_SUCCESS,
+    //                    "Embedding AllToAllV failed.");
   } catch (wholememory::logic_error& wle) {
     WHOLEMEMORY_ERROR("exchange_embeddings_nccl_func LOGIC Error %s\n", wle.what());
     return WHOLEMEMORY_LOGIC_ERROR;

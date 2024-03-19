@@ -359,7 +359,7 @@ def routine_func(world_rank: int, world_size: int, **kwargs):
 
 @pytest.mark.parametrize("graph_node_count", [103])
 @pytest.mark.parametrize("graph_edge_count", [1043])
-@pytest.mark.parametrize("max_sample_count", [11])
+@pytest.mark.parametrize("max_sample_count", [11, -1])
 @pytest.mark.parametrize("center_node_count", [13])
 @pytest.mark.parametrize("center_node_dtype", [torch.int32, torch.int64])
 @pytest.mark.parametrize("col_id_dtype", [0, 1])
