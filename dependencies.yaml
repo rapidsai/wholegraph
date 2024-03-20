@@ -78,7 +78,7 @@ dependencies:
           - librmm==24.4.*
           - nanobind>=0.2.0
           - nccl
-          - scikit-build
+          - scikit-build-core>=0.7.0
     specific:
       - output_types: conda
         matrices:
@@ -322,6 +322,4 @@ dependencies:
           - cmake>=3.26.4
           - cython>=3.0.0
           - ninja
-          - setuptools
-          - scikit-build>=0.13.1
-          - wheel
+          - scikit-build-core[pyproject]>=0.7.0
