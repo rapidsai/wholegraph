@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copyright (c) 2019-2023, NVIDIA CORPORATION.
+# Copyright (c) 2019-2024, NVIDIA CORPORATION.
 
 # wholegraph build script
 
@@ -49,7 +49,7 @@ HELP="$0 [<target> ...] [<flag> ...]
  and <flag> is:
    -v                          - verbose build mode
    -g                          - build for debug
-   -n                          - no install step
+   -n                          - no install step (does not affect Python)
    --allgpuarch               - build for all supported GPU architectures
    --cmake-args=\\\"<args>\\\" - add arbitrary CMake arguments to any cmake call
    --compile-cmd               - only output compile commands (invoke CMake without build)
@@ -271,19 +271,12 @@ if buildAll || hasArg pylibwholegraph; then
     if ! hasArg --compile-cmd; then
         cd ${REPODIR}/python/pylibwholegraph
         env LIBWHOLEGRAPH_DIR=${LIBWHOLEGRAPH_DIR} \
-        ${PYTHON} setup.py build_ext --inplace \
-            --build-type=${BUILD_TYPE} \
-            ${EXTRA_CMAKE_ARGS}
-        if ! hasArg -n; then
-            env LIBWHOLEGRAPH_DIR=${LIBWHOLEGRAPH_DIR} \
-            ${PYTHON} setup.py install \
-                --build-type=${BUILD_TYPE} \
-                ${EXTRA_CMAKE_ARGS}
-        fi
+        SKBUILD_CMAKE_ARGS="-DCMAKE_BUILD_TYPE=${BUILD_TYPE};${EXTRA_CMAKE_ARGS/ /;}" ${PYTHON} -m pip install --no-build-isolation --no-deps .
+
     else
-        # just invoke cmake without going through scikit-build
+        # just invoke cmake without going through scikit-build-core
         env LIBWHOLEGRAPH_DIR=${LIBWHOLEGRAPH_DIR} \
-        cmake -S ${REPODIR}/python/pylibwholegraph -B ${REPODIR}/python/pylibwholegraph/_skbuild/build \
+        cmake -S ${REPODIR}/python/pylibwholegraph -B ${REPODIR}/python/pylibwholegraph/build \
            -DCMAKE_BUILD_TYPE=${BUILD_TYPE} \
             ${EXTRA_CMAKE_ARGS}
     fi
