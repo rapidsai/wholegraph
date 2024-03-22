@@ -31,7 +31,7 @@ dependencies:
 - nbsphinx
 - nccl
 - ninja
-- numpy>=1.23
+- numpy>=1.23,<2.0a0
 - numpydoc
 - pre-commit
 - pydata-sphinx-theme
@@ -40,7 +40,7 @@ dependencies:
 - pytest-xdist
 - python>=3.9,<3.12
 - recommonmark
-- scikit-build
+- scikit-build-core>=0.7.0
 - sphinx-copybutton
 - sphinx-markdown-tables
 - sphinx<6

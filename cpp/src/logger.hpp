@@ -24,21 +24,15 @@
 #include <raft/core/error.hpp>
 
 #include "error.hpp"
+#include <wholememory/wholememory.h>
 
 namespace wholememory {
 
-static constexpr int LEVEL_FATAL = 0;
-static constexpr int LEVEL_ERROR = 10;
-static constexpr int LEVEL_WARN  = 100;
-static constexpr int LEVEL_INFO  = 1000;
-static constexpr int LEVEL_DEBUG = 10000;
-static constexpr int LEVEL_TRACE = 100000;
+LogLevel& get_log_level();
 
-int& get_log_level();
+void set_log_level(LogLevel lev);
 
-void set_log_level(int lev);
-
-bool will_log_for(int lev);
+bool will_log_for(LogLevel lev);
 
 /**
  * @defgroup CStringFormat Expand a C-style format string
@@ -86,10 +80,10 @@ inline std::string format(const char* fmt, ...)
     throw wholememory::logic_error(fatal_msg);                                         \
   } while (0)
 
-#define WHOLEMEMORY_ERROR(fmt, ...) WHOLEMEMORY_LOG(wholememory::LEVEL_ERROR, fmt, ##__VA_ARGS__)
-#define WHOLEMEMORY_WARN(fmt, ...)  WHOLEMEMORY_LOG(wholememory::LEVEL_WARN, fmt, ##__VA_ARGS__)
-#define WHOLEMEMORY_INFO(fmt, ...)  WHOLEMEMORY_LOG(wholememory::LEVEL_INFO, fmt, ##__VA_ARGS__)
-#define WHOLEMEMORY_DEBUG(fmt, ...) WHOLEMEMORY_LOG(wholememory::LEVEL_DEBUG, fmt, ##__VA_ARGS__)
-#define WHOLEMEMORY_TRACE(fmt, ...) WHOLEMEMORY_LOG(wholememory::LEVEL_TRACE, fmt, ##__VA_ARGS__)
+#define WHOLEMEMORY_ERROR(fmt, ...) WHOLEMEMORY_LOG(LEVEL_ERROR, fmt, ##__VA_ARGS__)
+#define WHOLEMEMORY_WARN(fmt, ...)  WHOLEMEMORY_LOG(LEVEL_WARN, fmt, ##__VA_ARGS__)
+#define WHOLEMEMORY_INFO(fmt, ...)  WHOLEMEMORY_LOG(LEVEL_INFO, fmt, ##__VA_ARGS__)
+#define WHOLEMEMORY_DEBUG(fmt, ...) WHOLEMEMORY_LOG(LEVEL_DEBUG, fmt, ##__VA_ARGS__)
+#define WHOLEMEMORY_TRACE(fmt, ...) WHOLEMEMORY_LOG(LEVEL_TRACE, fmt, ##__VA_ARGS__)
 
 }  // namespace wholememory

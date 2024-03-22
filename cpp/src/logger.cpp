@@ -21,14 +21,14 @@
 
 namespace wholememory {
 
-int& get_log_level()
+LogLevel& get_log_level()
 {
-  static int log_level = LEVEL_INFO;
+  static LogLevel log_level = LEVEL_INFO;
   return log_level;
 }
 
-void set_log_level(int lev) { get_log_level() = lev; }
+void set_log_level(LogLevel lev) { get_log_level() = lev; }
 
-bool will_log_for(int lev) { return lev <= get_log_level(); }
+bool will_log_for(LogLevel lev) { return lev <= get_log_level(); }
 
 }  // namespace wholememory
