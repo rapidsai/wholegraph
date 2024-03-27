@@ -536,7 +536,7 @@ static void read_file_list_to_local_memory_roundrobin_directio(
             file_sizes[i],
             file_names[i]);
         }
-
+        physical_read_size    = pread_size;
         size_t drop_tail_size = 0;
         if (cur_read_byte_start + physical_read_size > cur_read_byte_end) {
           drop_tail_size = cur_read_byte_start + physical_read_size - cur_read_byte_end;
@@ -580,11 +580,11 @@ static void read_file_list_to_local_memory_roundrobin_directio(
         }
 
         size_t tail_entry_size = useful_data_size % entry_size;
+        first_mem_entry_offset = tail_entry_size;
         if (tail_entry_size != 0) {
           // process tail
           WM_CUDA_CHECK_NO_THROW(cudaMemcpy(
             local_mem_write_entry_for_file, useful_data_ptr, tail_entry_size, cudaMemcpyDefault));
-          first_mem_entry_offset = tail_entry_size;
         }
 
         cur_read_byte_start += physical_read_size;
@@ -740,7 +740,7 @@ static void read_file_list_to_local_memory_directio(char* local_ptr,
           file_sizes[i],
           file_names[i]);
       }
-
+      physical_read_size    = pread_size;
       size_t drop_tail_size = 0;
       if (file_block_read_offset + physical_read_size > file_read_end) {
         drop_tail_size = file_block_read_offset + physical_read_size - file_read_end;
@@ -786,11 +786,11 @@ static void read_file_list_to_local_memory_directio(char* local_ptr,
       }
 
       size_t tail_entry_size = useful_data_size % entry_size;
+      first_mem_entry_offset = tail_entry_size;
       if (tail_entry_size != 0) {
         // process tail
         WM_CUDA_CHECK_NO_THROW(cudaMemcpy(
           local_mem_write_entry_for_file, useful_data_ptr, tail_entry_size, cudaMemcpyDefault));
-        first_mem_entry_offset = tail_entry_size;
       }
 
       file_block_read_offset += physical_read_size;
