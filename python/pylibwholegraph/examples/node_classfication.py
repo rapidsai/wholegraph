@@ -1,4 +1,4 @@
-# Copyright (c) 2019-2023, NVIDIA CORPORATION.
+# Copyright (c) 2019-2024, NVIDIA CORPORATION.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -219,6 +219,7 @@ def main_func():
             args.feat_dim,
             optimizer=wm_optimizer,
             cache_policy=cache_policy,
+            round_robin_size=args.round_robin_size,
         )
     else:
         node_feat_wm_embedding = wgth.create_embedding(
@@ -230,6 +231,7 @@ def main_func():
             optimizer=wm_optimizer,
             cache_policy=cache_policy,
             random_init=True,
+            round_robin_size=args.round_robin_size,
         )
     wgth.set_framework(args.framework)
     model = wgth.HomoGNNModel(graph_structure, node_feat_wm_embedding, args)
