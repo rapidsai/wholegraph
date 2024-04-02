@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2023, NVIDIA CORPORATION.
+ * Copyright (c) 2019-2024, NVIDIA CORPORATION.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -34,6 +34,7 @@
 #include "wholememory_ops/functions/exchange_ids_nccl_func.h"
 #include "wholememory_ops/functions/gather_cached_func.h"
 #include "wholememory_ops/functions/gather_scatter_func.h"
+#include "wholememory_ops/functions/map_indices_func.h"
 #include "wholememory_ops/temp_memory_handle.hpp"
 #include "wholememory_ops/thrust_allocator.hpp"
 
@@ -415,6 +416,27 @@ wholememory_error_code_t embedding_base::set_gather_sms(int sms) noexcept
     }
   }
   gather_sms_ = sms;
+  return WHOLEMEMORY_SUCCESS;
+}
+
+int embedding_base::get_round_robin_size() noexcept { return round_robin_size_; }
+
+wholememory_error_code_t embedding_base::set_shard_method(
+  wholememory_matrix_description_t* embedding_matrix_description,
+  int embedding_world_size,
+  int round_robin_size) noexcept
+{
+  round_robin_size_ = round_robin_size;
+  if (round_robin_size != 0) {
+    int64_t total_entry_count  = embedding_matrix_description->sizes[0];
+    int first_rank_extra_entry = total_entry_count % (embedding_world_size * round_robin_size);
+    if (first_rank_extra_entry > round_robin_size) first_rank_extra_entry = round_robin_size;
+    int64_t first_rank_entry_size =
+      total_entry_count / (embedding_world_size * round_robin_size) * round_robin_size;
+    first_rank_entry_size += first_rank_extra_entry;
+    total_entry_count                      = first_rank_entry_size * embedding_world_size;
+    embedding_matrix_description->sizes[0] = total_entry_count;
+  }
   return WHOLEMEMORY_SUCCESS;
 }
 
@@ -861,7 +883,8 @@ wholememory_error_code_t wholememory_create_embedding(
   wholememory_memory_location_t memory_location,
   wholememory_embedding_optimizer_t optimizer,
   wholememory_embedding_cache_policy_t cache_policy,
-  int user_defined_sms)
+  int user_defined_sms,
+  int round_robin_size)
 {
   wholememory_matrix_description_t embedding_matrix_description;
   if (!wholememory_convert_tensor_desc_to_matrix(&embedding_matrix_description,
@@ -925,9 +948,12 @@ wholememory_error_code_t wholememory_create_embedding(
   } else {
     embedding_impl_ptr = new wholememory::noncached_embedding();
   }
+  WHOLEMEMORY_RETURN_ON_FAIL(wholememory_communicator_get_size(&embedding_world_size, comm));
+  embedding_impl_ptr->set_shard_method(
+    &embedding_matrix_description, embedding_world_size, round_robin_size);
+  embedding_impl_ptr->set_gather_sms(user_defined_sms);
   WHOLEMEMORY_RETURN_ON_FAIL(embedding_impl_ptr->allocate(
     &embedding_matrix_description, comm, memory_type, memory_location, cache_policy, optimizer));
-  embedding_impl_ptr->set_gather_sms(user_defined_sms);
   *wholememory_embedding = static_cast<wholememory_embedding_t>(embedding_impl_ptr);
   return WHOLEMEMORY_SUCCESS;
 }
@@ -949,8 +975,26 @@ wholememory_error_code_t wholememory_embedding_gather(wholememory_embedding_t wh
                                                       int64_t stream_int)
 {
   auto* embedding_impl_ptr = static_cast<wholememory::embedding_base*>(wholememory_embedding);
-  return embedding_impl_ptr->gather(
-    indices, output, adjust_cache, p_env_fns, (cudaStream_t)stream_int);
+  if (embedding_impl_ptr->get_round_robin_size() == 0)
+    return embedding_impl_ptr->gather(
+      indices, output, adjust_cache, p_env_fns, (cudaStream_t)stream_int);
+
+  wholememory_tensor_t mapped_indices;
+  auto* indice_desc = wholememory_tensor_get_tensor_description(indices);
+  wholememory_ops::temp_memory_handle mapped_indice_handle(p_env_fns);
+  void* mapped_indice_ptr =
+    mapped_indice_handle.device_malloc(indice_desc->sizes[0], indice_desc->dtype);
+  WHOLEMEMORY_RETURN_ON_FAIL(
+    wholememory_make_tensor_from_pointer(&mapped_indices, mapped_indice_ptr, indice_desc));
+  wholememory_ops::storage_index2wm_embedding_index(indices,
+                                                    mapped_indices,
+                                                    embedding_impl_ptr->allocated_embedding,
+                                                    embedding_impl_ptr->get_round_robin_size(),
+                                                    stream_int);
+  WHOLEMEMORY_RETURN_ON_FAIL(embedding_impl_ptr->gather(
+    mapped_indices, output, adjust_cache, p_env_fns, (cudaStream_t)stream_int));
+  WHOLEMEMORY_RETURN_ON_FAIL(wholememory_destroy_tensor(mapped_indices));
+  return WHOLEMEMORY_SUCCESS;
 }
 
 wholememory_error_code_t wholememory_embedding_gather_gradient_apply(
@@ -963,8 +1007,26 @@ wholememory_error_code_t wholememory_embedding_gather_gradient_apply(
   int64_t stream_int)
 {
   auto* embedding_impl_ptr = static_cast<wholememory::embedding_base*>(wholememory_embedding);
-  return embedding_impl_ptr->gather_gradient_apply(
-    indices, grads, adjust_cache, lr, p_env_fns, (cudaStream_t)stream_int);
+  if (embedding_impl_ptr->get_round_robin_size() == 0)
+    return embedding_impl_ptr->gather_gradient_apply(
+      indices, grads, adjust_cache, lr, p_env_fns, (cudaStream_t)stream_int);
+
+  wholememory_tensor_t mapped_indices;
+  auto* indice_desc = wholememory_tensor_get_tensor_description(indices);
+  wholememory_ops::temp_memory_handle mapped_indice_handle(p_env_fns);
+  void* mapped_indice_ptr =
+    mapped_indice_handle.device_malloc(indice_desc->sizes[0], indice_desc->dtype);
+  WHOLEMEMORY_RETURN_ON_FAIL(
+    wholememory_make_tensor_from_pointer(&mapped_indices, mapped_indice_ptr, indice_desc));
+  wholememory_ops::storage_index2wm_embedding_index(indices,
+                                                    mapped_indices,
+                                                    embedding_impl_ptr->allocated_embedding,
+                                                    embedding_impl_ptr->get_round_robin_size(),
+                                                    stream_int);
+  WHOLEMEMORY_RETURN_ON_FAIL(embedding_impl_ptr->gather_gradient_apply(
+    mapped_indices, grads, adjust_cache, lr, p_env_fns, (cudaStream_t)stream_int));
+  WHOLEMEMORY_RETURN_ON_FAIL(wholememory_destroy_tensor(mapped_indices));
+  return WHOLEMEMORY_SUCCESS;
 }
 
 wholememory_tensor_t wholememory_embedding_get_embedding_tensor(
