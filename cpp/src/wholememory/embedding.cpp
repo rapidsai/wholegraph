@@ -975,12 +975,26 @@ wholememory_error_code_t wholememory_embedding_gather(wholememory_embedding_t wh
                                                       int64_t stream_int)
 {
   auto* embedding_impl_ptr = static_cast<wholememory::embedding_base*>(wholememory_embedding);
+  if (embedding_impl_ptr->get_round_robin_size() == 0)
+    return embedding_impl_ptr->gather(
+      indices, output, adjust_cache, p_env_fns, (cudaStream_t)stream_int);
+
+  wholememory_tensor_t mapped_indices;
+  auto* indice_desc = wholememory_tensor_get_tensor_description(indices);
+  wholememory_ops::temp_memory_handle mapped_indice_handle(p_env_fns);
+  void* mapped_indice_ptr =
+    mapped_indice_handle.device_malloc(indice_desc->sizes[0], indice_desc->dtype);
+  WHOLEMEMORY_RETURN_ON_FAIL(
+    wholememory_make_tensor_from_pointer(&mapped_indices, mapped_indice_ptr, indice_desc));
   wholememory_ops::storage_index2wm_embedding_index(indices,
+                                                    mapped_indices,
                                                     embedding_impl_ptr->allocated_embedding,
                                                     embedding_impl_ptr->get_round_robin_size(),
                                                     stream_int);
-  return embedding_impl_ptr->gather(
-    indices, output, adjust_cache, p_env_fns, (cudaStream_t)stream_int);
+  WHOLEMEMORY_RETURN_ON_FAIL(embedding_impl_ptr->gather(
+    mapped_indices, output, adjust_cache, p_env_fns, (cudaStream_t)stream_int));
+  WHOLEMEMORY_RETURN_ON_FAIL(wholememory_destroy_tensor(mapped_indices));
+  return WHOLEMEMORY_SUCCESS;
 }
 
 wholememory_error_code_t wholememory_embedding_gather_gradient_apply(
@@ -993,12 +1007,26 @@ wholememory_error_code_t wholememory_embedding_gather_gradient_apply(
   int64_t stream_int)
 {
   auto* embedding_impl_ptr = static_cast<wholememory::embedding_base*>(wholememory_embedding);
+  if (embedding_impl_ptr->get_round_robin_size() == 0)
+    return embedding_impl_ptr->gather_gradient_apply(
+      indices, grads, adjust_cache, lr, p_env_fns, (cudaStream_t)stream_int);
+
+  wholememory_tensor_t mapped_indices;
+  auto* indice_desc = wholememory_tensor_get_tensor_description(indices);
+  wholememory_ops::temp_memory_handle mapped_indice_handle(p_env_fns);
+  void* mapped_indice_ptr =
+    mapped_indice_handle.device_malloc(indice_desc->sizes[0], indice_desc->dtype);
+  WHOLEMEMORY_RETURN_ON_FAIL(
+    wholememory_make_tensor_from_pointer(&mapped_indices, mapped_indice_ptr, indice_desc));
   wholememory_ops::storage_index2wm_embedding_index(indices,
+                                                    mapped_indices,
                                                     embedding_impl_ptr->allocated_embedding,
                                                     embedding_impl_ptr->get_round_robin_size(),
                                                     stream_int);
-  return embedding_impl_ptr->gather_gradient_apply(
-    indices, grads, adjust_cache, lr, p_env_fns, (cudaStream_t)stream_int);
+  WHOLEMEMORY_RETURN_ON_FAIL(embedding_impl_ptr->gather_gradient_apply(
+    mapped_indices, grads, adjust_cache, lr, p_env_fns, (cudaStream_t)stream_int));
+  WHOLEMEMORY_RETURN_ON_FAIL(wholememory_destroy_tensor(mapped_indices));
+  return WHOLEMEMORY_SUCCESS;
 }
 
 wholememory_tensor_t wholememory_embedding_get_embedding_tensor(

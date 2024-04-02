@@ -24,8 +24,12 @@
 namespace wholememory_ops {
 
 template <typename IndexT>
-__global__ void storage_idx2wm_emb_idx_kernel(
-  IndexT* indice, int64_t indice_size, int world_size, int64_t entry_per_rank, int round_robin_size)
+__global__ void storage_idx2wm_emb_idx_kernel(IndexT* indice,
+                                              IndexT* mapped_indice,
+                                              int64_t indice_size,
+                                              int world_size,
+                                              int64_t entry_per_rank,
+                                              int round_robin_size)
 {
   int64_t tid = threadIdx.x + blockIdx.x * blockDim.x;
   for (int64_t i = tid; i < indice_size; i += (blockDim.x * gridDim.x)) {
@@ -35,13 +39,14 @@ __global__ void storage_idx2wm_emb_idx_kernel(
     int rank_id        = table_idx % world_size;
     int rank_table_idx = table_idx / world_size;
     IndexT wmidx       = entry_per_rank * rank_id + round_robin_size * rank_table_idx + table_off;
-    indice[i]          = wmidx;
+    mapped_indice[i]   = wmidx;
   }
   return;
 }
 
 template <typename IndexT>
 void storage_idx2wm_emb_idx_temp_fn(void* indice_ptr,
+                                    void* mapped_indice_ptr,
                                     int64_t indice_size,
                                     int world_size,
                                     int64_t entry_per_rank,
@@ -49,9 +54,10 @@ void storage_idx2wm_emb_idx_temp_fn(void* indice_ptr,
                                     cudaStream_t stream)
 {
   int block_num = 1568, block_size = 1024;
-  IndexT* indice = static_cast<IndexT*>(indice_ptr);
+  IndexT* indice        = static_cast<IndexT*>(indice_ptr);
+  IndexT* mapped_indice = static_cast<IndexT*>(mapped_indice_ptr);
   storage_idx2wm_emb_idx_kernel<<<block_num, block_size>>>(
-    indice, indice_size, world_size, entry_per_rank, round_robin_size);
+    indice, mapped_indice, indice_size, world_size, entry_per_rank, round_robin_size);
   WM_CUDA_CHECK(cudaStreamSynchronize(stream));
   return;
 }
@@ -59,15 +65,17 @@ void storage_idx2wm_emb_idx_temp_fn(void* indice_ptr,
 REGISTER_DISPATCH_ONE_TYPE(storageidx2wmembidx, storage_idx2wm_emb_idx_temp_fn, SINT3264)
 
 wholememory_error_code_t storage_index2wm_embedding_index(wholememory_tensor_t indices,
+                                                          wholememory_tensor_t mapped_indices,
                                                           wholememory_tensor_t allocated_embedding,
                                                           int round_robin_size,
                                                           int64_t stream_int)
 {
   if (round_robin_size == 0) return WHOLEMEMORY_SUCCESS;
   try {
-    auto* indice_desc   = wholememory_tensor_get_tensor_description(indices);
-    void* indice_ptr    = wholememory_tensor_get_data_pointer(indices);
-    int64_t indice_size = indice_desc->sizes[0];
+    auto* indice_desc       = wholememory_tensor_get_tensor_description(indices);
+    void* indice_ptr        = wholememory_tensor_get_data_pointer(indices);
+    void* mapped_indice_ptr = wholememory_tensor_get_data_pointer(mapped_indices);
+    int64_t indice_size     = indice_desc->sizes[0];
 
     wholememory_comm_t wm_comm;
     int world_size;
@@ -79,6 +87,7 @@ wholememory_error_code_t storage_index2wm_embedding_index(wholememory_tensor_t i
     DISPATCH_ONE_TYPE(indice_desc->dtype,
                       storageidx2wmembidx,
                       indice_ptr,
+                      mapped_indice_ptr,
                       indice_size,
                       world_size,
                       entry_per_rank,
