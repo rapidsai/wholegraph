@@ -53,7 +53,9 @@ void storage_idx2wm_emb_idx_temp_fn(void* indice_ptr,
                                     int round_robin_size,
                                     cudaStream_t stream)
 {
-  int block_num = 1568, block_size = 1024;
+  int block_size    = 256;
+  int64_t block_num = (indice_size + block_size - 1) / block_size;
+  if (block_num > 1568) block_num = 1568;
   IndexT* indice        = static_cast<IndexT*>(indice_ptr);
   IndexT* mapped_indice = static_cast<IndexT*>(mapped_indice_ptr);
   storage_idx2wm_emb_idx_kernel<<<block_num, block_size>>>(
