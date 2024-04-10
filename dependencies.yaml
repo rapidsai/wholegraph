@@ -3,7 +3,7 @@ files:
   all:
     output: [conda]
     matrix:
-      cuda: ["11.8", "12.0"]
+      cuda: ["11.8", "12.2"]
       arch: [x86_64]
     includes:
       - checks
@@ -74,11 +74,11 @@ dependencies:
           - cxx-compiler
           - cython>=3.0.0
           - &doxygen doxygen==1.9.1
-          - libraft-headers==24.2.*
-          - librmm==24.2.*
+          - libraft-headers==24.4.*
+          - librmm==24.4.*
           - nanobind>=0.2.0
           - nccl
-          - scikit-build
+          - scikit-build-core>=0.7.0
     specific:
       - output_types: conda
         matrices:
@@ -137,6 +137,10 @@ dependencies:
               cuda: "12.0"
             packages:
               - cuda-version=12.0
+          - matrix:
+              cuda: "12.2"
+            packages:
+              - cuda-version=12.2
   cuda:
     specific:
       - output_types: conda
@@ -184,8 +188,12 @@ dependencies:
             packages:
               - python=3.10
           - matrix:
+              py: "3.11"
             packages:
-              - python>=3.9,<3.11
+              - python=3.11
+          - matrix:
+            packages:
+              - python>=3.9,<3.12
   run:
     common:
       - output_types: [conda, requirements]
@@ -205,7 +213,7 @@ dependencies:
       - output_types: [conda, requirements]
         packages:
           - ninja
-          - numpy>=1.17
+          - numpy>=1.23,<2.0a0
           - pytest
           - pytest-forked
           - pytest-xdist
@@ -314,6 +322,4 @@ dependencies:
           - cmake>=3.26.4
           - cython>=3.0.0
           - ninja
-          - setuptools
-          - scikit-build>=0.13.1
-          - wheel
+          - scikit-build-core[pyproject]>=0.7.0

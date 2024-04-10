@@ -1,4 +1,4 @@
-# Copyright (c) 2019-2023, NVIDIA CORPORATION.
+# Copyright (c) 2019-2024, NVIDIA CORPORATION.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -71,7 +71,16 @@ cdef extern from "wholememory/wholememory.h":
         WHOLEMEMORY_DB_NONE                 "WHOLEMEMORY_DB_NONE"
         WHOLEMEMORY_DB_NCCL                 "WHOLEMEMORY_DB_NCCL"
         WHOLEMEMORY_DB_NVSHMEM              "WHOLEMEMORY_DB_NVSHMEM"
-    cdef wholememory_error_code_t wholememory_init(unsigned int flags, unsigned int wm_log_level)
+
+    ctypedef enum LogLevel:
+        LEVEL_FATAL                         "LEVEL_FATAL"
+        LEVEL_ERROR                         "LEVEL_ERROR"
+        LEVEL_WARN                          "LEVEL_WARN"
+        LEVEL_INFO                          "LEVEL_INFO"
+        LEVEL_DEBUG                         "LEVEL_DEBUG"
+        LEVEL_TRACE                         "LEVEL_TRACE"
+
+    cdef wholememory_error_code_t wholememory_init(unsigned int flags, LogLevel log_level)
 
     cdef wholememory_error_code_t wholememory_finalize()
 
@@ -159,7 +168,8 @@ cdef extern from "wholememory/wholememory.h":
                                                              size_t memory_entry_size,
                                                              size_t file_entry_size,
                                                              const char** file_names,
-                                                             int file_count)
+                                                             int file_count,
+                                                             int round_robin_size)
 
     cdef wholememory_error_code_t wholememory_store_to_file(wholememory_handle_t wholememory_handle,
                                                             size_t memory_offset,
@@ -203,6 +213,14 @@ cpdef enum WholeMemoryDistributedBackend:
     DbNone = WHOLEMEMORY_DB_NONE
     DbNCCL = WHOLEMEMORY_DB_NCCL
     DbNVSHMEM = WHOLEMEMORY_DB_NVSHMEM
+
+cpdef enum WholeMemoryLogLevel:
+    LevFatal = LEVEL_FATAL
+    LevError = LEVEL_ERROR
+    LevWarn = LEVEL_WARN
+    LevInfo = LEVEL_INFO
+    LevDebug = LEVEL_DEBUG
+    LevTrace = LEVEL_TRACE
 
 cdef check_wholememory_error_code(wholememory_error_code_t err):
     cdef WholeMemoryErrorCode err_code = int(err)
@@ -608,7 +626,8 @@ cdef extern from "wholememory/embedding.h":
             wholememory_memory_location_t memory_location,
             wholememory_embedding_optimizer_t optimizer,
             wholememory_embedding_cache_policy_t cache_policy,
-            int user_defined_sms)
+            int user_defined_sms,
+            int round_robin_size)
 
     cdef wholememory_error_code_t wholememory_destroy_embedding(
             wholememory_embedding_t wholememory_embedding)
@@ -772,7 +791,8 @@ cdef class PyWholeMemoryEmbedding:
                          WholeMemoryMemoryLocation memory_location,
                          WholeMemoryOptimizer optimizer,
                          WholeMemoryCachePolicy cache_policy,
-                         int user_defined_sms):
+                         int user_defined_sms,
+                         int round_robin_size):
         self.memory_type = <wholememory_memory_type_t> <int> memory_type
         self.memory_location = <wholememory_memory_location_t> <int> memory_location
         check_wholememory_error_code(wholememory_create_embedding(&self.wm_embedding,
@@ -782,7 +802,8 @@ cdef class PyWholeMemoryEmbedding:
                                                                   self.memory_location,
                                                                   optimizer.wm_optimizer,
                                                                   cache_policy.cache_policy,
-                                                                  user_defined_sms))
+                                                                  user_defined_sms,
+                                                                  round_robin_size))
 
     def destroy_embedding(self):
         check_wholememory_error_code(wholememory_destroy_embedding(self.wm_embedding))
@@ -828,7 +849,8 @@ def create_embedding(PyWholeMemoryTensorDescription tensor_desc,
                      WholeMemoryMemoryLocation memory_location,
                      WholeMemoryOptimizer optimizer,
                      WholeMemoryCachePolicy cache_policy,
-                     int user_defined_sms):
+                     int user_defined_sms,
+                     int round_robin_size):
     wm_embedding = PyWholeMemoryEmbedding()
     wm_embedding.create_embedding(tensor_desc,
                                   comm,
@@ -836,7 +858,8 @@ def create_embedding(PyWholeMemoryTensorDescription tensor_desc,
                                   memory_location,
                                   optimizer,
                                   cache_policy,
-                                  user_defined_sms)
+                                  user_defined_sms,
+                                  round_robin_size)
     return wm_embedding
 
 cpdef void EmbeddingGatherForward(PyWholeMemoryEmbedding wm_embedding,
@@ -986,8 +1009,8 @@ cdef class PyWholeMemoryUniqueID:
     def __dlpack_device__(self):
         return (kDLCPU, 0)
 
-def init(unsigned int flags, unsigned int wm_log_level = 3):
-    check_wholememory_error_code(wholememory_init(flags, wm_log_level))
+def init(unsigned int flags, LogLevel log_level = LEVEL_INFO):
+    check_wholememory_error_code(wholememory_init(flags, log_level))
 
 def finalize():
     check_wholememory_error_code(wholememory_finalize())
@@ -1317,11 +1340,13 @@ cdef class PyWholeMemoryHandle:
                       int64_t memory_offset,
                       int64_t memory_entry_size,
                       int64_t file_entry_size,
+                      int round_robin_size,
                       file_list):
         load_wholememory_handle_from_filelist(<int64_t> self.wholememory_handle,
                                               memory_offset,
                                               memory_entry_size,
                                               file_entry_size,
+                                              round_robin_size,
                                               file_list)
 
     def to_file(self,
@@ -1543,7 +1568,7 @@ cdef class PyWholeMemoryTensor:
             chunked_tensors.append(self.get_tensor_in_window(chunked_flatten_tensors[i], element_offsets[i])[0])
         return chunked_tensors
 
-    def from_filelist(self, filelist):
+    def from_filelist(self, filelist, round_robin_size:int = 0):
         handle = self.get_wholememory_handle()
         strides = self.stride()
         shape = self.shape
@@ -1560,7 +1585,7 @@ cdef class PyWholeMemoryTensor:
             file_entry_size = elt_size * shape[1]
         else:
             raise ValueError('tensor dim should be 1 or 2')
-        handle.from_filelist(memory_offset, memory_entry_size, file_entry_size, filelist)
+        handle.from_filelist(memory_offset, memory_entry_size, file_entry_size, round_robin_size, filelist)
 
     def to_file(self, filename):
         handle = self.get_wholememory_handle()
@@ -1714,6 +1739,7 @@ cpdef load_wholememory_handle_from_filelist(int64_t wholememory_handle_int_ptr,
                                             int64_t memory_offset,
                                             int64_t memory_entry_size,
                                             int64_t file_entry_size,
+                                            int round_robin_size,
                                             file_list):
     cdef const char ** filenames
     cdef int num_files = len(file_list)
@@ -1731,7 +1757,8 @@ cpdef load_wholememory_handle_from_filelist(int64_t wholememory_handle_int_ptr,
             memory_entry_size,
             file_entry_size,
             filenames,
-            num_files))
+            num_files,
+            round_robin_size))
     finally:
         stdlib.free(filenames)
 

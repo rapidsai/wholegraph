@@ -1,7 +1,10 @@
 #!/bin/bash
-# Copyright (c) 2022-2023, NVIDIA CORPORATION.
+# Copyright (c) 2022-2024, NVIDIA CORPORATION.
 
 set -euo pipefail
+
+# Support invoking test_cpp.sh outside the script directory
+cd "$(dirname "$(realpath "${BASH_SOURCE[0]}")")"/../
 
 . /opt/conda/etc/profile.d/conda.sh
 
@@ -24,7 +27,7 @@ rapids-dependency-file-generator \
   --file_key test_python \
   --matrix "cuda=${RAPIDS_CUDA_VERSION%.*};arch=${ARCH};py=${RAPIDS_PY_VERSION}" | tee env.yaml
 
-rapids-mamba-retry env create --force -f env.yaml -n test
+rapids-mamba-retry env create --yes -f env.yaml -n test
 
 # Temporarily allow unbound variables for conda activation.
 set +u
@@ -50,16 +53,9 @@ rapids-mamba-retry install \
 
 rapids-logger "Check GPU usage"
 nvidia-smi
-trap "EXITCODE=1" ERR
-set +e
 
 rapids-logger "pytest pylibwholegraph"
-PYLIBWHOLEGRAPH_INSTALL_PATH=`python -c 'import os; import pylibwholegraph; print(os.path.dirname(pylibwholegraph.__file__))'`
-PYTEST_PATH=${PYLIBWHOLEGRAPH_INSTALL_PATH}/tests
-pytest \
-  --cache-clear \
-  --forked \
-  ${PYTEST_PATH}
+./ci/run_pytests.sh && EXITCODE=$? || EXITCODE=$?
 
 echo "test_python is exiting with value: ${EXITCODE}"
 exit ${EXITCODE}

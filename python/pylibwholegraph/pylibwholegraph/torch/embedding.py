@@ -1,4 +1,4 @@
-# Copyright (c) 2019-2023, NVIDIA CORPORATION.
+# Copyright (c) 2019-2024, NVIDIA CORPORATION.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -407,6 +407,7 @@ def create_embedding(
     cache_policy: Union[WholeMemoryCachePolicy, None] = None,
     random_init: bool = False,
     gather_sms: int = -1,
+    round_robin_size=0,
 ):
     r"""
     Create embedding
@@ -449,6 +450,7 @@ def create_embedding(
             wmb_optimizer,
             wmb_cache_policy,
             user_defined_sms=gather_sms,
+            round_robin_size=round_robin_size,
         ),
         optimizer,
         cache_policy,
@@ -476,6 +478,7 @@ def create_embedding_from_filelist(
     optimizer: Union[WholeMemoryOptimizer, None] = None,
     cache_policy: Union[WholeMemoryCachePolicy, None] = None,
     gather_sms: int = -1,
+    round_robin_size: int = 0,
 ):
     r"""
     Create embedding from file list
@@ -513,9 +516,10 @@ def create_embedding_from_filelist(
         [total_entry_count, last_dim_size],
         optimizer=optimizer,
         cache_policy=cache_policy,
-        gather_sms=gather_sms
+        gather_sms=gather_sms,
+        round_robin_size=round_robin_size,
     )
-    wm_embedding.get_embedding_tensor().from_filelist(filelist)
+    wm_embedding.get_embedding_tensor().from_filelist(filelist, round_robin_size)
     return wm_embedding
 
 

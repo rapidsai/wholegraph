@@ -1,7 +1,10 @@
 #!/bin/bash
-# Copyright (c) 2022-2023, NVIDIA CORPORATION.
+# Copyright (c) 2022-2024, NVIDIA CORPORATION.
 
 set -euo pipefail
+
+# Support invoking test_cpp.sh outside the script directory
+cd "$(dirname "$(realpath "${BASH_SOURCE[0]}")")"/../
 
 . /opt/conda/etc/profile.d/conda.sh
 
@@ -11,7 +14,7 @@ rapids-dependency-file-generator \
   --file_key test_cpp \
   --matrix "cuda=${RAPIDS_CUDA_VERSION%.*};arch=$(arch)" | tee env.yaml
 
-rapids-mamba-retry env create --force -f env.yaml -n test
+rapids-mamba-retry env create --yes -f env.yaml -n test
 
 # Temporarily allow unbound variables for conda activation.
 set +u
@@ -32,25 +35,10 @@ rapids-mamba-retry install \
 
 rapids-logger "Check GPU usage"
 nvidia-smi
-EXITCODE=0
-trap "EXITCODE=1" ERR
-set +e
 
 # Run libwholegraph tests from libwholegraph-tests package
 rapids-logger "Run tests"
-INSTALLED_TEST_PATH=${CONDA_PREFIX}/bin/gtests/libwholegraph
+./ci/run_ctests.sh && EXITCODE=$? || EXITCODE=$?
 
-for file in "${INSTALLED_TEST_PATH}"/*; do
-  if [[ -x "$file" ]]; then
-    rapids-logger "Running: $file"
-    "$file"
-    exit_code=$?
-
-    if [[ $exit_code -ne 0 ]]; then
-      echo "Test $file returned a non-zero exit code: $exit_code"
-      exit $exit_code
-    fi
-  fi
-done
-
-exit 0
+rapids-logger "Test script exiting with value: $EXITCODE"
+exit ${EXITCODE}

@@ -1,3 +1,16 @@
+# Copyright (c) 2024, NVIDIA CORPORATION.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import torch
 import pylibwholegraph.binding.wholememory_binding as wmb
 from pylibwholegraph.torch.dlpack_utils import torch_import_from_dlpack
@@ -103,9 +116,9 @@ def host_sample_all_neighbors(
         output_id = output_sample_offset_tensor[i]
         for j in range(end - start):
             output_dest_tensor[output_id + j] = host_csr_col_ptr[start + j]
-            output_center_localid_tensor[output_id + j] = node_id
+            output_center_localid_tensor[output_id + j] = i
             output_edge_gid_tensor[output_id + j] = start + j
-    return output_dest_tensor, output_center_localid_tensor, output_edge_gid_tensor
+    return output_sample_offset_tensor, output_dest_tensor, output_center_localid_tensor, output_edge_gid_tensor
 
 
 def copy_host_1D_tensor_to_wholememory(

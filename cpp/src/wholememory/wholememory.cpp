@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2023, NVIDIA CORPORATION.
+ * Copyright (c) 2019-2024, NVIDIA CORPORATION.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,9 +25,9 @@
 extern "C" {
 #endif
 
-wholememory_error_code_t wholememory_init(unsigned int flags, unsigned int wm_log_level)
+wholememory_error_code_t wholememory_init(unsigned int flags, LogLevel log_level)
 {
-  return wholememory::init(flags, wm_log_level);
+  return wholememory::init(flags, log_level);
 }
 
 wholememory_error_code_t wholememory_finalize() { return wholememory::finalize(); }
@@ -224,10 +224,16 @@ wholememory_error_code_t wholememory_load_from_file(wholememory_handle_t wholeme
                                                     size_t memory_entry_size,
                                                     size_t file_entry_size,
                                                     const char** file_names,
-                                                    int file_count)
+                                                    int file_count,
+                                                    int round_robin_size)
 {
-  return wholememory::load_file_to_handle(
-    wholememory_handle, memory_offset, memory_entry_size, file_entry_size, file_names, file_count);
+  return wholememory::load_file_to_handle(wholememory_handle,
+                                          memory_offset,
+                                          memory_entry_size,
+                                          file_entry_size,
+                                          file_names,
+                                          file_count,
+                                          round_robin_size);
 }
 
 wholememory_error_code_t wholememory_store_to_file(wholememory_handle_t wholememory_handle,

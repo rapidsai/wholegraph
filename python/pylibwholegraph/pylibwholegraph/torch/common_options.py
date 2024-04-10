@@ -1,4 +1,4 @@
-# Copyright (c) 2019-2023, NVIDIA CORPORATION.
+# Copyright (c) 2019-2024, NVIDIA CORPORATION.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -9,7 +9,7 @@
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
-# limitations under the License.ß
+# limitations under the License.
 
 from argparse import ArgumentParser
 
@@ -97,6 +97,14 @@ def add_common_graph_options(argparser: ArgumentParser):
         dest="feat_dim",
         default=100,
         help="default feature dim",
+    )
+    argparser.add_argument(
+        "--round-robin-size",
+        type=int,
+        dest="round_robin_size",
+        default=0,
+        help="continuous embedding number for each rank whiling using round-robin sharding strategy, \
+                0 for not using round-robin shard strategy",
     )
 
 

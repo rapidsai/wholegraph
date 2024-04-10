@@ -1,5 +1,5 @@
 #=============================================================================
-# Copyright (c) 2018-2023, NVIDIA CORPORATION.
+# Copyright (c) 2018-2024, NVIDIA CORPORATION.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@
 
 cmake_minimum_required(VERSION 3.26.4 FATAL_ERROR)
 
-set(RAPIDS_VERSION "24.02")
+set(RAPIDS_VERSION "24.04")
 set(WHOLEGRAPH_VERSION "${RAPIDS_VERSION}.00")
 
 include(FetchContent)
@@ -31,12 +31,9 @@ include(rapids-cmake)
 include(rapids-cuda)
 include(rapids-cpm)
 
-if (NOT DEFINED CMAKE_CUDA_ARCHITECTURES)
-    set(CMAKE_CUDA_ARCHITECTURES 70-real 80-real 86)
-endif ()
 rapids_cuda_init_architectures(PYLIBWHOLEGRAPH)
 
-project(PYLIBWHOLEGRAPH VERSION ${WHOLEGRAPH_VERSION} LANGUAGES C CXX CUDA)
+project(PYLIBWHOLEGRAPH VERSION ${WHOLEGRAPH_VERSION} LANGUAGES CXX CUDA)
 
 ##############################################################################
 # - User Options  ------------------------------------------------------------
@@ -135,7 +132,7 @@ execute_process(
 )
 list(APPEND CMAKE_MODULE_PATH "${SKBUILD_CMAKE_MODULE_PATH}")
 
-include(rapids-cython)
+include(rapids-cython-core)
 rapids_cython_init()
 
 ##############################################################################

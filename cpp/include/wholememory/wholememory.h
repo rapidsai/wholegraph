@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2023, NVIDIA CORPORATION.
+ * Copyright (c) 2019-2024, NVIDIA CORPORATION.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -80,13 +80,23 @@ enum wholememory_distributed_backend_t {
   WHOLEMEMORY_DB_NCCL,
   WHOLEMEMORY_DB_NVSHMEM,
 };
+
+enum LogLevel {
+  LEVEL_FATAL = 0, /*!< Fatal */
+  LEVEL_ERROR,     /*!< Error */
+  LEVEL_WARN,      /*!< Warn */
+  LEVEL_INFO,      /*!< Info */
+  LEVEL_DEBUG,     /*!< Debug*/
+  LEVEL_TRACE      /*!< Trace */
+};
+
 /**
  * Initialize WholeMemory library
  * @param flags : reserved should be 0
- * @param wm_log_level : wholememory log level, the default level is "info"
+ * @param log_level : wholememory log level, the default level is "info"
  * @return : wholememory_error_code_t
  */
-wholememory_error_code_t wholememory_init(unsigned int flags, unsigned int wm_log_level = 3);
+wholememory_error_code_t wholememory_init(unsigned int flags, LogLevel log_level = LEVEL_INFO);
 
 /**
  * Finalize WholeMemory library
@@ -350,6 +360,7 @@ int fork_get_device_count();
  * @param file_entry_size : entry size in file, should be less than or equal to memory_entry_size
  * @param file_names : file names, all binary files will be logically concatenated and loaded.
  * @param file_count : number of files.
+ * @param round_robin_size : continuous embedding number for a rank under round-robin shard mode
  * @return : wholememory_error_code_t
  */
 wholememory_error_code_t wholememory_load_from_file(wholememory_handle_t wholememory_handle,
@@ -357,7 +368,8 @@ wholememory_error_code_t wholememory_load_from_file(wholememory_handle_t wholeme
                                                     size_t memory_entry_size,
                                                     size_t file_entry_size,
                                                     const char** file_names,
-                                                    int file_count);
+                                                    int file_count,
+                                                    int round_robin_size);
 
 /**
  * Store local WholeMemory to file, this should be called by all ranks, with different
