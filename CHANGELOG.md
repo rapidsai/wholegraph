@@ -1,3 +1,32 @@
+# wholegraph 24.04.00 (10 Apr 2024)
+
+## 🐛 Bug Fixes
+
+- Update pre-commit-hooks to v0.0.3 ([#152](https://github.com/rapidsai/wholegraph/pull/152)) [@KyleFromNVIDIA](https://github.com/KyleFromNVIDIA)
+- Fixed README links to point to cuGraph API ([#145](https://github.com/rapidsai/wholegraph/pull/145)) [@acostadon](https://github.com/acostadon)
+- [Bugfix] Fix to compile when NVSHMEM is ON ([#142](https://github.com/rapidsai/wholegraph/pull/142)) [@chang-l](https://github.com/chang-l)
+- handle more RAPIDS version formats in update-version.sh ([#122](https://github.com/rapidsai/wholegraph/pull/122)) [@jameslamb](https://github.com/jameslamb)
+
+## 🚀 New Features
+
+- Support CUDA 12.2 ([#116](https://github.com/rapidsai/wholegraph/pull/116)) [@jameslamb](https://github.com/jameslamb)
+
+## 🛠️ Improvements
+
+- Use `conda env create --yes` instead of `--force` ([#155](https://github.com/rapidsai/wholegraph/pull/155)) [@bdice](https://github.com/bdice)
+- add round-robin shard strategy ([#154](https://github.com/rapidsai/wholegraph/pull/154)) [@linhu-nv](https://github.com/linhu-nv)
+- Switch to scikit-build-core ([#150](https://github.com/rapidsai/wholegraph/pull/150)) [@vyasr](https://github.com/vyasr)
+- Update script input name ([#147](https://github.com/rapidsai/wholegraph/pull/147)) [@AyodeAwe](https://github.com/AyodeAwe)
+- Add upper bound to prevent usage of NumPy 2 ([#146](https://github.com/rapidsai/wholegraph/pull/146)) [@bdice](https://github.com/bdice)
+- Replace local copyright check with pre-commit-hooks verify-copyright ([#144](https://github.com/rapidsai/wholegraph/pull/144)) [@KyleFromNVIDIA](https://github.com/KyleFromNVIDIA)
+- remove an unnecessary sync in exchange_embeddings_nccl_func ([#143](https://github.com/rapidsai/wholegraph/pull/143)) [@linhu-nv](https://github.com/linhu-nv)
+- Use default `rapids-cmake` CUDA_ARCHITECTURES ([#140](https://github.com/rapidsai/wholegraph/pull/140)) [@trxcllnt](https://github.com/trxcllnt)
+- Add support for Python 3.11, require NumPy 1.23+ ([#139](https://github.com/rapidsai/wholegraph/pull/139)) [@jameslamb](https://github.com/jameslamb)
+- [Bugfix] Host full-neighbor sampling returns wrong results in unit test ([#138](https://github.com/rapidsai/wholegraph/pull/138)) [@chang-l](https://github.com/chang-l)
+- use enum to implement log_level in wholememory ([#136](https://github.com/rapidsai/wholegraph/pull/136)) [@linhu-nv](https://github.com/linhu-nv)
+- target branch-24.04 for GitHub Actions workflows ([#135](https://github.com/rapidsai/wholegraph/pull/135)) [@jameslamb](https://github.com/jameslamb)
+- Add environment-agnostic scripts for running ctests and pytests ([#128](https://github.com/rapidsai/wholegraph/pull/128)) [@trxcllnt](https://github.com/trxcllnt)
+
 # wholegraph 24.02.00 (12 Feb 2024)
 
 ## 🐛 Bug Fixes
