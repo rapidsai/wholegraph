@@ -1,4 +1,4 @@
-# Copyright (c) 2019-2023, NVIDIA CORPORATION.
+# Copyright (c) 2019-2024, NVIDIA CORPORATION.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -75,6 +75,11 @@ class TorchMemoryContext(object):
             torch_cpp_ext_lib.destroy_output_context(self.get_handle())
             self.handle = 0
 
+    def free_data(self):
+        self.tensor = None
+        if torch_cpp_ext_loaded and self.get_handle() != 0:
+            torch_cpp_ext_lib.free_context_data(self.get_handle())
+
 
 def torch_create_memory_context_env_fn(
     global_context: TorchEmptyGlobalContext,
@@ -121,7 +126,7 @@ def torch_malloc_env_fn(
 def torch_free_env_fn(
     memory_context: TorchMemoryContext, global_context: TorchEmptyGlobalContext
 ):
-    memory_context.free()
+    memory_context.free_data()
 
 
 class ExtContextWrapper(object):

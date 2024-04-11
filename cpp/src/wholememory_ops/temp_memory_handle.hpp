@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2023, NVIDIA CORPORATION.
+ * Copyright (c) 2019-2024, NVIDIA CORPORATION.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,7 +31,7 @@ class temp_memory_handle {
   ~temp_memory_handle() { free_memory(); }
   void* device_malloc(size_t elt_count, wholememory_dtype_t data_type)
   {
-    free_memory();
+    free_data();
     wholememory_tensor_description_t tensor_description;
     get_tensor_description(&tensor_description, elt_count, data_type);
     ptr_ = temp_mem_fns_->malloc_fn(
@@ -40,7 +40,7 @@ class temp_memory_handle {
   }
   void* host_malloc(size_t elt_count, wholememory_dtype_t data_type)
   {
-    free_memory();
+    free_data();
     wholememory_tensor_description_t tensor_description;
     get_tensor_description(&tensor_description, elt_count, data_type);
     ptr_ = temp_mem_fns_->malloc_fn(
@@ -49,7 +49,7 @@ class temp_memory_handle {
   }
   void* pinned_malloc(size_t elt_count, wholememory_dtype_t data_type)
   {
-    free_memory();
+    free_data();
     wholememory_tensor_description_t tensor_description;
     get_tensor_description(&tensor_description, elt_count, data_type);
     ptr_ = temp_mem_fns_->malloc_fn(
@@ -57,6 +57,13 @@ class temp_memory_handle {
     return ptr_;
   }
   [[nodiscard]] void* pointer() const { return ptr_; }
+  void free_data()
+  {
+    if (ptr_ != nullptr) {
+      temp_mem_fns_->free_fn(memory_context_, temp_mem_fns_->global_context);
+      ptr_ = nullptr;
+    }
+  }
   void free_memory()
   {
     if (ptr_ != nullptr) {
