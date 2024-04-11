@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2023, NVIDIA CORPORATION.
+ * Copyright (c) 2019-2024, NVIDIA CORPORATION.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -126,7 +126,7 @@ void dedup_indice_and_gradients_temp_func(int64_t* run_count,
   int* dev_mapping_sequence =
     static_cast<int*>(mapping_sequence_handle.device_malloc(raw_count * 2, WHOLEMEMORY_DT_INT));
   int* dev_indice_mapping = dev_mapping_sequence + raw_count;
-  thrust::sequence(thrust::cuda::par(allocator).on(stream),
+  thrust::sequence(thrust::cuda::par_nosync(allocator).on(stream),
                    dev_mapping_sequence,
                    dev_mapping_sequence + raw_count,
                    0);
