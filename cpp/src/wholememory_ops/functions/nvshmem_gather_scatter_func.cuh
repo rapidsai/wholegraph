@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, NVIDIA CORPORATION.
+ * Copyright (c) 2023-2024, NVIDIA CORPORATION.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -80,7 +80,7 @@ void sort_index_in_pair(const void* indices_before_sort,
   IndexT* seq_indices =
     reinterpret_cast<IndexT*>(allocator.allocate(indice_count * sizeof(IndexT)));
   thrust::sequence(
-    thrust::cuda::par(allocator).on(stream), seq_indices, seq_indices + indice_count, 0);
+    thrust::cuda::par_nosync(allocator).on(stream), seq_indices, seq_indices + indice_count, 0);
   // TODO: use unsigned type (wm_ops::UTypeT) can put all negative indices at last. But maybe
   // later... using UTypeT = typename UnsignedType<IndexT>::UType;
   auto indices_to_sort      = static_cast<const IndexT*>(indices_before_sort);

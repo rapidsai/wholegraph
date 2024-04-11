@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2023, NVIDIA CORPORATION.
+ * Copyright (c) 2019-2024, NVIDIA CORPORATION.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -59,8 +59,10 @@ void exchange_ids_temp_func(const void* indices_before_sort,
 
   int64_t* seq_indices = reinterpret_cast<int64_t*>(allocator.allocate(
     wholememory_get_memory_element_count_from_array(&indices_desc) * sizeof(int64_t)));
-  thrust::sequence(
-    thrust::cuda::par(allocator).on(stream), seq_indices, seq_indices + indices_desc.size, 0);
+  thrust::sequence(thrust::cuda::par_nosync(allocator).on(stream),
+                   seq_indices,
+                   seq_indices + indices_desc.size,
+                   0);
   // use UTypeT to put minus indices at last.
   using UTypeT                  = typename UnsignedType<IndexT>::UType;
   const UTypeT* indices_to_sort = static_cast<const UTypeT*>(indices_before_sort);
