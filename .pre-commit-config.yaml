@@ -4,7 +4,7 @@
 # To run: `pre-commit run --all-files`
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.4.0
+    rev: v4.5.0
     hooks:
       - id: check-added-large-files
       - id: debug-statements
@@ -13,7 +13,7 @@ repos:
         args: [--markdown-linebreak-ext=md]
       - id: end-of-file-fixer
   - repo: https://github.com/PyCQA/flake8
-    rev: 6.0.0
+    rev: 7.0.0
     hooks:
       - id: flake8
         args: ["--config=.flake8"]
@@ -22,7 +22,7 @@ repos:
             scripts
           )
   - repo: https://github.com/pre-commit/mirrors-clang-format
-    rev: v16.0.6
+    rev: v18.1.2
     hooks:
       - id: clang-format
         exclude: |
@@ -32,12 +32,12 @@ repos:
         types_or: [c, c++, cuda]
         args: ["-fallback-style=none", "-style=file", "-i"]
   - repo: https://github.com/rapidsai/dependency-file-generator
-    rev: v1.8.0
+    rev: v1.11.0
     hooks:
       - id: rapids-dependency-file-generator
         args: ["--clean"]
   - repo: https://github.com/rapidsai/pre-commit-hooks
-    rev: v0.0.1
+    rev: v0.0.3
     hooks:
       - id: verify-copyright
         files: |
