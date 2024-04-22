@@ -49,6 +49,7 @@ PACKAGES="pylibwholegraph"
 rapids-mamba-retry install \
   --channel "${CPP_CHANNEL}" \
   --channel "${PYTHON_CHANNEL}" \
+  'mkl<2024.1.0' \
   "${PACKAGES}"
 
 rapids-logger "Check GPU usage"
