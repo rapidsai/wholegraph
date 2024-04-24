@@ -408,6 +408,7 @@ static void read_file_list_to_local_memory(char* local_ptr,
  * @param wm_rank : WholeMemory rank.
  * @param wm_world_size : WholeMemory world size.
  * @param round_robin_size : continuous embedding size of a rank using round robin shard stratehy.
+ * @param dev_id : the device bound to the rank.
  */
 static void read_file_list_to_local_memory_roundrobin_with_multi_threads(
   char* local_ptr,
@@ -669,6 +670,8 @@ static void read_file_list_to_local_memory_roundrobin_with_multi_threads(
  * @param file_sizes : Sizes of each file.
  * @param suggested_buffer_size : Suggested buffer size to read.
  * @param wm_rank : WholeMemory rank.
+ * @param wm_world_size : WholeMemory world size.
+ * @param dev_id : the device bound to the rank.
  */
 static void read_file_list_to_local_memory_with_multi_threads(char* local_ptr,
                                                               size_t local_size,
@@ -1294,6 +1297,8 @@ static void read_file_list_to_local_memory_directio(char* local_ptr,
  * @param file_sizes : Sizes of each file.
  * @param suggested_buffer_size : Suggested buffer size to read.
  * @param wm_rank : WholeMemory rank.
+ * @param wm_world_size : WholeMemory world size.
+ * @param dev_id : the device bound to the rank.
  */
 static void read_file_list_to_local_memory_directio_with_multi_thread(
   char* local_ptr,
@@ -1542,6 +1547,7 @@ static void read_file_list_to_local_memory_directio_with_multi_thread(
  * @param wm_rank : WholeMemory rank.
  * @param wm_world_size : WholeMemory world size.
  * @param round_robin_size : continuous embedding size of a rank using round robin shard stratehy.
+ * @param dev_id : the device bound to the rank.
  */
 static void read_file_list_to_local_memory_roundrobin_directio_with_multi_threads(
   char* local_ptr,
