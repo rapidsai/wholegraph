@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2023, NVIDIA CORPORATION.
+ * Copyright (c) 2019-2024, NVIDIA CORPORATION.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -337,7 +337,7 @@ void wholegraph_csr_unweighted_sample_without_replacement_func(
 
   // prefix sum
   wholememory_ops::wm_thrust_allocator thrust_allocator(p_env_fns);
-  thrust::exclusive_scan(thrust::cuda::par(thrust_allocator).on(stream),
+  thrust::exclusive_scan(thrust::cuda::par_nosync(thrust_allocator).on(stream),
                          tmp_sample_count_mem_pointer,
                          tmp_sample_count_mem_pointer + center_node_count + 1,
                          (int*)output_sample_offset);
