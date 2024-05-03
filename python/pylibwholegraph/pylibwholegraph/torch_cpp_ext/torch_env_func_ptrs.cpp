@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2023, NVIDIA CORPORATION.
+ * Copyright (c) 2019-2024, NVIDIA CORPORATION.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -58,6 +58,10 @@ void* create_output_context() {
 
 void destroy_output_context(void* output_context) {
   destroy_torch_memory_context_func(output_context, nullptr);
+}
+
+void free_context_data(void* output_context) {
+  torch_common_free_func(output_context, nullptr);
 }
 
 }  // namespace wholegraph_torch
