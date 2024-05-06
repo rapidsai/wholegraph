@@ -1,4 +1,4 @@
-# Copyright (c) 2019-2023, NVIDIA CORPORATION.
+# Copyright (c) 2019-2024, NVIDIA CORPORATION.
 
 {% set version = environ['RAPIDS_PACKAGE_VERSION'].lstrip('v') + environ.get('VERSION_SUFFIX', '') %}
 {% set minor_version = version.split('.')[0] + '.' + version.split('.')[1] %}
@@ -49,7 +49,7 @@ requirements:
     - cuda-version ={{ cuda_version }}
     - cmake {{ cmake_version }}
     - ninja
-    - sysroot_{{ target_platform }} {{ sysroot_version }}
+    - {{ stdlib("c") }}
   host:
     {% if cuda_major == "11" %}
     - cudatoolkit
