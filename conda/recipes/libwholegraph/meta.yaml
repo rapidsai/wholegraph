@@ -59,8 +59,6 @@ requirements:
     {% endif %}
     - cuda-version ={{ cuda_version }}
     - doxygen {{ doxygen_version }}
-    - gmock {{ gtest_version }}
-    - gtest {{ gtest_version }}
     - libraft ={{ minor_version }}
     - libraft-headers ={{ minor_version }}
     - librmm ={{ minor_version }}
@@ -134,8 +132,6 @@ outputs:
         {% else %}
         - cuda-cudart
         {% endif %}
-        - gmock {{ gtest_version }}
-        - gtest {{ gtest_version }}
     about:
       home: https://rapids.ai/
       license: Apache-2.0
