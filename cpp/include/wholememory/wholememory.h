@@ -387,6 +387,12 @@ wholememory_error_code_t wholememory_store_to_file(wholememory_handle_t wholemem
                                                    size_t file_entry_size,
                                                    const char* local_file_name);
 
+/**
+ * @param comm : WholeMemory Comm
+ * @return : bool
+ */
+bool wholememory_is_intranode_communicator(wholememory_comm_t comm);
+
 bool wholememory_is_build_with_nvshmem();
 #ifdef WITH_NVSHMEM_SUPPORT
 wholememory_error_code_t wholememory_get_nvshmem_reference(

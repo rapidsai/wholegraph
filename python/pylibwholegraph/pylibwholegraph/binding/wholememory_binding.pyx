@@ -184,7 +184,7 @@ cdef extern from "wholememory/wholememory.h":
 
     cdef wholememory_distributed_backend_t wholememory_communicator_get_distributed_backend(
                                                                             wholememory_comm_t comm)
-
+    cdef bool wholememory_is_intranode_communicator(wholememory_comm_t comm)
 
 cpdef enum WholeMemoryErrorCode:
     Success = WHOLEMEMORY_SUCCESS
@@ -1113,6 +1113,10 @@ cdef class PyWholeMemoryFlattenDlpack:
         cdef wholememory_comm_t comm
         cdef int world_rank
         cdef int world_size
+        if self.device_type == MlHost and mem_type == MtContinuous:
+            check_wholememory_error_code(wholememory_get_communicator(&comm, handle.wholememory_handle))
+            if wholememory_is_intranode_communicator(comm) == False :
+                raise ValueError('Multi-node continuous type wholememory does not support host_view. Only supports host_view=false regardless of whether location is host or not.')
         global_size = wholememory_get_total_size(handle.wholememory_handle)
         if global_size % elt_size != 0:
             raise ValueError('global_size=%d not multiple of elt_size=%d' % (global_size, elt_size))
