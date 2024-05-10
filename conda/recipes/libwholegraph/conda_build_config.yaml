@@ -19,12 +19,6 @@ doxygen_version:
 nccl_version:
   - ">=2.9.9"
 
-gtest_version:
-  - ">=1.13.0"
-
-gmock_version:
-  - ">=1.13.0"
-
 c_stdlib:
   - sysroot
 
