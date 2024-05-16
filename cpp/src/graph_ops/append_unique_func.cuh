@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2023, NVIDIA CORPORATION.
+ * Copyright (c) 2019-2024, NVIDIA CORPORATION.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -316,7 +316,7 @@ void graph_append_unique_func(void* target_nodes_ptr,
     <<<num_blocks, kAssignThreadBlockSize, 0, stream>>>(value_id, bucket_count_ptr);
   WM_CUDA_CHECK(cudaGetLastError());
   wholememory_ops::wm_thrust_allocator thrust_allocator(p_env_fns);
-  thrust::exclusive_scan(thrust::cuda::par(thrust_allocator).on(stream),
+  thrust::exclusive_scan(thrust::cuda::par_nosync(thrust_allocator).on(stream),
                          bucket_count_ptr,
                          bucket_count_ptr + num_bucket_count,
                          (int*)bucket_prefix_sum_ptr);

@@ -54,7 +54,7 @@ requirements:
     - cmake {{ cmake_version }}
     - ninja
     - doxygen =1.8.20
-    - sysroot_{{ target_platform }} {{ sysroot_version }}
+    - {{ stdlib("c") }}
   host:
     - cuda-version ={{ cuda_version }}
     {% if cuda_major == "11" %}
