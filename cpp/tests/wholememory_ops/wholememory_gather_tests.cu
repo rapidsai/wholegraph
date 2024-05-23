@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2023, NVIDIA CORPORATION.
+ * Copyright (c) 2019-2024, NVIDIA CORPORATION.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -310,6 +310,16 @@ INSTANTIATE_TEST_SUITE_P(
       .set_memory_type(WHOLEMEMORY_MT_CHUNKED)
       .set_embedding_dim(11)
       .set_embedding_stride(12)
+      .set_indices_count(100005),
+    WholeMemoryGatherTestParam()
+      .set_memory_type(WHOLEMEMORY_MT_CHUNKED)
+      .set_embedding_dim(1)
+      .set_embedding_stride(1)
+      .set_indices_count(100005),
+    WholeMemoryGatherTestParam()
+      .set_memory_type(WHOLEMEMORY_MT_CHUNKED)
+      .set_embedding_dim(1)
+      .set_embedding_stride(2)
       .set_indices_count(100005),
     WholeMemoryGatherTestParam()
       .set_memory_type(WHOLEMEMORY_MT_DISTRIBUTED)
