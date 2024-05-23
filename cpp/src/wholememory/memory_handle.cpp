@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2023, NVIDIA CORPORATION.
+ * Copyright (c) 2019-2024, NVIDIA CORPORATION.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -99,6 +99,12 @@ class wholememory_impl {
     if (local_ptr != nullptr) *local_ptr = local_partition_memory_pointer_;
     if (local_size != nullptr) *local_size = rank_partition_strategy_.local_mem_size;
     if (local_offset != nullptr) *local_offset = rank_partition_strategy_.local_mem_offset;
+    if (location_ == WHOLEMEMORY_ML_HOST && (type_ == WHOLEMEMORY_MT_CONTINUOUS) &&
+        (!(comm_->is_intranode()))) {
+      WHOLEMEMORY_WARN(
+        " Multi-node continuous type wholememory can only be accessed by GPU threads but not CPU "
+        "threads, regardless of whether the location of wholememory is host.");
+    }
   }
   virtual bool get_rank_memory(void** rank_memory_ptr,
                                size_t* rank_memory_size,
