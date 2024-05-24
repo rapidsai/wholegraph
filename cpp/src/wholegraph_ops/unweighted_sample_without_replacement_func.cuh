@@ -123,11 +123,6 @@ __global__ void large_sample_kernel(
   }
 }
 
-__device__ __forceinline__ int log2_up_device(int x)
-{
-  if (x <= 2) return x - 1;
-  return 32 - __clz(x - 1);
-}
 
 template <typename IdType,
           typename LocalIdType,

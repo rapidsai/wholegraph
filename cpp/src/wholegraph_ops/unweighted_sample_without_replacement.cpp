@@ -41,7 +41,8 @@ wholememory_error_code_t wholegraph_csr_unweighted_sample_without_replacement(
   }
   WHOLEMEMORY_EXPECTS_NOTHROW(!csr_row_ptr_has_handle ||
                                 csr_row_ptr_memory_type == WHOLEMEMORY_MT_CHUNKED ||
-                                csr_row_ptr_memory_type == WHOLEMEMORY_MT_CONTINUOUS,
+                                csr_row_ptr_memory_type == WHOLEMEMORY_MT_CONTINUOUS ||
+                                csr_row_ptr_memory_type == WHOLEMEMORY_MT_DISTRIBUTED,
                               "Memory type not supported.");
   bool const csr_col_ptr_has_handle = wholememory_tensor_has_handle(wm_csr_col_ptr_tensor);
   wholememory_memory_type_t csr_col_ptr_memory_type = WHOLEMEMORY_MT_NONE;
@@ -51,7 +52,8 @@ wholememory_error_code_t wholegraph_csr_unweighted_sample_without_replacement(
   }
   WHOLEMEMORY_EXPECTS_NOTHROW(!csr_col_ptr_has_handle ||
                                 csr_col_ptr_memory_type == WHOLEMEMORY_MT_CHUNKED ||
-                                csr_col_ptr_memory_type == WHOLEMEMORY_MT_CONTINUOUS,
+                                csr_col_ptr_memory_type == WHOLEMEMORY_MT_CONTINUOUS ||
+                                csr_row_ptr_memory_type == WHOLEMEMORY_MT_DISTRIBUTED,
                               "Memory type not supported.");
 
   auto csr_row_ptr_tensor_description =
@@ -107,6 +109,29 @@ wholememory_error_code_t wholegraph_csr_unweighted_sample_without_replacement(
 
   void* center_nodes         = wholememory_tensor_get_data_pointer(center_nodes_tensor);
   void* output_sample_offset = wholememory_tensor_get_data_pointer(output_sample_offset_tensor);
+
+  if (csr_col_ptr_memory_type == WHOLEMEMORY_MT_DISTRIBUTED && csr_row_ptr_memory_type == WHOLEMEMORY_MT_DISTRIBUTED) {
+    if (distributed_backend_col == WHOLEMEMORY_DB_NCCL && distributed_backend_row == WHOLEMEMORY_DB_NCCL) {
+      wholememory_handle_t wm_csr_row_ptr_handle = wholememory_tensor_get_memory_handle(wm_csr_row_ptr_tensor);
+      wholememory_handle_t wm_csr_col_ptr_handle = wholememory_tensor_get_memory_handle(wm_csr_col_ptr_tensor);
+      return wholegraph_ops::wholegraph_csr_unweighted_sample_without_replacement_nccl(
+        wm_csr_row_ptr_handle,
+        wm_csr_col_ptr_handle,
+        csr_row_ptr_tensor_description,
+        csr_col_ptr_tensor_description,
+        center_nodes,
+        center_nodes_desc,
+        max_sample_count,
+        output_sample_offset,
+        output_sample_offset_desc,
+        output_dest_memory_context,
+        output_center_localid_memory_context,
+        output_edge_gid_memory_context,
+        random_seed,
+        p_env_fns,
+        static_cast<cudaStream_t>(stream));
+    }
+  }
 
   wholememory_gref_t wm_csr_row_ptr_gref, wm_csr_col_ptr_gref;
   WHOLEMEMORY_RETURN_ON_FAIL(
