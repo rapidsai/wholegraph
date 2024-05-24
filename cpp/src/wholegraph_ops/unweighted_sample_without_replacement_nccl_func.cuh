@@ -16,6 +16,7 @@
 #pragma once
 #include <cub/device/device_radix_sort.cuh>
 #include <random>
+#include <thrust/iterator/counting_iterator.h>
 #include <thrust/scan.h>
 #include <thrust/transform_scan.h>
 
