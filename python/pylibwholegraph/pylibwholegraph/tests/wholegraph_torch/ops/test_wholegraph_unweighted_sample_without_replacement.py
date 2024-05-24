@@ -364,7 +364,7 @@ def routine_func(world_rank: int, world_size: int, **kwargs):
 @pytest.mark.parametrize("center_node_dtype", [torch.int32, torch.int64])
 @pytest.mark.parametrize("col_id_dtype", [0, 1])
 @pytest.mark.parametrize("wholememory_location", ([0, 1]))
-@pytest.mark.parametrize("wholememory_type", ([0, 1]))
+@pytest.mark.parametrize("wholememory_type", ([0, 1, 2]))
 @pytest.mark.parametrize("need_center_local_output", [True, False])
 @pytest.mark.parametrize("need_edge_output", [True, False])
 def test_wholegraph_unweighted_sample(
