@@ -136,7 +136,7 @@ __global__ void unweighted_sample_without_replacement_nccl_kernel(
     }
   }
   __syncthreads();
-  for (int step = 0; step < log2_up_device2(M); ++step) {
+  for (int step = 0; step < log2_up_device(M); ++step) {
 #pragma unroll
     for (int i = 0; i < ITEMS_PER_THREAD; i++) {
       int idx = i * BLOCK_DIM + threadIdx.x;
@@ -250,7 +250,8 @@ void wholegraph_csr_unweighted_sample_without_replacement_nccl_func(
                                           center_nodes_indptr,
                                           center_nodes_indptr_desc,
                                           p_env_fns,
-                                          stream);
+                                          stream,
+					  -1);
 // find the in_degree (subtraction) and sample count
 // temporarily store sampled_csr_ptr_buf (# of degrees/samples per node) in int32;
 // can be changed to int8_t/16_t later
@@ -376,7 +377,8 @@ thrust::transform_exclusive_scan(thrust::cuda::par_nosync(thrust_allocator).on(s
                                           output_dest_node_ptr,
                                           output_dest_node_ptr_desc,
                                           p_env_fns,
-                                          stream);
+                                          stream,
+					  -1);
 
   }
   WM_CUDA_CHECK(cudaGetLastError());

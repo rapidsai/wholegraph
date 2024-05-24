@@ -111,6 +111,10 @@ wholememory_error_code_t wholegraph_csr_unweighted_sample_without_replacement(
   void* output_sample_offset = wholememory_tensor_get_data_pointer(output_sample_offset_tensor);
 
   if (csr_col_ptr_memory_type == WHOLEMEMORY_MT_DISTRIBUTED && csr_row_ptr_memory_type == WHOLEMEMORY_MT_DISTRIBUTED) {
+    wholememory_distributed_backend_t distributed_backend_row =
+      wholememory_get_distributed_backend(wholememory_tensor_get_memory_handle(wm_csr_row_ptr_tensor));
+    wholememory_distributed_backend_t distributed_backend_col =
+      wholememory_get_distributed_backend(wholememory_tensor_get_memory_handle(wm_csr_col_ptr_tensor));
     if (distributed_backend_col == WHOLEMEMORY_DB_NCCL && distributed_backend_row == WHOLEMEMORY_DB_NCCL) {
       wholememory_handle_t wm_csr_row_ptr_handle = wholememory_tensor_get_memory_handle(wm_csr_row_ptr_tensor);
       wholememory_handle_t wm_csr_col_ptr_handle = wholememory_tensor_get_memory_handle(wm_csr_col_ptr_tensor);
@@ -130,7 +134,11 @@ wholememory_error_code_t wholegraph_csr_unweighted_sample_without_replacement(
         random_seed,
         p_env_fns,
         static_cast<cudaStream_t>(stream));
+    } else {
+      WHOLEMEMORY_ERROR("Only NCCL communication backend is supported for sampling.");
+      return WHOLEMEMORY_INVALID_INPUT;
     }
+
   }
 
   wholememory_gref_t wm_csr_row_ptr_gref, wm_csr_col_ptr_gref;

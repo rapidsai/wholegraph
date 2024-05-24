@@ -19,7 +19,6 @@
 #include <wholememory/wholememory.h>
 
 #include "unweighted_sample_without_replacement_nccl_func.cuh"
-#include "unweighted_sample_without_replacement_nccl_fused_func.cuh"
 #include "wholememory_ops/register.hpp"
 
 namespace wholegraph_ops {
