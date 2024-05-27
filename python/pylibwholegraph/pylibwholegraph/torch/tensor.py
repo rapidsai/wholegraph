@@ -156,6 +156,7 @@ class WholeMemoryTensor(object):
         """
         Load WholeMemory Tensor from file lists
         :param filelist: file list to load from
+        :param round_robin_size: continuous embedding size of a rank using round robin shard strategy
         :return: None
         """
         if isinstance(filelist, str):
