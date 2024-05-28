@@ -407,7 +407,7 @@ def create_embedding(
     cache_policy: Union[WholeMemoryCachePolicy, None] = None,
     random_init: bool = False,
     gather_sms: int = -1,
-    round_robin_size=0,
+    round_robin_size: int = 0,
 ):
     r"""
     Create embedding
@@ -419,6 +419,7 @@ def create_embedding(
     :param optimizer: optimizer
     :param cache_policy: cache policy
     :param gather_sms: the number of SMs used in gather process
+    :param round_robin_size: continuous embedding size of a rank using round robin shard strategy
     :return: WholeMemoryEmbedding
     """
     if optimizer is None:
@@ -491,6 +492,7 @@ def create_embedding_from_filelist(
     :param optimizer: optimizer
     :param cache_policy: cache policy
     :param gather_sms: the number of SMs used in gather process
+    :param round_robin_size: continuous embedding size of a rank using round robin shard strategy
     :return:
     """
     if isinstance(filelist, str):
