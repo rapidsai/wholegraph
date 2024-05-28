@@ -97,7 +97,7 @@ static size_t get_handle_partial_size(size_t handle_size,
  * @param suggested_buffer_size : Suggested buffer size to read.
  * @param wm_rank : WholeMemory rank.
  * @param wm_world_size : WholeMemory world size.
- * @param round_robin_size : continuous embedding size of a rank using round robin shard stratehy.
+ * @param round_robin_size : continuous embedding size of a rank using round robin shard strategy.
  */
 static void read_file_list_to_local_memory_roundrobin(char* local_ptr,
                                                       size_t local_size,
@@ -407,7 +407,7 @@ static void read_file_list_to_local_memory(char* local_ptr,
  * @param suggested_buffer_size : Suggested buffer size to read.
  * @param wm_rank : WholeMemory rank.
  * @param wm_world_size : WholeMemory world size.
- * @param round_robin_size : continuous embedding size of a rank using round robin shard stratehy.
+ * @param round_robin_size : continuous embedding size of a rank using round robin shard strategy.
  * @param dev_id : the device bound to the rank.
  */
 static void read_file_list_to_local_memory_roundrobin_with_multi_threads(
@@ -878,7 +878,7 @@ static void read_file_list_to_local_memory_with_multi_threads(char* local_ptr,
  * @param suggested_buffer_size : Suggested buffer size to read.
  * @param wm_rank : WholeMemory rank.
  * @param wm_world_size : WholeMemory world size.
- * @param round_robin_size : continuous embedding size of a rank using round robin shard stratehy.
+ * @param round_robin_size : continuous embedding size of a rank using round robin shard strategy.
  */
 static void read_file_list_to_local_memory_roundrobin_directio(
   char* local_ptr,
@@ -1546,7 +1546,7 @@ static void read_file_list_to_local_memory_directio_with_multi_thread(
  * @param suggested_buffer_size : Suggested buffer size to read.
  * @param wm_rank : WholeMemory rank.
  * @param wm_world_size : WholeMemory world size.
- * @param round_robin_size : continuous embedding size of a rank using round robin shard stratehy.
+ * @param round_robin_size : continuous embedding size of a rank using round robin shard strategy.
  * @param dev_id : the device bound to the rank.
  */
 static void read_file_list_to_local_memory_roundrobin_directio_with_multi_threads(
