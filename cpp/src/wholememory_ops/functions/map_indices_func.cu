@@ -58,7 +58,7 @@ void storage_idx2wm_emb_idx_temp_fn(void* indice_ptr,
   if (block_num > 1568) block_num = 1568;
   IndexT* indice        = static_cast<IndexT*>(indice_ptr);
   IndexT* mapped_indice = static_cast<IndexT*>(mapped_indice_ptr);
-  storage_idx2wm_emb_idx_kernel<<<block_num, block_size>>>(
+  storage_idx2wm_emb_idx_kernel<<<block_num, block_size, 0, stream>>>(
     indice, mapped_indice, indice_size, world_size, entry_per_rank, round_robin_size);
   WM_CUDA_CHECK(cudaStreamSynchronize(stream));
   return;
