@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2023, NVIDIA CORPORATION.
+ * Copyright (c) 2019-2024, NVIDIA CORPORATION.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,13 +27,23 @@ void gather_floating_int32_temp_func(wholememory_gref_t embedding_gref,
                                      wholememory_matrix_description_t embedding_desc,
                                      void* indices,
                                      int64_t indice_count,
+                                     bool gather_with_sorted_ids,
+                                     void* raw_indices,
                                      void* output,
                                      wholememory_matrix_description_t output_desc,
                                      cudaStream_t stream,
                                      int gather_sms)
 {
-  gather_temp_func<EmbeddingT, int32_t, OutputT>(
-    embedding_gref, embedding_desc, indices, indice_count, output, output_desc, stream, gather_sms);
+  gather_temp_func<EmbeddingT, int32_t, OutputT>(embedding_gref,
+                                                 embedding_desc,
+                                                 indices,
+                                                 indice_count,
+                                                 gather_with_sorted_ids,
+                                                 raw_indices,
+                                                 output,
+                                                 output_desc,
+                                                 stream,
+                                                 gather_sms);
 }
 
 REGISTER_DISPATCH_TWO_TYPES(GatherFuncFloatingInt32,
@@ -45,6 +55,8 @@ wholememory_error_code_t gather_floating_int32_func(wholememory_gref_t embedding
                                                     wholememory_matrix_description_t embedding_desc,
                                                     void* indices,
                                                     wholememory_array_description_t indices_desc,
+                                                    bool gather_with_sorted_ids,
+                                                    void* raw_indices,
                                                     void* output,
                                                     wholememory_matrix_description_t output_desc,
                                                     cudaStream_t stream,
@@ -63,6 +75,8 @@ wholememory_error_code_t gather_floating_int32_func(wholememory_gref_t embedding
       static_cast<char*>(indices) +
         indices_desc.storage_offset * wholememory_dtype_get_element_size(indices_desc.dtype),
       indices_desc.size,
+      gather_with_sorted_ids,
+      raw_indices,
       output,
       output_desc,
       stream,
