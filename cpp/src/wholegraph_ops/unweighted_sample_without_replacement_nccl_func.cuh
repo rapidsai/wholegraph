@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2023, NVIDIA CORPORATION.
+ * Copyright (c) 2019-2024, NVIDIA CORPORATION.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -43,8 +43,6 @@ using wholememory_ops::wholememory_gather_nccl;
 
 namespace wholegraph_ops {
 
-
-
 template <typename IdType,
           typename LocalIdType,
           typename WMIdType,
@@ -68,8 +66,8 @@ __global__ void unweighted_sample_without_replacement_nccl_kernel(
   int input_idx = blockIdx.x;
   if (input_idx >= input_node_count) return;
 
-  WMIdType start      = csr_row_ptr_sta[input_idx];
-  WMIdType end        = start + in_degree[input_idx];
+  WMIdType start     = csr_row_ptr_sta[input_idx];
+  WMIdType end       = start + in_degree[input_idx];
   int neighbor_count = (int)(in_degree[input_idx]);
   if (neighbor_count <= 0) return;
   int offset = sample_offset[input_idx];
@@ -192,7 +190,6 @@ __global__ void unweighted_sample_without_replacement_nccl_kernel(
   }
 }
 
-
 template <typename IdType, typename WMIdType>
 void wholegraph_csr_unweighted_sample_without_replacement_nccl_func(
   wholememory_handle_t csr_row_wholememory_handle,
@@ -226,53 +223,57 @@ void wholegraph_csr_unweighted_sample_without_replacement_nccl_func(
 
   auto double_center_node_count = center_node_count + center_node_count;
   wholememory_ops::temp_memory_handle center_nodes_buf(p_env_fns);
-  IdType* center_nodes_expandshift_one =
-    static_cast<IdType*>(center_nodes_buf.device_malloc(double_center_node_count, center_nodes_desc.dtype));
+  IdType* center_nodes_expandshift_one = static_cast<IdType*>(
+    center_nodes_buf.device_malloc(double_center_node_count, center_nodes_desc.dtype));
   // fill center_nodes_shift_one with [center_nodes, center_nodes+1]
   wholememory_ops::wm_thrust_allocator thrust_allocator(p_env_fns);
   thrust::counting_iterator<int64_t> iota(0);
   thrust::for_each(thrust::cuda::par_nosync(thrust_allocator).on(stream),
-                  iota,
-                  iota + double_center_node_count,
-                  ExpandWithOffsetFunc<IdType>{(const IdType*)center_nodes, center_nodes_expandshift_one, center_node_count});
+                   iota,
+                   iota + double_center_node_count,
+                   ExpandWithOffsetFunc<IdType>{
+                     (const IdType*)center_nodes, center_nodes_expandshift_one, center_node_count});
 
   // gathering [rowoffsets, rowoffsets+1]
   wholememory_ops::temp_memory_handle output_buf(p_env_fns);
   int64_t* center_nodes_indptr =
     static_cast<int64_t*>(output_buf.device_malloc(double_center_node_count, WHOLEMEMORY_DT_INT64));
-  wholememory_array_description_t center_nodes_expandshift_one_desc{double_center_node_count, 0, center_nodes_desc.dtype};
-  wholememory_matrix_description_t center_nodes_indptr_desc{{double_center_node_count,1}, 1, 0, wm_csr_row_ptr_desc.dtype};
+  wholememory_array_description_t center_nodes_expandshift_one_desc{
+    double_center_node_count, 0, center_nodes_desc.dtype};
+  wholememory_matrix_description_t center_nodes_indptr_desc{
+    {double_center_node_count, 1}, 1, 0, wm_csr_row_ptr_desc.dtype};
   wholememory_matrix_description_t wm_csr_row_ptr_mat_desc;
   wholememory_convert_tensor_desc_to_matrix(&wm_csr_row_ptr_mat_desc, &wm_csr_row_ptr_desc);
   wholememory_ops::wholememory_gather_nccl(csr_row_wholememory_handle,
-                                          wm_csr_row_ptr_mat_desc,
-                                          center_nodes_expandshift_one,
-                                          center_nodes_expandshift_one_desc,
-                                          center_nodes_indptr,
-                                          center_nodes_indptr_desc,
-                                          p_env_fns,
-                                          stream,
-					  -1);
-// find the in_degree (subtraction) and sample count
-// temporarily store sampled_csr_ptr_buf (# of degrees/samples per node) in int32;
-// can be changed to int8_t/16_t later
-wholememory_ops::temp_memory_handle sampled_csr_ptr_buf(p_env_fns);
-int* in_degree =
-    static_cast<int*>(sampled_csr_ptr_buf.device_malloc(center_node_count+1, WHOLEMEMORY_DT_INT));
-thrust::for_each(thrust::cuda::par_nosync(thrust_allocator).on(stream),
-                  iota,
-                  iota + center_node_count,
-                  ReduceForDegrees<int64_t, int>{center_nodes_indptr, in_degree, center_node_count});
-// prefix sum to get the output_sample_offset (depending on min(max_sample_count and in_degree))
-int sampled_count = max_sample_count <= 0 ? std::numeric_limits<int>::max() : max_sample_count;
-thrust::transform_exclusive_scan(thrust::cuda::par_nosync(thrust_allocator).on(stream),
-                      in_degree,
-                      in_degree + center_node_count + 1,
-                      (int*)output_sample_offset,
-                      MinInDegreeFanout<int>{sampled_count},
-                      0,
-                      thrust::plus<int>());
-// start local sampling
+                                           wm_csr_row_ptr_mat_desc,
+                                           center_nodes_expandshift_one,
+                                           center_nodes_expandshift_one_desc,
+                                           center_nodes_indptr,
+                                           center_nodes_indptr_desc,
+                                           p_env_fns,
+                                           stream,
+                                           -1);
+  // find the in_degree (subtraction) and sample count
+  // temporarily store sampled_csr_ptr_buf (# of degrees/samples per node) in int32;
+  // can be changed to int8_t/16_t later
+  wholememory_ops::temp_memory_handle sampled_csr_ptr_buf(p_env_fns);
+  int* in_degree =
+    static_cast<int*>(sampled_csr_ptr_buf.device_malloc(center_node_count + 1, WHOLEMEMORY_DT_INT));
+  thrust::for_each(
+    thrust::cuda::par_nosync(thrust_allocator).on(stream),
+    iota,
+    iota + center_node_count,
+    ReduceForDegrees<int64_t, int>{center_nodes_indptr, in_degree, center_node_count});
+  // prefix sum to get the output_sample_offset (depending on min(max_sample_count and in_degree))
+  int sampled_count = max_sample_count <= 0 ? std::numeric_limits<int>::max() : max_sample_count;
+  thrust::transform_exclusive_scan(thrust::cuda::par_nosync(thrust_allocator).on(stream),
+                                   in_degree,
+                                   in_degree + center_node_count + 1,
+                                   (int*)output_sample_offset,
+                                   MinInDegreeFanout<int>{sampled_count},
+                                   0,
+                                   thrust::plus<int>());
+  // start local sampling
   int count;
   WM_CUDA_CHECK(cudaMemcpyAsync(&count,
                                 ((int*)output_sample_offset) + center_node_count,
@@ -284,13 +285,12 @@ thrust::transform_exclusive_scan(thrust::cuda::par_nosync(thrust_allocator).on(s
   int64_t* output_edge_gid_ptr = nullptr;
   wholememory_ops::temp_memory_handle edge_gid_buffer_mh(p_env_fns);
   if (output_edge_gid_memory_context) {
-    wholememory_ops::output_memory_handle gen_output_edge_gid_buffer_mh(p_env_fns,
-                                                                      output_edge_gid_memory_context);
+    wholememory_ops::output_memory_handle gen_output_edge_gid_buffer_mh(
+      p_env_fns, output_edge_gid_memory_context);
     output_edge_gid_ptr =
       (int64_t*)gen_output_edge_gid_buffer_mh.device_malloc(count, WHOLEMEMORY_DT_INT64);
   } else {
-    output_edge_gid_ptr =
-      (int64_t*)edge_gid_buffer_mh.device_malloc(count, WHOLEMEMORY_DT_INT64);
+    output_edge_gid_ptr = (int64_t*)edge_gid_buffer_mh.device_malloc(count, WHOLEMEMORY_DT_INT64);
   }
 
   wholememory_ops::output_memory_handle gen_output_dest_buffer_mh(p_env_fns,
@@ -309,78 +309,78 @@ thrust::transform_exclusive_scan(thrust::cuda::par_nosync(thrust_allocator).on(s
   raft::random::detail::DeviceState<raft::random::detail::PCGenerator> rngstate(_rngstate);
   {
     typedef void (*unweighted_sample_func_type)(
-        const IdType* input_nodes,
-        const int64_t* center_nodes_indptr,
-        const int* in_degree,
-        const int input_node_count,
-        const int max_sample_count,
-        raft::random::detail::DeviceState<raft::random::detail::PCGenerator> rngstate,
-        const int* sample_offset,
-        wholememory_array_description_t sample_offset_desc,
-        int* src_lid,
-        int64_t* output_edge_gid_ptr);
+      const IdType* input_nodes,
+      const int64_t* center_nodes_indptr,
+      const int* in_degree,
+      const int input_node_count,
+      const int max_sample_count,
+      raft::random::detail::DeviceState<raft::random::detail::PCGenerator> rngstate,
+      const int* sample_offset,
+      wholememory_array_description_t sample_offset_desc,
+      int* src_lid,
+      int64_t* output_edge_gid_ptr);
     static const unweighted_sample_func_type func_array[32] = {
-        unweighted_sample_without_replacement_nccl_kernel<IdType, int, int64_t, int, 32, 1>,
-        unweighted_sample_without_replacement_nccl_kernel<IdType, int, int64_t, int, 32, 2>,
-        unweighted_sample_without_replacement_nccl_kernel<IdType, int, int64_t, int, 32, 3>,
-        unweighted_sample_without_replacement_nccl_kernel<IdType, int, int64_t, int, 64, 2>,
-        unweighted_sample_without_replacement_nccl_kernel<IdType, int, int64_t, int, 64, 3>,
-        unweighted_sample_without_replacement_nccl_kernel<IdType, int, int64_t, int, 64, 3>,
-        unweighted_sample_without_replacement_nccl_kernel<IdType, int, int64_t, int, 128, 2>,
-        unweighted_sample_without_replacement_nccl_kernel<IdType, int, int64_t, int, 128, 2>,
-        unweighted_sample_without_replacement_nccl_kernel<IdType, int, int64_t, int, 128, 3>,
-        unweighted_sample_without_replacement_nccl_kernel<IdType, int, int64_t, int, 128, 3>,
-        unweighted_sample_without_replacement_nccl_kernel<IdType, int, int64_t, int, 128, 3>,
-        unweighted_sample_without_replacement_nccl_kernel<IdType, int, int64_t, int, 128, 3>,
-        unweighted_sample_without_replacement_nccl_kernel<IdType, int, int64_t, int, 256, 2>,
-        unweighted_sample_without_replacement_nccl_kernel<IdType, int, int64_t, int, 256, 2>,
-        unweighted_sample_without_replacement_nccl_kernel<IdType, int, int64_t, int, 256, 2>,
-        unweighted_sample_without_replacement_nccl_kernel<IdType, int, int64_t, int, 256, 2>,
-        unweighted_sample_without_replacement_nccl_kernel<IdType, int, int64_t, int, 256, 3>,
-        unweighted_sample_without_replacement_nccl_kernel<IdType, int, int64_t, int, 256, 3>,
-        unweighted_sample_without_replacement_nccl_kernel<IdType, int, int64_t, int, 256, 3>,
-        unweighted_sample_without_replacement_nccl_kernel<IdType, int, int64_t, int, 256, 3>,
-        unweighted_sample_without_replacement_nccl_kernel<IdType, int, int64_t, int, 256, 3>,
-        unweighted_sample_without_replacement_nccl_kernel<IdType, int, int64_t, int, 256, 3>,
-        unweighted_sample_without_replacement_nccl_kernel<IdType, int, int64_t, int, 256, 3>,
-        unweighted_sample_without_replacement_nccl_kernel<IdType, int, int64_t, int, 256, 3>,
-        unweighted_sample_without_replacement_nccl_kernel<IdType, int, int64_t, int, 256, 4>,
-        unweighted_sample_without_replacement_nccl_kernel<IdType, int, int64_t, int, 256, 4>,
-        unweighted_sample_without_replacement_nccl_kernel<IdType, int, int64_t, int, 256, 4>,
-        unweighted_sample_without_replacement_nccl_kernel<IdType, int, int64_t, int, 256, 4>,
-        unweighted_sample_without_replacement_nccl_kernel<IdType, int, int64_t, int, 256, 4>,
-        unweighted_sample_without_replacement_nccl_kernel<IdType, int, int64_t, int, 256, 4>,
-        unweighted_sample_without_replacement_nccl_kernel<IdType, int, int64_t, int, 256, 4>,
-        unweighted_sample_without_replacement_nccl_kernel<IdType, int, int64_t, int, 256, 4>};
+      unweighted_sample_without_replacement_nccl_kernel<IdType, int, int64_t, int, 32, 1>,
+      unweighted_sample_without_replacement_nccl_kernel<IdType, int, int64_t, int, 32, 2>,
+      unweighted_sample_without_replacement_nccl_kernel<IdType, int, int64_t, int, 32, 3>,
+      unweighted_sample_without_replacement_nccl_kernel<IdType, int, int64_t, int, 64, 2>,
+      unweighted_sample_without_replacement_nccl_kernel<IdType, int, int64_t, int, 64, 3>,
+      unweighted_sample_without_replacement_nccl_kernel<IdType, int, int64_t, int, 64, 3>,
+      unweighted_sample_without_replacement_nccl_kernel<IdType, int, int64_t, int, 128, 2>,
+      unweighted_sample_without_replacement_nccl_kernel<IdType, int, int64_t, int, 128, 2>,
+      unweighted_sample_without_replacement_nccl_kernel<IdType, int, int64_t, int, 128, 3>,
+      unweighted_sample_without_replacement_nccl_kernel<IdType, int, int64_t, int, 128, 3>,
+      unweighted_sample_without_replacement_nccl_kernel<IdType, int, int64_t, int, 128, 3>,
+      unweighted_sample_without_replacement_nccl_kernel<IdType, int, int64_t, int, 128, 3>,
+      unweighted_sample_without_replacement_nccl_kernel<IdType, int, int64_t, int, 256, 2>,
+      unweighted_sample_without_replacement_nccl_kernel<IdType, int, int64_t, int, 256, 2>,
+      unweighted_sample_without_replacement_nccl_kernel<IdType, int, int64_t, int, 256, 2>,
+      unweighted_sample_without_replacement_nccl_kernel<IdType, int, int64_t, int, 256, 2>,
+      unweighted_sample_without_replacement_nccl_kernel<IdType, int, int64_t, int, 256, 3>,
+      unweighted_sample_without_replacement_nccl_kernel<IdType, int, int64_t, int, 256, 3>,
+      unweighted_sample_without_replacement_nccl_kernel<IdType, int, int64_t, int, 256, 3>,
+      unweighted_sample_without_replacement_nccl_kernel<IdType, int, int64_t, int, 256, 3>,
+      unweighted_sample_without_replacement_nccl_kernel<IdType, int, int64_t, int, 256, 3>,
+      unweighted_sample_without_replacement_nccl_kernel<IdType, int, int64_t, int, 256, 3>,
+      unweighted_sample_without_replacement_nccl_kernel<IdType, int, int64_t, int, 256, 3>,
+      unweighted_sample_without_replacement_nccl_kernel<IdType, int, int64_t, int, 256, 3>,
+      unweighted_sample_without_replacement_nccl_kernel<IdType, int, int64_t, int, 256, 4>,
+      unweighted_sample_without_replacement_nccl_kernel<IdType, int, int64_t, int, 256, 4>,
+      unweighted_sample_without_replacement_nccl_kernel<IdType, int, int64_t, int, 256, 4>,
+      unweighted_sample_without_replacement_nccl_kernel<IdType, int, int64_t, int, 256, 4>,
+      unweighted_sample_without_replacement_nccl_kernel<IdType, int, int64_t, int, 256, 4>,
+      unweighted_sample_without_replacement_nccl_kernel<IdType, int, int64_t, int, 256, 4>,
+      unweighted_sample_without_replacement_nccl_kernel<IdType, int, int64_t, int, 256, 4>,
+      unweighted_sample_without_replacement_nccl_kernel<IdType, int, int64_t, int, 256, 4>};
     static const int warp_count_array[32] = {1, 1, 1, 2, 2, 2, 4, 4, 4, 4, 4, 4, 8, 8, 8, 8,
-                                            8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8};
+                                             8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8};
     int func_idx                          = (max_sample_count - 1) / 32;
     func_array[func_idx]<<<center_node_count, warp_count_array[func_idx] * 32, 0, stream>>>(
-        (const IdType*)center_nodes,
-        (const int64_t*) center_nodes_indptr,
-        (const int*) in_degree,
-        center_node_count,
-        sampled_count,
-        rngstate,
-        (const int*)output_sample_offset,
-        output_sample_offset_desc,
-        (int*)output_center_localid_ptr,
-        (int64_t*)output_edge_gid_ptr);
+      (const IdType*)center_nodes,
+      (const int64_t*)center_nodes_indptr,
+      (const int*)in_degree,
+      center_node_count,
+      sampled_count,
+      rngstate,
+      (const int*)output_sample_offset,
+      output_sample_offset_desc,
+      (int*)output_center_localid_ptr,
+      (int64_t*)output_edge_gid_ptr);
 
     wholememory_matrix_description_t wm_csr_col_ptr_mat_desc;
-    wholememory_matrix_description_t output_dest_node_ptr_desc{{count,1}, 1, 0, wm_csr_col_ptr_desc.dtype};
+    wholememory_matrix_description_t output_dest_node_ptr_desc{
+      {count, 1}, 1, 0, wm_csr_col_ptr_desc.dtype};
     wholememory_array_description_t output_edge_gid_ptr_desc{count, 0, WHOLEMEMORY_DT_INT64};
     wholememory_convert_tensor_desc_to_matrix(&wm_csr_col_ptr_mat_desc, &wm_csr_col_ptr_desc);
     wholememory_ops::wholememory_gather_nccl(csr_col_wholememory_handle,
-                                          wm_csr_col_ptr_mat_desc,
-                                          output_edge_gid_ptr,
-                                          output_edge_gid_ptr_desc,
-                                          output_dest_node_ptr,
-                                          output_dest_node_ptr_desc,
-                                          p_env_fns,
-                                          stream,
-					  -1);
-
+                                             wm_csr_col_ptr_mat_desc,
+                                             output_edge_gid_ptr,
+                                             output_edge_gid_ptr_desc,
+                                             output_dest_node_ptr,
+                                             output_dest_node_ptr_desc,
+                                             p_env_fns,
+                                             stream,
+                                             -1);
   }
   WM_CUDA_CHECK(cudaGetLastError());
   WM_CUDA_CHECK(cudaStreamSynchronize(stream));

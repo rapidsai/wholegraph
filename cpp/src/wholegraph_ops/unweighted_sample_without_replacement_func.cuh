@@ -123,7 +123,6 @@ __global__ void large_sample_kernel(
   }
 }
 
-
 template <typename IdType,
           typename LocalIdType,
           typename WMIdType,

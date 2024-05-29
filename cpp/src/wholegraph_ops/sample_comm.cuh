@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2023, NVIDIA CORPORATION.
+ * Copyright (c) 2019-2024, NVIDIA CORPORATION.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -68,7 +68,8 @@ struct ExpandWithOffsetFunc {
   const IdType* indptr;
   IdType* indptr_shift;
   int length;
-  __host__ __device__ auto operator()(int64_t tIdx) {
+  __host__ __device__ auto operator()(int64_t tIdx)
+  {
     indptr_shift[tIdx] = indptr[tIdx % length] + tIdx / length;
   }
 };
@@ -78,7 +79,8 @@ struct ReduceForDegrees {
   WMIdType* rowoffsets;
   DegreeType* in_degree_ptr;
   int length;
-  __host__ __device__ auto operator()(int64_t tIdx) {
+  __host__ __device__ auto operator()(int64_t tIdx)
+  {
     in_degree_ptr[tIdx] = rowoffsets[tIdx + length] - rowoffsets[tIdx];
   }
 };
@@ -86,7 +88,8 @@ struct ReduceForDegrees {
 template <typename DegreeType>
 struct MinInDegreeFanout {
   int max_sample_count;
-  __host__ __device__ auto operator()(DegreeType degree) {
+  __host__ __device__ auto operator()(DegreeType degree)
+  {
     return min(static_cast<int>(degree), max_sample_count);
   }
 };
