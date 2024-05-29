@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2023, NVIDIA CORPORATION.
+ * Copyright (c) 2019-2024, NVIDIA CORPORATION.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,11 +27,13 @@ wholememory_error_code_t wholememory_gather(wholememory_tensor_t wholememory_ten
                                             void* stream,
                                             int gather_sms)
 {
-  bool const has_handle                 = wholememory_tensor_has_handle(wholememory_tensor);
-  wholememory_memory_type_t memory_type = WHOLEMEMORY_MT_NONE;
+  bool const has_handle                         = wholememory_tensor_has_handle(wholememory_tensor);
+  wholememory_memory_type_t memory_type         = WHOLEMEMORY_MT_NONE;
+  wholememory_memory_location_t memory_location = WHOLEMEMORY_ML_NONE;
   if (has_handle) {
-    memory_type =
-      wholememory_get_memory_type(wholememory_tensor_get_memory_handle(wholememory_tensor));
+    auto memory_handle = wholememory_tensor_get_memory_handle(wholememory_tensor);
+    memory_type        = wholememory_get_memory_type(memory_handle);
+    memory_location    = wholememory_get_memory_location(memory_handle);
   }
   wholememory_matrix_description_t matrix_description;
   auto tensor_description = *wholememory_tensor_get_tensor_description(wholememory_tensor);
@@ -98,12 +100,18 @@ wholememory_error_code_t wholememory_gather(wholememory_tensor_t wholememory_ten
   wholememory_gref_t gref;
   WHOLEMEMORY_RETURN_ON_FAIL(wholememory_tensor_get_global_reference(wholememory_tensor, &gref));
 
+  int64_t entry_size =
+    tensor_description.sizes[1] * wholememory_dtype_get_element_size(tensor_description.dtype);
+  bool gather_with_sorted_ids =
+    (memory_location == WHOLEMEMORY_ML_HOST) && (entry_size <= 512) &&
+    (memory_type == WHOLEMEMORY_MT_CHUNKED || memory_type == WHOLEMEMORY_MT_CONTINUOUS);
   return wholememory_ops::wholememory_gather_mapped(gref,
                                                     matrix_description,
                                                     indices,
                                                     indices_desc,
                                                     output,
                                                     output_desc,
+                                                    gather_with_sorted_ids,
                                                     p_env_fns,
                                                     static_cast<cudaStream_t>(stream),
                                                     gather_sms);

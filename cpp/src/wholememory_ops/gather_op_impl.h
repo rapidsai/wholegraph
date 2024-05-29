@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2023, NVIDIA CORPORATION.
+ * Copyright (c) 2019-2024, NVIDIA CORPORATION.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,6 +27,7 @@ wholememory_error_code_t wholememory_gather_mapped(
   wholememory_array_description_t indice_desc,
   void* output,
   wholememory_matrix_description_t output_desc,
+  bool gather_with_sorted_ids,
   wholememory_env_func_t* p_env_fns,
   cudaStream_t stream,
   int gather_sms);
