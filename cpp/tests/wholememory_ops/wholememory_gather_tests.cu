@@ -303,6 +303,16 @@ INSTANTIATE_TEST_SUITE_P(
       .set_memory_location(WHOLEMEMORY_ML_HOST),
     WholeMemoryGatherTestParam()
       .set_memory_type(WHOLEMEMORY_MT_CONTINUOUS)
+      .set_memory_location(WHOLEMEMORY_ML_HOST)
+      .set_embedding_dim(1)
+      .set_indices_type(WHOLEMEMORY_DT_INT64),
+    WholeMemoryGatherTestParam()
+      .set_memory_type(WHOLEMEMORY_MT_CHUNKED)
+      .set_memory_location(WHOLEMEMORY_ML_HOST)
+      .set_embedding_dim(1)
+      .set_indices_type(WHOLEMEMORY_DT_INT64),
+    WholeMemoryGatherTestParam()
+      .set_memory_type(WHOLEMEMORY_MT_CONTINUOUS)
       .set_embedding_dim(11)
       .set_embedding_stride(12)
       .set_indices_count(100005),

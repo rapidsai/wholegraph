@@ -255,6 +255,8 @@ __global__ void gather_func_kernel(wholememory_gref_t embedding_gref,
                                    wholememory_matrix_description_t embedding_desc,
                                    const IndexT* indices,
                                    int64_t indice_count,
+                                   bool gather_with_sorted_ids,
+                                   const IndexT* raw_indices,
                                    OutputT* output,
                                    wholememory_matrix_description_t output_desc)
 {
@@ -284,7 +286,9 @@ __global__ void gather_func_kernel(wholememory_gref_t embedding_gref,
 
   for (int64_t output_idx = warp_id; output_idx < indice_count;
        output_idx += gridDim.x * (blockDim.x / 32)) {
-    OutputT* output_ptr = output + output_desc.storage_offset + output_stride * output_idx;
+    int64_t raw_output_idx =
+      gather_with_sorted_ids ? (int64_t)(raw_indices[output_idx]) : output_idx;
+    OutputT* output_ptr = output + output_desc.storage_offset + output_stride * raw_output_idx;
     if (!use_shm) { my_shared = output_ptr; }
     int64_t embedding_table_idx = indices[output_idx];
     if (embedding_table_idx < 0) continue;
@@ -323,6 +327,8 @@ __global__ void gather_func_sub_warp_kernel(wholememory_gref_t embedding_gref,
                                             wholememory_matrix_description_t embedding_desc,
                                             const IndexT* indices,
                                             int64_t indice_count,
+                                            bool gather_with_sorted_ids,
+                                            const IndexT* raw_indices,
                                             OutputT* output,
                                             wholememory_matrix_description_t output_desc)
 {
@@ -345,7 +351,9 @@ __global__ void gather_func_sub_warp_kernel(wholememory_gref_t embedding_gref,
   typed_data_vector<EmbeddingT, ALIGNMENT> embeddings;
   typed_data_vector<OutputT, ALIGNMENT> outputs;
   for (int64_t output_idx = sub_warp_id; output_idx < indice_count; output_idx += sub_warp_num) {
-    OutputT* output_ptr        = output + output_desc.storage_offset + output_stride * output_idx;
+    int64_t raw_output_idx =
+      gather_with_sorted_ids ? (int64_t)(raw_indices[output_idx]) : output_idx;
+    OutputT* output_ptr = output + output_desc.storage_offset + output_stride * raw_output_idx;
     IndexT embedding_table_idx = indices[output_idx];
     if (embedding_table_idx < 0) continue;
     int64_t embedding_offset =
@@ -370,6 +378,8 @@ void gather_temp_func(wholememory_gref_t embedding_gref,
                       wholememory_matrix_description_t embedding_desc,
                       void* indices,
                       int64_t indice_count,
+                      bool gather_with_sorted_ids,
+                      void* raw_indices,
                       void* output,
                       wholememory_matrix_description_t output_desc,
                       cudaStream_t stream,
@@ -392,6 +402,8 @@ void gather_temp_func(wholememory_gref_t embedding_gref,
                     wholememory_matrix_description_t,
                     const IndexT*,
                     int64_t,
+                    bool,
+                    const IndexT*,
                     OutputT*,
                     wholememory_matrix_description_t) = nullptr;
 
@@ -495,6 +507,8 @@ void gather_temp_func(wholememory_gref_t embedding_gref,
                                                     embedding_desc,
                                                     static_cast<const IndexT*>(indices),
                                                     indice_count,
+                                                    gather_with_sorted_ids,
+                                                    static_cast<const IndexT*>(raw_indices),
                                                     static_cast<OutputT*>(output),
                                                     output_desc);
   WM_CUDA_CHECK(cudaGetLastError());
