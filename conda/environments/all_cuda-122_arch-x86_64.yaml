@@ -25,8 +25,8 @@ dependencies:
 - graphviz
 - ipykernel
 - ipython
-- libraft-headers==24.8.*
-- librmm==24.8.*
+- libraft-headers==24.8.*,>=0.0.0a0
+- librmm==24.8.*,>=0.0.0a0
 - nanobind>=0.2.0
 - nbsphinx
 - nccl

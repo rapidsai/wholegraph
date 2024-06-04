@@ -24,7 +24,7 @@ fi
 rapids-logger "Generate Python testing dependencies"
 rapids-dependency-file-generator \
   --output conda \
-  --file_key test_python \
+  --file-key test_python \
   --matrix "cuda=${RAPIDS_CUDA_VERSION%.*};arch=${ARCH};py=${RAPIDS_PY_VERSION}" | tee env.yaml
 
 rapids-mamba-retry env create --yes -f env.yaml -n test
