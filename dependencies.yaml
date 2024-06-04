@@ -11,6 +11,7 @@ files:
       - cuda
       - cuda_version
       - py_version
+      - rapids_build_skbuild
       - run
       - test_python
       - docs

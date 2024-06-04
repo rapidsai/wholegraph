@@ -39,6 +39,7 @@ dependencies:
 - pytest-forked
 - pytest-xdist
 - python>=3.9,<3.12
+- rapids-build-backend>=0.3.0,<0.4.0.dev0
 - recommonmark
 - scikit-build-core>=0.7.0
 - sphinx-copybutton
