@@ -8,5 +8,5 @@ def test_version_constants_are_populated():
     assert isinstance(pylibwholegraph.__git_commit__, str)
 
     # __version__ should always be non-empty
-    assert isinstance(pylibwholegraph__version__, str)
+    assert isinstance(pylibwholegraph.__version__, str)
     assert len(pylibwholegraph.__version__) > 0
