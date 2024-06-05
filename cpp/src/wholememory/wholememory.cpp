@@ -274,6 +274,17 @@ bool wholememory_is_intranode_communicator(wholememory_comm_t comm)
   return wholememory::is_intranode_communicator(comm);
 }
 
+bool wholememory_is_intra_mnnvl_communicator(wholememory_comm_t comm)
+{
+  return wholememory::is_intra_mnnvl_communicator(comm);
+}
+
+wholememory_error_code_t wholememory_communicator_get_clique_info(clique_info_t* clique_info,
+                                                                  wholememory_comm_t comm)
+{
+  return wholememory::communicator_get_clique_info(clique_info, comm);
+}
+
 bool wholememory_is_build_with_nvshmem()
 {
 #ifdef WITH_NVSHMEM_SUPPORT

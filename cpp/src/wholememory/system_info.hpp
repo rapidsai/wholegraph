@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, NVIDIA CORPORATION.
+ * Copyright (c) 2023-2024, NVIDIA CORPORATION.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,6 +15,8 @@
  */
 #pragma once
 
+#include "nvml.h"
+#include "wholememory/wholememory.h"
 bool DevAttrPagebleMemoryAccess();
 
 bool DeviceCanAccessPeer(int peer_device);
@@ -29,4 +31,7 @@ bool SupportMNNVL();
 
 bool SupportEGM();
 
-bool SupportMNNVLForEGM();
+// bool SupportMNNVLForEGM();
+namespace wholememory {
+wholememory_error_code_t GetGpuFabricInfoV(int dev, nvmlGpuFabricInfoV_t* gpuFabricInfo);
+}

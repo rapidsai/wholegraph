@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, NVIDIA CORPORATION.
+ * Copyright (c) 2023-2024, NVIDIA CORPORATION.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,6 +19,18 @@
 
 #include "cuda_macros.hpp"
 
+#include "logger.hpp"
+#include "nvml.h"
+#include "system_info.hpp"
+#include "wholememory/wholememory.h"
+
+namespace {
+
+std::mutex lock;  // NVML has had some thread safety bugs
+bool nvmlInitialized                = false;
+thread_local bool threadInitialized = false;
+wholememory_error_code_t initResult;
+};  // namespace
 bool DevAttrPagebleMemoryAccess()
 {
   int current_dev_id = -1;
@@ -88,16 +100,53 @@ const char* GetCPUArch()
   return arch_str;
 }
 
-bool SupportMNNVL()
-{
-  // TODO: replace with NVML, nvmlDeviceGetGpuFabricInfo
-  return GetCudaCompCap() >= 90;
-}
-
 bool SupportEGM()
 {
   std::string const arch_str = GetCPUArch();
   return arch_str == "arm64" && DevAttrPagebleMemoryAccess();
 }
 
-bool SupportMNNVLForEGM() { return SupportMNNVL() && SupportEGM(); }
+// bool SupportMNNVLForEGM() { return SupportMNNVL() && SupportEGM(); }
+
+namespace wholememory {
+
+wholememory_error_code_t NvmlEnsureInitialized()
+{
+  // Optimization to avoid repeatedly grabbing the lock when we only want to
+  // read from the global tables.
+  if (threadInitialized) return initResult;
+  threadInitialized = true;
+
+  std::lock_guard<std::mutex> locked(lock);
+
+  if (nvmlInitialized) return initResult;
+  nvmlInitialized       = true;
+  nvmlReturn_t nvml_res = nvmlInit();
+  if (nvml_res != NVML_SUCCESS) {
+    WHOLEMEMORY_ERROR("nvmlInit() failed, the error is %s", nvmlErrorString(nvml_res));
+    initResult = WHOLEMEMORY_SYSTEM_ERROR;
+
+    return initResult;
+  }
+  initResult = WHOLEMEMORY_SUCCESS;
+
+  return initResult;
+}
+
+wholememory_error_code_t GetGpuFabricInfoV(int dev, nvmlGpuFabricInfoV_t* gpuFabricInfo)
+{
+  WHOLEMEMORY_CHECK_NOTHROW(NvmlEnsureInitialized() == WHOLEMEMORY_SUCCESS);
+  std::lock_guard<std::mutex> locked(lock);
+  gpuFabricInfo->version = nvmlGpuFabricInfo_v2;
+  nvmlDevice_t nvml_device;
+  nvmlReturn_t ret = nvmlDeviceGetHandleByIndex(dev, &nvml_device);
+  WHOLEMEMORY_EXPECTS_NOTHROW(
+    ret == NVML_SUCCESS, "nvmlDeviceGetHandleByIndex error:%s", nvmlErrorString(ret));
+  ret = nvmlDeviceGetGpuFabricInfoV(nvml_device, gpuFabricInfo);
+  WHOLEMEMORY_EXPECTS_NOTHROW(
+    ret == NVML_SUCCESS, "nvmlDeviceGetGpuFabricInfoV error:%s", nvmlErrorString(ret));
+
+  return WHOLEMEMORY_SUCCESS;
+}
+
+};  // namespace wholememory

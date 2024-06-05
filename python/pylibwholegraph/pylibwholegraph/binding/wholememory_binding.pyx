@@ -185,6 +185,30 @@ cdef extern from "wholememory/wholememory.h":
     cdef wholememory_distributed_backend_t wholememory_communicator_get_distributed_backend(
                                                                             wholememory_comm_t comm)
     cdef bool wholememory_is_intranode_communicator(wholememory_comm_t comm)
+    cdef bool wholememory_is_intra_mnnvl_communicator(wholememory_comm_t comm)
+
+
+    cdef struct clique_info_t:
+        int is_in_clique
+        int clique_first_rank
+        int clique_rank
+        int clique_rank_num
+        int clique_id
+        int clique_num
+
+    cdef wholememory_error_code_t wholememory_communicator_get_clique_info(clique_info_t* clique_info, wholememory_comm_t comm)
+
+    # struct clique_info_t {
+#   int is_in_clique;  // is_in_clique >0 means the gpu belongs to  a mnnvl domain
+#   int clique_first_rank;
+#   int clique_rank;      // the rank of gpu in a mnnvl domain
+#   int clique_rank_num;  // the num of gpu in the mnnvl domain
+#   int clique_id;        // the id of clique
+#   int clique_num;       // the num of clique in the comm domain.
+# };
+# 返回一个tuple
+
+
 
     cdef wholememory_error_code_t wholememory_split_communicator(wholememory_comm_t* new_comm,
                                                         wholememory_comm_t comm,
@@ -1268,6 +1292,14 @@ cdef class PyWholeMemoryComm:
         cdef int world_size = -1
         check_wholememory_error_code(wholememory_communicator_get_size(&world_size, self.comm_id))
         return world_size
+    def get_clique_info(self):
+        cdef clique_info_t clique_info
+        check_wholememory_error_code(wholememory_communicator_get_clique_info(&clique_info,self.comm_id))
+
+        cdef bint is_in_clique = clique_info.is_in_clique > 0
+
+        return is_in_clique,clique_info.clique_first_rank,clique_info.clique_rank,clique_info.clique_rank_num,clique_info.clique_id,clique_info.clique_num
+
     def barrier(self):
         check_wholememory_error_code(wholememory_communicator_barrier(self.comm_id))
 

@@ -21,6 +21,7 @@ from .comm import (
     get_local_node_communicator,
     get_local_device_communicator,
     split_communicator,
+    get_local_mnnvl_communicator,
 )
 
 from .embedding import (

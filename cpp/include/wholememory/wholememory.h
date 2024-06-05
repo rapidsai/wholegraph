@@ -40,6 +40,7 @@ enum wholememory_error_code_t {
   WHOLEMEMORY_INVALID_VALUE,       /*!< input value is invalid */
   WHOLEMEMORY_OUT_OF_MEMORY,       /*!< out of memory */
   WHOLEMEMORY_NOT_SUPPORTED,       /*!< not supported */
+  WHOLEMEMORY_SYSTEM_ERROR,        /*!< system error>*/
 };
 
 #define WHOLEMEMORY_RETURN_ON_FAIL(X)                                                 \
@@ -111,6 +112,15 @@ wholememory_error_code_t wholememory_finalize();
  * An Opaque handle to communicator
  */
 typedef struct wholememory_comm_* wholememory_comm_t;
+
+struct clique_info_t {
+  int is_in_clique;  // is_in_clique >0 means the gpu belongs to  a mnnvl domain
+  int clique_first_rank;
+  int clique_rank;      // the rank of gpu in a mnnvl domain
+  int clique_rank_num;  // the num of gpu in the mnnvl domain
+  int clique_id;        // the id of clique
+  int clique_num;       // the num of clique in the comm domain.
+};
 
 #define WHOLEMEMORY_UNIQUE_ID_BYTES (128)
 /**
@@ -195,6 +205,9 @@ wholememory_error_code_t wholememory_communicator_get_rank(int* rank, wholememor
  * @return : wholememory_error_code_t
  */
 wholememory_error_code_t wholememory_communicator_get_size(int* size, wholememory_comm_t comm);
+
+wholememory_error_code_t wholememory_communicator_get_clique_info(clique_info_t* clique_info,
+                                                                  wholememory_comm_t comm);
 
 bool wholememory_communicator_is_bind_to_nvshmem(wholememory_comm_t comm);
 
@@ -412,6 +425,7 @@ wholememory_error_code_t wholememory_store_to_file(wholememory_handle_t wholemem
  */
 bool wholememory_is_intranode_communicator(wholememory_comm_t comm);
 
+bool wholememory_is_intra_mnnvl_communicator(wholememory_comm_t comm);
 bool wholememory_is_build_with_nvshmem();
 #ifdef WITH_NVSHMEM_SUPPORT
 wholememory_error_code_t wholememory_get_nvshmem_reference(

@@ -1318,7 +1318,7 @@ class continuous_mnnvl_wholememory_impl : public continuous_device_wholememory_i
   void check_valid()
   {
     if (location_ == WHOLEMEMORY_ML_HOST) { WHOLEMEMORY_CHECK_NOTHROW(SupportEGM()); }
-    WHOLEMEMORY_CHECK_NOTHROW(SupportMNNVL());
+    WHOLEMEMORY_CHECK_NOTHROW(comm_->is_intra_mnnvl());
   }
   void create_memory() override
   {
