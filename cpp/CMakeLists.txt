@@ -195,6 +195,7 @@ PUBLIC
     CUDA::cuda_driver
     CUDA::cudart${_ctk_static_suffix}
     raft::raft
+    nvidia-ml
 PRIVATE
     NCCL::NCCL
 )
