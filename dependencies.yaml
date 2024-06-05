@@ -45,6 +45,7 @@ files:
       - cuda
       - cuda_version
       - py_version
+      - rapids_build_skbuild
       - run
       - pytorch_cpu
       - clang_tools
@@ -87,7 +88,6 @@ dependencies:
           - librmm==24.8.*,>=0.0.0a0
           - nanobind>=0.2.0
           - nccl
-          - &scikit_build_core_conda scikit-build-core>=0.7.0
     specific:
       - output_types: conda
         matrices:
@@ -331,7 +331,7 @@ dependencies:
           - rapids-build-backend>=0.3.0,<0.4.0.dev0
       - output_types: conda
         packages:
-          - *scikit_build_core_conda
+          - scikit-build-core>=0.7.0
       - output_types: [requirements, pyproject]
         packages:
           - scikit-build-core[pyproject]>=0.7.0
