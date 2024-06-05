@@ -33,5 +33,5 @@ bool SupportEGM();
 
 // bool SupportMNNVLForEGM();
 namespace wholememory {
-wholememory_error_code_t GetGpuFabricInfoV(int dev, nvmlGpuFabricInfoV_t* gpuFabricInfo);
+wholememory_error_code_t GetGpuFabricInfo(int dev, nvmlGpuFabricInfo_t* gpuFabricInfo);
 }

@@ -133,18 +133,18 @@ wholememory_error_code_t NvmlEnsureInitialized()
   return initResult;
 }
 
-wholememory_error_code_t GetGpuFabricInfoV(int dev, nvmlGpuFabricInfoV_t* gpuFabricInfo)
+wholememory_error_code_t GetGpuFabricInfo(int dev, nvmlGpuFabricInfo_t* gpuFabricInfo)
 {
   WHOLEMEMORY_CHECK_NOTHROW(NvmlEnsureInitialized() == WHOLEMEMORY_SUCCESS);
   std::lock_guard<std::mutex> locked(lock);
-  gpuFabricInfo->version = nvmlGpuFabricInfo_v2;
+  // gpuFabricInfo->version = nvmlGpuFabricInfo_v2;
   nvmlDevice_t nvml_device;
   nvmlReturn_t ret = nvmlDeviceGetHandleByIndex(dev, &nvml_device);
   WHOLEMEMORY_EXPECTS_NOTHROW(
     ret == NVML_SUCCESS, "nvmlDeviceGetHandleByIndex error:%s", nvmlErrorString(ret));
-  ret = nvmlDeviceGetGpuFabricInfoV(nvml_device, gpuFabricInfo);
+  ret = nvmlDeviceGetGpuFabricInfo(nvml_device, gpuFabricInfo);
   WHOLEMEMORY_EXPECTS_NOTHROW(
-    ret == NVML_SUCCESS, "nvmlDeviceGetGpuFabricInfoV error:%s", nvmlErrorString(ret));
+    ret == NVML_SUCCESS, "nvmlDeviceGetGpuFabricInfo error:%s", nvmlErrorString(ret));
 
   return WHOLEMEMORY_SUCCESS;
 }

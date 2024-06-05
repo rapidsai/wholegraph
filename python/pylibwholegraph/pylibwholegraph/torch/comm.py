@@ -282,8 +282,8 @@ def get_local_mnnvl_communicator():
         uid_th = torch.utils.dlpack.from_dlpack(tmp_wm_uid.__dlpack__())
         uid_th_cuda = uid_th.cuda()
         uid_th_cuda_tensor_list = [
-            torch.zeros_like(uid_th_cuda)
-        ] * g_communicator.get_size()
+            torch.zeros_like(uid_th_cuda) for _ in range(dist.get_world_size())
+        ]
 
         dist.all_gather(uid_th_cuda_tensor_list, uid_th_cuda)
         uid_th_cuda_root = uid_th_cuda_tensor_list[clique_first_rank]

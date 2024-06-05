@@ -426,7 +426,7 @@ struct rank_info {
   int gpu_id;
 // MNNVL support
 #if CUDA_VERSION >= 12030
-  nvmlGpuFabricInfoV_t fabricInfo;
+  nvmlGpuFabricInfo_t fabric_info;
 #endif
 };
 
@@ -503,15 +503,15 @@ bool comm_support_mnnvl(wholememory_comm_t wm_comm, const std::unique_ptr<rank_i
     cuDeviceGetAttribute(&flag, CU_DEVICE_ATTRIBUTE_HANDLE_TYPE_FABRIC_SUPPORTED, currentDev));
   if (!flag) return false;
 
-  nvmlGpuFabricInfoV_t gpuFabricInfo;
-  WHOLEMEMORY_CHECK_NOTHROW(wholememory::GetGpuFabricInfoV(wm_comm->dev_id, &gpuFabricInfo) ==
+  nvmlGpuFabricInfo_t gpuFabricInfo;
+  WHOLEMEMORY_CHECK_NOTHROW(wholememory::GetGpuFabricInfo(wm_comm->dev_id, &gpuFabricInfo) ==
                             WHOLEMEMORY_SUCCESS);
 
   if (gpuFabricInfo.state != NVML_GPU_FABRIC_STATE_COMPLETED) { return false; }
 
   // Check that all ranks have initialized the fabric fully
   for (int i = 0; i < wm_comm->world_rank; i++) {
-    if (p_rank_info.get()[i].fabricInfo.state != NVML_GPU_FABRIC_STATE_COMPLETED) return 0;
+    if (p_rank_info.get()[i].fabric_info.state != NVML_GPU_FABRIC_STATE_COMPLETED) return 0;
   }
 
   return GetCudaCompCap() >= 90;
@@ -526,12 +526,12 @@ void exchange_rank_info(wholememory_comm_t wm_comm)
   ri.pid    = getpid();
   ri.gpu_id = wm_comm->dev_id;
 #if CUDA_VERSION >= 12030
-  memset(&ri.fabricInfo, 0, sizeof(ri.fabricInfo));
-  WHOLEMEMORY_CHECK_NOTHROW(GetGpuFabricInfoV(wm_comm->dev_id, &ri.fabricInfo) ==
+  memset(&ri.fabric_info, 0, sizeof(ri.fabric_info));
+  WHOLEMEMORY_CHECK_NOTHROW(GetGpuFabricInfo(wm_comm->dev_id, &ri.fabric_info) ==
                             WHOLEMEMORY_SUCCESS);
 
   //    // A zero UUID means we don't have MNNVL fabric info
-  if (((((long*)ri.fabricInfo.clusterUuid)[0] | ((long*)ri.fabricInfo.clusterUuid)[1]) == 0)) {
+  if (((((long*)ri.fabric_info.clusterUuid)[0] | ((long*)ri.fabric_info.clusterUuid)[1]) == 0)) {
     wm_comm->clique_info.is_in_clique = 0;
 
   } else {
@@ -566,17 +566,17 @@ void exchange_rank_info(wholememory_comm_t wm_comm)
 
 #if CUDA_VERSION >= 12030
 
-    if ((memcmp(ri.fabricInfo.clusterUuid,
-                p_rank_info.get()[r].fabricInfo.clusterUuid,
+    if ((memcmp(ri.fabric_info.clusterUuid,
+                p_rank_info.get()[r].fabric_info.clusterUuid,
                 NVML_GPU_FABRIC_UUID_LEN) == 0) &&
-        (ri.fabricInfo.cliqueId == p_rank_info.get()[r].fabricInfo.cliqueId)) {
+        (ri.fabric_info.cliqueId == p_rank_info.get()[r].fabric_info.cliqueId)) {
       if (r == wm_comm->world_rank) {
         wm_comm->clique_info.clique_rank = wm_comm->clique_info.clique_rank_num;
       }
       if (wm_comm->clique_info.clique_rank_num == 0) { wm_comm->clique_info.clique_first_rank = r; }
       wm_comm->clique_info.clique_rank_num++;
     }
-    clique_ids.insert(p_rank_info.get()[r].fabricInfo.cliqueId);
+    clique_ids.insert(p_rank_info.get()[r].fabric_info.cliqueId);
 
 #endif
   }
@@ -585,7 +585,7 @@ void exchange_rank_info(wholememory_comm_t wm_comm)
   wm_comm->clique_info.clique_num = clique_ids.size();
   int id                          = 0;
   for (auto clique_id : clique_ids) {
-    if (clique_id == ri.fabricInfo.cliqueId) { wm_comm->clique_info.clique_id = id; }
+    if (clique_id == ri.fabric_info.cliqueId) { wm_comm->clique_info.clique_id = id; }
     id++;
   }
 
