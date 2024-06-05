@@ -261,6 +261,11 @@ wholememory_error_code_t wholememory_load_from_hdfs_file(wholememory_handle_t wh
   return WHOLEMEMORY_NOT_IMPLEMENTED;
 }
 
+bool wholememory_is_intranode_communicator(wholememory_comm_t comm)
+{
+  return wholememory::is_intranode_communicator(comm);
+}
+
 bool wholememory_is_build_with_nvshmem()
 {
 #ifdef WITH_NVSHMEM_SUPPORT

@@ -74,8 +74,8 @@ dependencies:
           - cxx-compiler
           - cython>=3.0.0
           - &doxygen doxygen==1.9.1
-          - libraft-headers==24.4.*
-          - librmm==24.4.*
+          - libraft-headers==24.6.*
+          - librmm==24.6.*
           - nanobind>=0.2.0
           - nccl
           - scikit-build-core>=0.7.0

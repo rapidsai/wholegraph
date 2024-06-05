@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2023, NVIDIA CORPORATION.
+ * Copyright (c) 2019-2024, NVIDIA CORPORATION.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -57,4 +57,41 @@ __global__ void sample_all_kernel(wholememory_gref_t wm_csr_row_ptr,
     }
   }
 }
+
+__device__ __forceinline__ int log2_up_device(int x)
+{
+  if (x <= 2) return x - 1;
+  return 32 - __clz(x - 1);
+}
+template <typename IdType>
+struct ExpandWithOffsetFunc {
+  const IdType* indptr;
+  IdType* indptr_shift;
+  int length;
+  __host__ __device__ auto operator()(int64_t tIdx)
+  {
+    indptr_shift[tIdx] = indptr[tIdx % length] + tIdx / length;
+  }
+};
+
+template <typename WMIdType, typename DegreeType>
+struct ReduceForDegrees {
+  WMIdType* rowoffsets;
+  DegreeType* in_degree_ptr;
+  int length;
+  __host__ __device__ auto operator()(int64_t tIdx)
+  {
+    in_degree_ptr[tIdx] = rowoffsets[tIdx + length] - rowoffsets[tIdx];
+  }
+};
+
+template <typename DegreeType>
+struct MinInDegreeFanout {
+  int max_sample_count;
+  __host__ __device__ auto operator()(DegreeType degree)
+  {
+    return min(static_cast<int>(degree), max_sample_count);
+  }
+};
+
 }  // namespace wholegraph_ops
