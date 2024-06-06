@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2023, NVIDIA CORPORATION.
+ * Copyright (c) 2019-2024, NVIDIA CORPORATION.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -622,6 +622,70 @@ wholememory_error_code_t create_communicator(wholememory_comm_t* comm,
     WM_CUDA_CHECK(cudaStreamCreateWithFlags(&cuda_stream, cudaStreamNonBlocking));
     auto* wm_comm = new wholememory_comm_(nccl_comm, world_size, world_rank, cuda_stream);
     *comm         = wm_comm;
+    WM_COMM_CHECK_ALL_SAME(wm_comm, WM_COMM_OP_STARTING);
+
+    exchange_rank_info(wm_comm);
+
+    negotiate_communicator_id_locked(wm_comm);
+
+    maybe_create_temp_dir(wm_comm);
+
+    determine_alloc_granularity(wm_comm);
+
+    return WHOLEMEMORY_SUCCESS;
+  } catch (const wholememory::cu_error& wce) {
+    WHOLEMEMORY_FAIL_NOTHROW("%s", wce.what());
+  } catch (const wholememory::cuda_error& wce) {
+    WHOLEMEMORY_FAIL_NOTHROW("%s", wce.what());
+  } catch (const wholememory::logic_error& wle) {
+    WHOLEMEMORY_FAIL_NOTHROW("%s", wle.what());
+  } catch (const raft::exception& re) {
+    WHOLEMEMORY_FAIL_NOTHROW("%s", re.what());
+  } catch (const std::bad_alloc& sba) {
+    WHOLEMEMORY_FAIL_NOTHROW("%s", sba.what());
+  } catch (...) {
+    WHOLEMEMORY_FAIL_NOTHROW("Unknown exception.");
+  }
+}
+
+/**
+ *
+ * Ranks which pass the same color value will be part of the same group; color must be a
+ * non-negative value. If it is passed as WHOLEMEMORY_SPLIT_NOCOLOR, it means that the rank will not
+ * be part of any group, therefore returning NULL as newcomm. The value of key will determine the
+ * rank order, and the smaller key means the smaller rank in new communicator. If keys are equal
+ * between ranks, then the rank in the original communicator will be used to order ranks.
+ *
+ */
+
+wholememory_error_code_t split_communicator(wholememory_comm_t* new_comm,
+                                            wholememory_comm_t parent_comm,
+                                            int color,
+                                            int key) noexcept
+{
+  try {
+    std::unique_lock<std::mutex> mlock(comm_mu);
+
+    WHOLEMEMORY_EXPECTS(wholememory_communicator_is_bind_to_nvshmem(parent_comm) == false,
+                        "Cannot split a communicator that is already bind to NVSHMEM");
+
+    ncclComm_t nccl_comm = parent_comm->raft_nccl_comm->raw_nccl_comm();
+    WHOLEMEMORY_CHECK(nccl_comm != nullptr);
+    ncclComm_t new_nccl_comm;
+    WHOLEMEMORY_CHECK(ncclCommSplit(nccl_comm, color, key, &new_nccl_comm, NULL) == ncclSuccess);
+    cudaStream_t cuda_stream;
+    WM_CUDA_CHECK(cudaStreamCreateWithFlags(&cuda_stream, cudaStreamNonBlocking));
+    if (new_nccl_comm == NULL) {
+      *new_comm = nullptr;
+      return WHOLEMEMORY_SUCCESS;
+    }
+    int new_rank;
+    int new_size;
+    WHOLEMEMORY_CHECK(ncclCommUserRank(new_nccl_comm, &new_rank) == ncclSuccess);
+    WHOLEMEMORY_CHECK(ncclCommCount(new_nccl_comm, &new_size) == ncclSuccess);
+
+    auto* wm_comm = new wholememory_comm_(new_nccl_comm, new_size, new_rank, cuda_stream);
+    *new_comm     = wm_comm;
     WM_COMM_CHECK_ALL_SAME(wm_comm, WM_COMM_OP_STARTING);
 
     exchange_rank_info(wm_comm);

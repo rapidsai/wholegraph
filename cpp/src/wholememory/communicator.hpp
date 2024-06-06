@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2023, NVIDIA CORPORATION.
+ * Copyright (c) 2019-2024, NVIDIA CORPORATION.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -266,6 +266,11 @@ wholememory_error_code_t create_communicator(wholememory_comm_t* comm,
                                              wholememory_unique_id_t unique_id,
                                              int rank,
                                              int size) noexcept;
+
+wholememory_error_code_t split_communicator(wholememory_comm_t* new_comm,
+                                            wholememory_comm_t parent_comm,
+                                            int color,
+                                            int key) noexcept;
 
 wholememory_error_code_t destroy_communicator_locked(wholememory_comm_t comm) noexcept;
 

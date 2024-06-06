@@ -90,6 +90,7 @@ enum LogLevel {
   LEVEL_TRACE      /*!< Trace */
 };
 
+#define WHOLEMEMORY_SPILT_NO_COLOR -1
 /**
  * Initialize WholeMemory library
  * @param flags : reserved should be 0
@@ -142,6 +143,24 @@ wholememory_error_code_t wholememory_create_communicator(wholememory_comm_t* com
                                                          int rank,
                                                          int size);
 
+/**
+ * Split WholeMemory Communicator
+ * @param new_comm: returned the splited wholeMemory Communicator
+ * @param comm: WholeMemory Communicator to split
+ * @param color: color value to split communicator,Ranks which pass the same color value will be
+ * part of the same group; color must be a non-negative value. If it is passed as
+ * WHOLEMEMORY_SPLIT_NOCOLOR, it means that the rank will not be part of any group, therefore
+ * returning NULL as newcomm.
+ * @param key: key value to split communicator,the value of key will determine the
+ * rank order, and the smaller key means the smaller rank in new communicator. If keys are equal
+ * between ranks, then the rank in the original communicator will be used to order ranks.
+ * @return : wholememory_error_code_t
+
+*/
+wholememory_error_code_t wholememory_split_communicator(wholememory_comm_t* new_comm,
+                                                        wholememory_comm_t comm,
+                                                        int color,
+                                                        int key);
 /**
  * Destroy WholeMemory Communicator
  * @param comm : WholeMemory Communicator to destroy
