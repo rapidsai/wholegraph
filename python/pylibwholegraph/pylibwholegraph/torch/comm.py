@@ -1,4 +1,4 @@
-# Copyright (c) 2019-2023, NVIDIA CORPORATION.
+# Copyright (c) 2019-2024, NVIDIA CORPORATION.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -19,7 +19,7 @@ from .utils import (
     str_to_wmb_wholememory_distributed_backend_type,
     wholememory_distributed_backend_type_to_str,
     str_to_wmb_wholememory_memory_type,
-    str_to_wmb_wholememory_location
+    str_to_wmb_wholememory_location,
 )
 
 global_communicators = {}
@@ -91,9 +91,7 @@ class WholeMemoryCommunicator(object):
         """
         return self.wmb_comm.barrier()
 
-    def support_type_location(self,
-                              memory_type: str,
-                              memory_location: str):
+    def support_type_location(self, memory_type: str, memory_location: str):
         """
         Return True if Communicator supports combination of memory_type and memory_location.
         """
@@ -107,11 +105,15 @@ class WholeMemoryCommunicator(object):
 
     @property
     def distributed_backend(self):
-        return wholememory_distributed_backend_type_to_str(self.wmb_comm.get_distributed_backend())
+        return wholememory_distributed_backend_type_to_str(
+            self.wmb_comm.get_distributed_backend()
+        )
 
     @distributed_backend.setter
     def distributed_backend(self, value):
-        self.wmb_comm.set_distributed_backend(str_to_wmb_wholememory_distributed_backend_type(value))
+        self.wmb_comm.set_distributed_backend(
+            str_to_wmb_wholememory_distributed_backend_type(value)
+        )
 
 
 def create_group_communicator(group_size: int = -1, comm_stride: int = 1):
@@ -152,6 +154,21 @@ def create_group_communicator(group_size: int = -1, comm_stride: int = 1):
     return WholeMemoryCommunicator(wm_comm)
 
 
+def split_communicator(comm: WholeMemoryCommunicator, color: int, key: int = 0):
+    """Split Communicator.
+    Creates a set of new communicators from an existing one. Ranks which pass the same color value will be part of the
+    same group; color must be a non-negative value.
+    The value of key will determine the rank order, and the smaller key means the smaller rank in new communicator.
+    If keys are equal between ranks, then the rank in the original communicator will be used to order ranks.
+    """
+    if not isinstance(color, int) or not isinstance(key, int):
+        raise TypeError("color and key must be int")
+    if color < 0:
+        return None
+    new_wm_comm = wmb.split_communicator(comm.wmb_comm, color, key)
+    return WholeMemoryCommunicator(new_wm_comm)
+
+
 def destroy_communicator(wm_comm: WholeMemoryCommunicator):
     """
     Destroy WholeMemoryCommunicator
@@ -163,7 +180,7 @@ def destroy_communicator(wm_comm: WholeMemoryCommunicator):
         wm_comm.wmb_comm = None
 
 
-def get_global_communicator(distributed_backend='nccl'):
+def get_global_communicator(distributed_backend="nccl"):
     """
     Get the global communicator of this job
     :return: WholeMemoryCommunicator that has all GPUs in it.
@@ -174,8 +191,13 @@ def get_global_communicator(distributed_backend='nccl'):
         global_communicator = create_group_communicator()
         comm_set_distributed_backend(global_communicator, distributed_backend)
         global_communicators[distributed_backend] = global_communicator
-        if distributed_backend == 'nccl':  # local_node/device_communicator can only be nccl backend for now
-            if local_node_communicator is None and all_comm_local_size == all_comm_world_size:
+        if (
+            distributed_backend == "nccl"
+        ):  # local_node/device_communicator can only be nccl backend for now
+            if (
+                local_node_communicator is None
+                and all_comm_local_size == all_comm_world_size
+            ):
                 local_node_communicator = global_communicator
             if local_device_communicator is None and all_comm_world_size == 1:
                 local_device_communicator = global_communicator
@@ -192,8 +214,8 @@ def get_local_node_communicator():
     if local_node_communicator is None:
         local_node_communicator = create_group_communicator(all_comm_local_size)
         if all_comm_local_size == all_comm_world_size:
-            assert 'nccl' not in global_communicators
-            global_communicators['nccl'] = local_node_communicator
+            assert "nccl" not in global_communicators
+            global_communicators["nccl"] = local_node_communicator
         if all_comm_local_size == 1:
             assert local_device_communicator is None
             local_device_communicator = local_node_communicator
@@ -213,13 +235,17 @@ def get_local_device_communicator():
             assert local_node_communicator is None
             local_node_communicator = local_device_communicator
         if all_comm_world_size == 1:
-            assert 'nccl' not in global_communicators
-            global_communicators['nccl'] = local_device_communicator
+            assert "nccl" not in global_communicators
+            global_communicators["nccl"] = local_device_communicator
     return local_device_communicator
 
 
-def comm_set_distributed_backend(wm_comm: WholeMemoryCommunicator, distributed_backend: str):
+def comm_set_distributed_backend(
+    wm_comm: WholeMemoryCommunicator, distributed_backend: str
+):
 
-    wmb.communicator_set_distributed_backend(wm_comm.wmb_comm,
-                                             str_to_wmb_wholememory_distributed_backend_type(distributed_backend))
+    wmb.communicator_set_distributed_backend(
+        wm_comm.wmb_comm,
+        str_to_wmb_wholememory_distributed_backend_type(distributed_backend),
+    )
     return

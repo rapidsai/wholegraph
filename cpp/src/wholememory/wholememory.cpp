@@ -45,6 +45,14 @@ wholememory_error_code_t wholememory_create_communicator(wholememory_comm_t* com
   return wholememory::create_communicator(comm, unique_id, rank, size);
 }
 
+wholememory_error_code_t wholememory_split_communicator(wholememory_comm_t* new_comm,
+                                                        wholememory_comm_t comm,
+                                                        int color,
+                                                        int key)
+{
+  return wholememory::split_communicator(new_comm, comm, color, key);
+}
+
 wholememory_error_code_t wholememory_destroy_communicator(wholememory_comm_t comm)
 {
   return wholememory::destroy_communicator(comm);

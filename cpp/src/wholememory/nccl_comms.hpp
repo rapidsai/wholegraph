@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2023, NVIDIA CORPORATION.
+ * Copyright (c) 2019-2024, NVIDIA CORPORATION.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -197,6 +197,7 @@ class nccl_comms {
   void group_start() const;
 
   void group_end() const;
+  ncclComm_t raw_nccl_comm() const;
 
  private:
   ncclComm_t nccl_comm_;
