@@ -9,7 +9,7 @@ rapids-logger "Create clang-tidy conda environment"
 rapids-logger "Generate clang-tidy testing dependencies"
 rapids-dependency-file-generator \
   --output conda \
-  --file_key clang_tidy \
+  --file-key clang_tidy \
   --matrix "cuda=${RAPIDS_CUDA_VERSION%.*};arch=$(arch)" | tee env.yaml
 
 rapids-mamba-retry env create --yes -f env.yaml -n clang_tidy

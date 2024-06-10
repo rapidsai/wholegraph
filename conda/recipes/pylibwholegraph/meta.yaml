@@ -63,6 +63,7 @@ requirements:
     - cython
     - libwholegraph ={{ version }}
     - python
+    - rapids-build-backend >=0.3.0,<0.4.0.dev0
     - scikit-build-core {{ scikit_build_core_version }}
   run:
     - {{ pin_compatible('cuda-version', max_pin='x', min_pin='x') }}

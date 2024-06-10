@@ -11,6 +11,7 @@ files:
       - cuda
       - cuda_version
       - py_version
+      - rapids_build_skbuild
       - run
       - test_python
       - docs
@@ -44,6 +45,7 @@ files:
       - cuda
       - cuda_version
       - py_version
+      - rapids_build_skbuild
       - run
       - pytorch_cpu
       - clang_tools
@@ -52,6 +54,14 @@ files:
     pyproject_dir: python/pylibwholegraph
     extras:
       table: build-system
+    includes:
+      - rapids_build_skbuild
+  py_rapids_build_pylibwholegraph:
+    output: pyproject
+    pyproject_dir: python/pylibwholegraph
+    extras:
+      table: tool.rapids-build-backend
+      key: requires
     includes:
       - python_build_wheel
 channels:
@@ -74,11 +84,10 @@ dependencies:
           - cxx-compiler
           - cython>=3.0.0
           - &doxygen doxygen==1.9.1
-          - libraft-headers==24.8.*
-          - librmm==24.8.*
+          - libraft-headers==24.8.*,>=0.0.0a0
+          - librmm==24.8.*,>=0.0.0a0
           - nanobind>=0.2.0
           - nccl
-          - scikit-build-core>=0.7.0
     specific:
       - output_types: conda
         matrices:
@@ -315,6 +324,17 @@ dependencies:
         packages:
           - clangxx==16.0.6
           - clang-tools==16.0.6
+  rapids_build_skbuild:
+    common:
+      - output_types: [conda, requirements, pyproject]
+        packages:
+          - rapids-build-backend>=0.3.0,<0.4.0.dev0
+      - output_types: conda
+        packages:
+          - scikit-build-core>=0.7.0
+      - output_types: [requirements, pyproject]
+        packages:
+          - scikit-build-core[pyproject]>=0.7.0
   python_build_wheel:
     common:
       - output_types: [pyproject]
@@ -322,4 +342,3 @@ dependencies:
           - cmake>=3.26.4
           - cython>=3.0.0
           - ninja
-          - scikit-build-core[pyproject]>=0.7.0
