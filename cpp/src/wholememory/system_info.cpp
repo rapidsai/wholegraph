@@ -20,9 +20,10 @@
 #include "cuda_macros.hpp"
 
 #include "logger.hpp"
-#include "nvml.h"
 #include "system_info.hpp"
 #include "wholememory/wholememory.h"
+#if CUDA_VERSION >= 12030
+#include <nvml.h>
 
 namespace {
 
@@ -31,6 +32,8 @@ bool nvmlInitialized                = false;
 thread_local bool threadInitialized = false;
 wholememory_error_code_t initResult;
 };  // namespace
+
+#endif
 bool DevAttrPagebleMemoryAccess()
 {
   int current_dev_id = -1;
@@ -107,6 +110,7 @@ bool SupportEGM()
 }
 
 // bool SupportMNNVLForEGM() { return SupportMNNVL() && SupportEGM(); }
+#if CUDA_VERSION >= 12030
 
 namespace wholememory {
 
@@ -150,3 +154,4 @@ wholememory_error_code_t GetGpuFabricInfo(int dev, nvmlGpuFabricInfo_t* gpuFabri
 }
 
 };  // namespace wholememory
+#endif

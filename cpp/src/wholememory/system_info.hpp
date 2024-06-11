@@ -15,8 +15,11 @@
  */
 #pragma once
 
-#include "nvml.h"
 #include "wholememory/wholememory.h"
+
+#if CUDA_VERSION >= 12030
+#include <nvml.h>
+#endif
 bool DevAttrPagebleMemoryAccess();
 
 bool DeviceCanAccessPeer(int peer_device);
@@ -32,6 +35,9 @@ bool SupportMNNVL();
 bool SupportEGM();
 
 // bool SupportMNNVLForEGM();
+#if CUDA_VERSION >= 12030
 namespace wholememory {
 wholememory_error_code_t GetGpuFabricInfo(int dev, nvmlGpuFabricInfo_t* gpuFabricInfo);
 }
+
+#endif

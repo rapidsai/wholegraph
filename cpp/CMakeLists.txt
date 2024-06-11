@@ -195,10 +195,14 @@ PUBLIC
     CUDA::cuda_driver
     CUDA::cudart${_ctk_static_suffix}
     raft::raft
-    nvidia-ml
 PRIVATE
     NCCL::NCCL
 )
+
+if (CUDAToolkit_VERSION VERSION_GREATER "12.3")
+    # Link the NVML library if CUDA version is greater than 12.3
+    target_link_libraries(wholegraph PRIVATE CUDA::nvml)
+endif()
 
 if(BUILD_WITH_NVSHMEM)
 

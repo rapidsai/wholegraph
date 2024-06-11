@@ -495,6 +495,7 @@ void get_host_info(host_info* phi)
 
 bool comm_support_mnnvl(wholememory_comm_t wm_comm, const std::unique_ptr<rank_info[]>& p_rank_info)
 {
+#if CUDA_VERSION >= 12030
   int flag = 0;
   CUdevice currentDev;
   WM_CU_CHECK_NO_THROW(cuDeviceGet(&currentDev, wm_comm->dev_id));
@@ -515,16 +516,22 @@ bool comm_support_mnnvl(wholememory_comm_t wm_comm, const std::unique_ptr<rank_i
   }
 
   return GetCudaCompCap() >= 90;
+#else
+
+  return 0;
+#endif
 };
 
 void exchange_rank_info(wholememory_comm_t wm_comm)
 {
   rank_info ri;
   get_host_info(&ri.rank_host_info);
-  ri.rank   = wm_comm->world_rank;
-  ri.size   = wm_comm->world_size;
-  ri.pid    = getpid();
-  ri.gpu_id = wm_comm->dev_id;
+  ri.rank                           = wm_comm->world_rank;
+  ri.size                           = wm_comm->world_size;
+  ri.pid                            = getpid();
+  ri.gpu_id                         = wm_comm->dev_id;
+  wm_comm->clique_info.is_in_clique = 0;
+
 #if CUDA_VERSION >= 12030
   memset(&ri.fabric_info, 0, sizeof(ri.fabric_info));
   WHOLEMEMORY_CHECK_NOTHROW(GetGpuFabricInfo(wm_comm->dev_id, &ri.fabric_info) ==
@@ -593,12 +600,6 @@ void exchange_rank_info(wholememory_comm_t wm_comm)
                            (wm_comm->clique_info.clique_rank_num == wm_comm->world_size);
 
 #endif
-  // printf("clique rank %d , clique rank num %d clusterId:%d , r clusterId:%d , cluster uuid :%s ,
-  // r cluster uuid :%s,\n", wm_comm->clique_rank,
-  // wm_comm->clique_rank_num,ri.fabricInfo.cliqueId,p_rank_info.get()[0].fabricInfo.cliqueId,ri.fabricInfo.clusterUuid,p_rank_info.get()[0].fabricInfo.clusterUuid);
-
-  // std::cout<<std::string((char*)(ri.fabricInfo.clusterUuid),16)<<"  s \n
-  // "<<std::string((char*)(p_rank_info.get()[0].fabricInfo.clusterUuid),16)<<"\n";
 }
 
 void negotiate_communicator_id_locked(wholememory_comm_t wm_comm)
