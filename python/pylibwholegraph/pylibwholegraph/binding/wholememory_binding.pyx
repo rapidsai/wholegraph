@@ -198,17 +198,6 @@ cdef extern from "wholememory/wholememory.h":
 
     cdef wholememory_error_code_t wholememory_communicator_get_clique_info(clique_info_t* clique_info, wholememory_comm_t comm)
 
-    # struct clique_info_t {
-#   int is_in_clique;  // is_in_clique >0 means the gpu belongs to  a mnnvl domain
-#   int clique_first_rank;
-#   int clique_rank;      // the rank of gpu in a mnnvl domain
-#   int clique_rank_num;  // the num of gpu in the mnnvl domain
-#   int clique_id;        // the id of clique
-#   int clique_num;       // the num of clique in the comm domain.
-# };
-# 返回一个tuple
-
-
 
     cdef wholememory_error_code_t wholememory_split_communicator(wholememory_comm_t* new_comm,
                                                         wholememory_comm_t comm,

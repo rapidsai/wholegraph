@@ -263,34 +263,18 @@ def get_local_mnnvl_communicator():
         g_communicator = get_global_communicator()
         (
             is_in_clique,
-            clique_first_rank,
-            clique_rank,
-            clique_rank_num,
+            _,
+            _,
+            _,
             clique_id,
-            clique_num,
+            _,
         ) = g_communicator.get_clique_info()
         if not is_in_clique:
             raise RuntimeError(
                 "the gpu does not belong to any mnnvl domain,can not create local_mnnvl_communicator"
             )
-        wm_uid = wmb.PyWholeMemoryUniqueID()
 
-        if clique_first_rank == g_communicator.get_rank():
-            tmp_wm_uid = wmb.create_unique_id()
-        else:
-            tmp_wm_uid = wmb.PyWholeMemoryUniqueID()
-        uid_th = torch.utils.dlpack.from_dlpack(tmp_wm_uid.__dlpack__())
-        uid_th_cuda = uid_th.cuda()
-        uid_th_cuda_tensor_list = [
-            torch.zeros_like(uid_th_cuda) for _ in range(dist.get_world_size())
-        ]
-
-        dist.all_gather(uid_th_cuda_tensor_list, uid_th_cuda)
-        uid_th_cuda_root = uid_th_cuda_tensor_list[clique_first_rank]
-        wm_uid_th = torch.utils.dlpack.from_dlpack(wm_uid.__dlpack__())
-        wm_uid_th.copy_(uid_th_cuda_root.cpu())
-        wm_mnnvl_comm = wmb.create_communicator(wm_uid, clique_rank, clique_rank_num)
-        local_mnnvl_communicator = WholeMemoryCommunicator(wm_mnnvl_comm)
+        local_mnnvl_communicator = split_communicator(g_communicator, clique_id)
 
     return local_mnnvl_communicator
 
