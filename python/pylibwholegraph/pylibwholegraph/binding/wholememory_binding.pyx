@@ -828,9 +828,10 @@ cdef class PyWholeMemoryEmbedding:
         result = []
         cdef const char * const * state_names
         state_names = wholememory_embedding_get_optimizer_state_names(self.wm_embedding)
-        while state_names[i] != NULL:
-            result.append(<object> PyUnicode_FromString(state_names[i]))
-            i += 1
+        if state_names != NULL:
+            while state_names[i] != NULL:
+                result.append(<object> PyUnicode_FromString(state_names[i]))
+                i += 1
         return result
 
     def get_optimizer_state(self,
