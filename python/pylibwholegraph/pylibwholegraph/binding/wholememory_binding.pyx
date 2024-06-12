@@ -624,13 +624,16 @@ cdef extern from "wholememory/embedding.h":
             wholememory_comm_t comm,
             wholememory_memory_type_t memory_type,
             wholememory_memory_location_t memory_location,
-            wholememory_embedding_optimizer_t optimizer,
             wholememory_embedding_cache_policy_t cache_policy,
             int user_defined_sms,
             int round_robin_size)
 
     cdef wholememory_error_code_t wholememory_destroy_embedding(
             wholememory_embedding_t wholememory_embedding)
+
+    cdef wholememory_error_code_t wholememory_embedding_set_optimizer(
+            wholememory_embedding_t  wholememory_embedding,
+            wholememory_embedding_optimizer_t optimizer);
 
     cdef wholememory_error_code_t wholememory_embedding_gather(wholememory_embedding_t wholememory_embedding,
                                                                wholememory_tensor_t indices,
@@ -700,6 +703,10 @@ cdef class WholeMemoryOptimizer:
             key_bytes = param_key.encode('utf-8')
             check_wholememory_error_code(
                 wholememory_optimizer_set_parameter(self.wm_optimizer, key_bytes, &param_value))
+
+    def add_embedding(self,
+                    PyWholeMemoryEmbedding embedding):
+        wholememory_embedding_set_optimizer(embedding.wm_embedding, self.wm_optimizer)
 
     def destroy_optimizer(self):
         if self.wm_optimizer == NULL:
@@ -789,7 +796,6 @@ cdef class PyWholeMemoryEmbedding:
                          PyWholeMemoryComm comm,
                          WholeMemoryMemoryType memory_type,
                          WholeMemoryMemoryLocation memory_location,
-                         WholeMemoryOptimizer optimizer,
                          WholeMemoryCachePolicy cache_policy,
                          int user_defined_sms,
                          int round_robin_size):
@@ -800,7 +806,6 @@ cdef class PyWholeMemoryEmbedding:
                                                                   comm.comm_id,
                                                                   self.memory_type,
                                                                   self.memory_location,
-                                                                  optimizer.wm_optimizer,
                                                                   cache_policy.cache_policy,
                                                                   user_defined_sms,
                                                                   round_robin_size))
@@ -847,7 +852,6 @@ def create_embedding(PyWholeMemoryTensorDescription tensor_desc,
                      PyWholeMemoryComm comm,
                      WholeMemoryMemoryType memory_type,
                      WholeMemoryMemoryLocation memory_location,
-                     WholeMemoryOptimizer optimizer,
                      WholeMemoryCachePolicy cache_policy,
                      int user_defined_sms,
                      int round_robin_size):
@@ -856,7 +860,6 @@ def create_embedding(PyWholeMemoryTensorDescription tensor_desc,
                                   comm,
                                   memory_type,
                                   memory_location,
-                                  optimizer,
                                   cache_policy,
                                   user_defined_sms,
                                   round_robin_size)

@@ -45,8 +45,7 @@ class embedding_base : public wholememory_embedding_ {
                                     wholememory_comm_t comm,
                                     wholememory_memory_type_t memory_type,
                                     wholememory_memory_location_t memory_location,
-                                    wholememory_embedding_cache_policy_t policy,
-                                    wholememory_embedding_optimizer_t opt) noexcept;
+                                    wholememory_embedding_cache_policy_t policy) noexcept;
   void deallocate() noexcept;
   virtual wholememory_error_code_t gather(wholememory_tensor_t indices,
                                           wholememory_tensor_t output,
@@ -60,6 +59,8 @@ class embedding_base : public wholememory_embedding_ {
                                                  float lr,
                                                  wholememory_env_func_t* p_env_fns,
                                                  cudaStream_t stream);
+
+  wholememory_error_code_t set_optimizer(wholememory_embedding_optimizer_t opt);
 
   [[nodiscard]] const char* const* get_optimizer_state_names() const noexcept
   {
@@ -104,6 +105,7 @@ class embedding_base : public wholememory_embedding_ {
 
   int gather_sms_;
   int round_robin_size_;
+  wholememory_dtype_t embedding_dtype_                             = WHOLEMEMORY_DT_UNKNOWN;
   wholememory_comm_t raw_embedding_comm_                           = nullptr;
   wholememory::embedding_cache_base* cache_ptr_                    = nullptr;
   wholememory::embedding_optimizer_impl_base* optimizer_impl_base_ = nullptr;
