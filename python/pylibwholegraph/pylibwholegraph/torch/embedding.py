@@ -267,7 +267,7 @@ class WholeMemoryEmbedding(object):
         super().__init__()
         self.wmb_embedding = wmb_embedding
         self.embedding_tensor = None
-        self.optimizer_states = None
+        self.optimizer_states = dict()
 
         self.wmb_optimizer = wmb_optimizer
         self.wmb_cache_policy = wmb_cache_policy
