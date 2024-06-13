@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2023, NVIDIA CORPORATION.
+ * Copyright (c) 2019-2024, NVIDIA CORPORATION.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -592,10 +592,9 @@ TEST_P(WholeMemoryEmbeddingBackwardParameterTests, EmbeddingGatherGradientApplyT
                                              wm_comm,
                                              params.memory_type,
                                              params.memory_location,
-                                             optimizer,
                                              cache_policy),
                 WHOLEMEMORY_SUCCESS);
-
+      EXPECT_EQ(wholememory_embedding_set_optimizer(wm_embedding, optimizer), WHOLEMEMORY_SUCCESS);
       wholememory_tensor_t embedding_tensor =
         wholememory_embedding_get_embedding_tensor(wm_embedding);
       wholememory_tensor_t local_embed_tensor;

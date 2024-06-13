@@ -201,15 +201,9 @@ def main_func():
         args.cache_ratio,
     )
 
-    wm_optimizer = (
-        None
-        if args.train_embedding is False
-        else wgth.create_wholememory_optimizer("adam", {})
-    )
-
+    wm_optimizer = None
     embedding_dtype = torch.float32 if not args.fp16_mbedding else torch.float16
-
-    if wm_optimizer is None:
+    if args.train_embedding is False:
         node_feat_wm_embedding = wgth.create_embedding_from_filelist(
             feature_comm,
             embedding_wholememory_type,
@@ -217,7 +211,6 @@ def main_func():
             os.path.join(args.root_dir, "node_feat.bin"),
             embedding_dtype,
             args.feat_dim,
-            optimizer=wm_optimizer,
             cache_policy=cache_policy,
             round_robin_size=args.round_robin_size,
         )
@@ -228,11 +221,11 @@ def main_func():
             embedding_wholememory_location,
             embedding_dtype,
             [graph_structure.node_count, args.feat_dim],
-            optimizer=wm_optimizer,
             cache_policy=cache_policy,
             random_init=True,
             round_robin_size=args.round_robin_size,
         )
+        wm_optimizer = wgth.create_wholememory_optimizer(node_feat_wm_embedding, "adam", {})
     wgth.set_framework(args.framework)
     model = wgth.HomoGNNModel(graph_structure, node_feat_wm_embedding, args)
     model.cuda()
