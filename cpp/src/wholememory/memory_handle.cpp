@@ -519,7 +519,7 @@ class global_mapped_host_wholememory_impl : public wholememory_impl {
       }
     }
     communicator_barrier(comm_);
-    if (use_systemv_shm_ && comm_->world_rank == 0) {
+    if (!use_systemv_shm_ && comm_->world_rank == 0) {
       WHOLEMEMORY_CHECK(shm_unlink(shm_full_path.c_str()) == 0);
     }
     void* mmap_ptr = nullptr;
@@ -536,7 +536,7 @@ class global_mapped_host_wholememory_impl : public wholememory_impl {
            rank_partition_strategy_.local_mem_size);
     WM_CUDA_CHECK_NO_THROW(
       cudaHostRegister(mmap_ptr, alloc_strategy_.total_alloc_size, cudaHostRegisterDefault));
-    if (use_systemv_shm_) WHOLEMEMORY_CHECK(close(shm_fd) == 0);
+    if (!use_systemv_shm_) WHOLEMEMORY_CHECK(close(shm_fd) == 0);
     void* dev_ptr = nullptr;
     WM_CUDA_CHECK_NO_THROW(cudaHostGetDevicePointer(&dev_ptr, mmap_ptr, 0));
     WHOLEMEMORY_CHECK(dev_ptr == mmap_ptr);
