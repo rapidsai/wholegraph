@@ -456,7 +456,15 @@ class global_mapped_host_wholememory_impl : public wholememory_impl {
     host_memory_full_path.append("_").append("wm_host_").append(std::to_string(tensor_id));
     return host_memory_full_path;
   }
+
+#ifdef USE_SYSTEMV_SHM
+#undef USE_SYSTEMV_SHM
+#endif
+
+#ifndef WG_USE_POSIX_SHM
 #define USE_SYSTEMV_SHM
+#endif
+
 #define SYSTEMV_SHM_PROJ_ID (0xE601EEEE)
   void create_and_map_shared_host_memory()
   {
@@ -509,6 +517,9 @@ class global_mapped_host_wholememory_impl : public wholememory_impl {
 #endif
     }
     communicator_barrier(comm_);
+#ifndef USE_SYSTEMV_SHM
+    if (comm_->world_rank == 0) { WHOLEMEMORY_CHECK(shm_unlink(shm_full_path.c_str()) == 0); }
+#endif
     void* mmap_ptr = nullptr;
 #ifdef USE_SYSTEMV_SHM
     mmap_ptr = shmat(shm_id, nullptr, 0);
@@ -562,9 +573,8 @@ class global_mapped_host_wholememory_impl : public wholememory_impl {
         WHOLEMEMORY_CHECK(shmctl(shm_id, IPC_RMID, nullptr) == 0);
         WHOLEMEMORY_CHECK(unlink(shm_full_path.c_str()) == 0);
       }
-#else
-      if (comm_->world_rank == 0) { WHOLEMEMORY_CHECK(shm_unlink(shm_full_path.c_str()) == 0); }
 #endif
+
       communicator_barrier(comm_);
       shared_host_handle_.shared_host_memory_ptr = nullptr;
     } catch (const wholememory::logic_error& wle) {
