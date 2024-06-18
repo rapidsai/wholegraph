@@ -45,6 +45,14 @@ wholememory_error_code_t wholememory_create_communicator(wholememory_comm_t* com
   return wholememory::create_communicator(comm, unique_id, rank, size);
 }
 
+wholememory_error_code_t wholememory_split_communicator(wholememory_comm_t* new_comm,
+                                                        wholememory_comm_t comm,
+                                                        int color,
+                                                        int key)
+{
+  return wholememory::split_communicator(new_comm, comm, color, key);
+}
+
 wholememory_error_code_t wholememory_destroy_communicator(wholememory_comm_t comm)
 {
   return wholememory::destroy_communicator(comm);
@@ -264,6 +272,17 @@ wholememory_error_code_t wholememory_load_from_hdfs_file(wholememory_handle_t wh
 bool wholememory_is_intranode_communicator(wholememory_comm_t comm)
 {
   return wholememory::is_intranode_communicator(comm);
+}
+
+bool wholememory_is_intra_mnnvl_communicator(wholememory_comm_t comm)
+{
+  return wholememory::is_intra_mnnvl_communicator(comm);
+}
+
+wholememory_error_code_t wholememory_communicator_get_clique_info(clique_info_t* clique_info,
+                                                                  wholememory_comm_t comm)
+{
+  return wholememory::communicator_get_clique_info(clique_info, comm);
 }
 
 bool wholememory_is_build_with_nvshmem()

@@ -199,6 +199,11 @@ PRIVATE
     NCCL::NCCL
 )
 
+if (CUDAToolkit_VERSION VERSION_GREATER "12.3")
+    # Link the NVML library if CUDA version is greater than 12.3
+    target_link_libraries(wholegraph PRIVATE CUDA::nvml)
+endif()
+
 if(BUILD_WITH_NVSHMEM)
 
         file(GLOB_RECURSE NVSHMEM_SOURCE_FILES "src/wholememory_ops/functions/nvshmem*.cu")
