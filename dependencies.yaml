@@ -79,7 +79,7 @@ dependencies:
       - output_types: conda
         packages:
           - c-compiler
-          - cmake>=3.26.4
+          - cmake>=3.26.4,!=3.30.0
           - cudnn=8.8
           - cxx-compiler
           - cython>=3.0.0
@@ -339,6 +339,6 @@ dependencies:
     common:
       - output_types: [pyproject]
         packages:
-          - cmake>=3.26.4
+          - cmake>=3.26.4,!=3.30.0
           - cython>=3.0.0
           - ninja
