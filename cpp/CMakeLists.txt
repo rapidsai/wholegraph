@@ -51,8 +51,7 @@ rapids_cmake_write_version_file(include/wholegraph/version_config.hpp)
 option(BUILD_SHARED_LIBS "Build libwholegraph shared libraries" ON)
 option(CMAKE_CUDA_LINEINFO "Enable the -lineinfo option for nvcc (useful for cuda-memcheck / profiler" OFF)
 option(BUILD_TESTS "Configure CMake to build tests" ON)
-option(CUDA_STATIC_RUNTIME "Statically link the CUDA runtime" OFF)
-option(CUDA_STATIC_MATH_LIBRARIES "Statically link the CUDA math libraries" OFF)
+option(CUDA_STATIC_RUNTIME "Statically link the CUDA toolkit runtime and libraries" OFF)
 option(BUILD_WITH_NVSHMEM "Enable nvshmem integration" OFF)
 option(WHOLEGRAPH_EXCLUDE_NVSHMEM_FROM_ALL "Exclude nvshmem targets from wholeGraph's 'all' target" ON)
 option(BUILD_BENCHMARKS "Configure CMake to build benchmark" ON)
@@ -60,7 +59,7 @@ option(BUILD_BENCHMARKS "Configure CMake to build benchmark" ON)
 ##############################################################################
 # - Set options based on user defined one  -----------------------------------
 set(_ctk_static_suffix "")
-if(CUDA_STATIC_MATH_LIBRARIES)
+if(CUDA_STATIC_RUNTIME)
   set(_ctk_static_suffix "_static")
 endif()
 
