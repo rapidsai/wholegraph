@@ -202,7 +202,7 @@ PRIVATE
 
 if (CUDAToolkit_VERSION VERSION_GREATER "12.3")
     # Link the NVML library if CUDA version is greater than 12.3
-    target_link_libraries(wholegraph PRIVATE CUDA::nvml)
+    target_link_libraries(wholegraph PRIVATE CUDA::nvml${_ctk_static_suffix})
 endif()
 
 if(BUILD_WITH_NVSHMEM)
