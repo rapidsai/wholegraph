@@ -182,7 +182,6 @@ dependencies:
               cuda: "12.*"
             packages:
               - cuda-cudart-dev
-              - cuda-nvml-dev
               - cuda-nvtx
   checks:
     common:

@@ -55,6 +55,7 @@ requirements:
     - cudatoolkit
     {% else %}
     - cuda-cudart-dev
+    - cuda-nvml-dev
     - cuda-driver-dev
     {% endif %}
     - cuda-version ={{ cuda_version }}
