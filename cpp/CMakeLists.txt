@@ -201,21 +201,8 @@ PRIVATE
 )
 
 if (CUDAToolkit_VERSION VERSION_GREATER "12.3")
-    # Workaround until https://gitlab.kitware.com/cmake/cmake/-/merge_requests/9654 is merged
-    # Also change CUDA_STATIC_MATH_LIBRARIES to CUDA_STATIC_RUNTIME once https://github.com/rapidsai/wholegraph/pull/192 is merged
-    if(CUDA_STATIC_MATH_LIBRARIES AND NOT TARGET CUDA::nvml_static)
-        find_library(nvml_static NAMES libnvidia-ml.a libnvml.a
-            PATHS ${CUDAToolkit_TARGET_DIR}
-            PATH_SUFFIXES lib64/stubs lib/x64/stubs lib/stubs stubs
-        )
-        if(nvml_static)
-            add_library(CUDA::nvml_static STATIC IMPORTED)
-            set_property(TARGET CUDA::nvml_static PROPERTY IMPORTED_LOCATION "${nvml_static}")
-        endif()
-    endif()
-
     # Link the NVML library if CUDA version is greater than 12.3
-    target_link_libraries(wholegraph PRIVATE CUDA::nvml${_ctk_static_suffix})
+    target_link_libraries(wholegraph PRIVATE CUDA::nvml)
 endif()
 
 if(BUILD_WITH_NVSHMEM)

@@ -20,6 +20,9 @@ SKBUILD_CMAKE_ARGS="-DDETECT_CONDA_ENV=OFF;-DBUILD_SHARED_LIBS=OFF;-DCMAKE_MESSA
   python -m pip wheel . -w dist -vvv --no-deps --disable-pip-version-check
 
 mkdir -p final_dist
-python -m auditwheel repair --exclude libcuda.so.1 -w final_dist dist/*
+python -m auditwheel repair \
+  --exclude libcuda.so.1 \
+  --exclude libnvidia-ml.so.1 \
+  -w final_dist dist/*
 
 RAPIDS_PY_WHEEL_NAME="${package_name}_${RAPIDS_PY_CUDA_SUFFIX}" rapids-upload-wheels-to-s3 final_dist
