@@ -22,7 +22,7 @@ rapids-print-env
 rapids-logger "Downloading artifacts from previous jobs"
 
 CPP_CHANNEL=$(rapids-download-conda-from-s3 cpp)
-export RAPIDS_VERSION_NUMBER="24.08"
+export RAPIDS_VERSION_NUMBER="24.10"
 export RAPIDS_DOCS_DIR="$(mktemp -d)"
 
 rapids-mamba-retry install \
