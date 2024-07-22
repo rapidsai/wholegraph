@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, NVIDIA CORPORATION.
+ * Copyright (c) 2023-2024, NVIDIA CORPORATION.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -53,7 +53,7 @@ wholememory_error_code_t nvshmem_gather_floating_int32_func(
   void* output,
   void* temp_output,
   wholememory_matrix_description_t output_desc,
-  size_t embedding_entry_count_per_rank,
+  size_t* embedding_entry_offsets,
   wholememory_env_func_t* p_env_fns,
   cudaStream_t stream,
   int gather_sms);
@@ -66,7 +66,7 @@ wholememory_error_code_t nvshmem_gather_floating_int64_func(
   void* output,
   void* temp_output,
   wholememory_matrix_description_t output_desc,
-  size_t embedding_entry_count_per_rank,
+  size_t* embedding_entry_offsets,
   wholememory_env_func_t* p_env_fns,
   cudaStream_t stream,
   int gather_sms);
@@ -80,7 +80,7 @@ wholememory_error_code_t nvshmem_gather_integer_int64_func(
   void* output,
   void* temp_output,
   wholememory_matrix_description_t output_desc,
-  size_t embedding_entry_count_per_rank,
+  size_t* embedding_entry_offsets,
   wholememory_env_func_t* p_env_fns,
   cudaStream_t stream,
   int gather_sms);
@@ -93,7 +93,7 @@ wholememory_error_code_t nvshmem_gather_integer_int32_func(
   void* output,
   void* temp_output,
   wholememory_matrix_description_t output_desc,
-  size_t embedding_entry_count_per_rank,
+  size_t* embedding_entry_offsets,
   wholememory_env_func_t* p_env_fns,
   cudaStream_t stream,
   int gather_sms);
@@ -119,24 +119,41 @@ wholememory_error_code_t wholememory_gather_nvshmem(
       embedding_is_float == output_is_float,
       "embedding and output should be same number type, e.g. floating number or integer number.");
     if (indice_desc.size == 0) { return WHOLEMEMORY_SUCCESS; }
-    size_t embedding_size_per_rank;
-    WHOLEMEMORY_RETURN_ON_FAIL(
-      wholememory_get_partition_plan(&embedding_size_per_rank, wholememory_handle));
-
-    size_t element_size         = wholememory_dtype_get_element_size(wholememory_desc.dtype);
-    size_t embedding_entry_size = element_size * wholememory_desc.stride;
-
-    WHOLEMEMORY_EXPECTS_NOTHROW(
-      embedding_size_per_rank % embedding_entry_size == 0,
-      "embedding_size_per_rank=%ld is not multiple of embedding_entry_size=%ldx%ld",
-      embedding_size_per_rank,
-      element_size,
-      wholememory_desc.stride);
-
-    size_t embedding_entry_count_per_rank = embedding_size_per_rank / embedding_entry_size;
 
     wholememory_comm_t wm_comm;
     WHOLEMEMORY_RETURN_ON_FAIL(wholememory_get_communicator(&wm_comm, wholememory_handle));
+
+    int world_size;
+    WHOLEMEMORY_RETURN_ON_FAIL(wholememory_communicator_get_size(&world_size, wm_comm));
+
+    temp_memory_handle dev_embedding_entry_offsets_handle(p_env_fns);
+    size_t* dev_embedding_entry_offsets_ptr = static_cast<size_t*>(
+      dev_embedding_entry_offsets_handle.device_malloc(world_size + 1, WHOLEMEMORY_DT_INT64));
+    temp_memory_handle host_embedding_entry_offsets_handle(p_env_fns);
+    size_t* host_embedding_entry_offsets_ptr = static_cast<size_t*>(
+      host_embedding_entry_offsets_handle.host_malloc(world_size + 1, WHOLEMEMORY_DT_INT64));
+
+    WHOLEMEMORY_RETURN_ON_FAIL(
+      wholememory_get_rank_partition_offsets(host_embedding_entry_offsets_ptr, wholememory_handle));
+
+    size_t element_size         = wholememory_dtype_get_element_size(wholememory_desc.dtype);
+    size_t embedding_entry_size = element_size * wholememory_desc.stride;
+    for (int i = 0; i < world_size + 1; i++) {
+      size_t offset = host_embedding_entry_offsets_ptr[i];
+      WHOLEMEMORY_EXPECTS_NOTHROW(
+        offset % embedding_entry_size == 0,
+        "embedding memory offset of rank%d=%ld is not multiple of embedding_entry_size=%ldx%ld",
+        i,
+        offset,
+        element_size,
+        wholememory_desc.stride);
+      host_embedding_entry_offsets_ptr[i] /= embedding_entry_size;
+    }
+    WM_CUDA_CHECK(cudaMemcpyAsync(dev_embedding_entry_offsets_ptr,
+                                  host_embedding_entry_offsets_ptr,
+                                  (world_size + 1) * sizeof(size_t),
+                                  cudaMemcpyHostToDevice,
+                                  stream));
 
     wholememory_nvshmem_ref_t embedding_nvshmem_ref;
     WHOLEMEMORY_RETURN_ON_FAIL(
@@ -161,7 +178,7 @@ wholememory_error_code_t wholememory_gather_nvshmem(
                                                       void*,
                                                       void*,
                                                       wholememory_matrix_description_t,
-                                                      size_t,
+                                                      size_t*,
                                                       wholememory_env_func_t*,
                                                       cudaStream_t,
                                                       int) = nullptr;
@@ -187,7 +204,7 @@ wholememory_error_code_t wholememory_gather_nvshmem(
                                      output,
                                      temp_output_ptr,
                                      output_desc,
-                                     embedding_entry_count_per_rank,
+                                     dev_embedding_entry_offsets_ptr,
                                      p_env_fns,
                                      stream,
                                      gather_sms);

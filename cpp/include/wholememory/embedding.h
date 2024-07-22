@@ -129,6 +129,8 @@ wholememory_error_code_t wholememory_destroy_embedding_cache_policy(
  * @param memory_type : Memory Type of the underlying WholeMemory
  * @param memory_location : Memory Location of the underlying WholeMemory
  * @param cache_policy : Cache policy for this embedding, if don't use cache, use nullptr
+ * @param embedding_entry_partition: Embedding entry count of each rank, the length must be
+ * world_size
  * @param user_defined_sms : User-defined sms number for raw embedding gather/scatter
  * @param round_robin_size : continuous embedding size in each rank under round-robin shard mode
  * @return : wholememory_error_code_t
@@ -140,8 +142,9 @@ wholememory_error_code_t wholememory_create_embedding(
   wholememory_memory_type_t memory_type,
   wholememory_memory_location_t memory_location,
   wholememory_embedding_cache_policy_t cache_policy,
-  int user_defined_sms = -1,
-  int round_robin_size = 0);
+  size_t* embedding_entry_partition = nullptr,
+  int user_defined_sms              = -1,
+  int round_robin_size              = 0);
 
 /**
  * Destroy WholeMemory Embedding

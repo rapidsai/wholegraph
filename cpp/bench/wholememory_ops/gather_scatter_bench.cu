@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, NVIDIA CORPORATION.
+ * Copyright (c) 2023-2024, NVIDIA CORPORATION.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -77,6 +77,8 @@ typedef struct GatherScatterBenchParam {
 
   int64_t get_embedding_dim() const { return embedding_dim; }
   wholememory_dtype_t get_embedding_type() const { return embedding_type; }
+  int get_partition_method() const { return partition_method; }
+  std::string get_distributed_backend() const { return distributed_backend; }
 
   GatherScatterBenchParam& set_memory_type(wholememory_memory_type_t new_memory_type)
   {
@@ -153,6 +155,18 @@ typedef struct GatherScatterBenchParam {
     return *this;
   }
 
+  GatherScatterBenchParam& set_partition_method(int new_partition_method)
+  {
+    partition_method = new_partition_method;
+    return *this;
+  }
+
+  GatherScatterBenchParam& set_distributed_backend(std::string new_distributed_backend)
+  {
+    distributed_backend = new_distributed_backend;
+    return *this;
+  }
+
  private:
   int64_t get_embedding_entry_count() const
   {
@@ -196,6 +210,8 @@ typedef struct GatherScatterBenchParam {
   int64_t embedding_dim                         = 32;
   int loop_count                                = 20;
   std::string test_type                         = "gather";  // gather or scatter
+  int partition_method                          = 0;
+  std::string distributed_backend               = "nccl";  // nccl or nvshmem
 
   std::string server_addr = "localhost";
   int server_port         = 24987;
@@ -256,7 +272,15 @@ void gather_scatter_benchmark(GatherScatterBenchParam& params)
 
       wholememory_comm_t wm_comm =
         create_communicator_by_socket(side_band_communicator, world_rank, world_size);
-
+      std::string distributed_backend = params.get_distributed_backend();
+#ifdef WITH_NVSHMEM_SUPPORT
+      if (distributed_backend.compare("nvshmem") == 0)
+        WHOLEMEMORY_CHECK_NOTHROW(wholememory_communicator_set_distributed_backend(
+                                    wm_comm, WHOLEMEMORY_DB_NVSHMEM) == WHOLEMEMORY_SUCCESS);
+#else
+      distributed_backend = "nccl";
+      params.set_distributed_backend("nccl");
+#endif
       ShutDownSidebandCommunicator(side_band_communicator);
 
       auto embedding_desc         = params.get_embedding_desc();
@@ -268,12 +292,17 @@ void gather_scatter_benchmark(GatherScatterBenchParam& params)
       wholememory_tensor_t embedding_tensor;
       wholememory_tensor_description_t embedding_tensor_desc;
       wholememory_copy_matrix_desc_to_tensor(&embedding_tensor_desc, &embedding_desc);
+      std::vector<size_t> rank_partition(world_size);
+      wholegraph::bench::host_random_partition(
+        rank_partition.data(), embedding_tensor_desc.sizes[0], world_size);
       WHOLEMEMORY_CHECK_NOTHROW(wholememory_create_tensor(&embedding_tensor,
                                                           &embedding_tensor_desc,
                                                           wm_comm,
                                                           params.get_memory_type(),
-                                                          params.get_memory_location()) ==
-                                WHOLEMEMORY_SUCCESS);
+                                                          params.get_memory_location(),
+                                                          params.get_partition_method() == 1
+                                                            ? rank_partition.data()
+                                                            : nullptr) == WHOLEMEMORY_SUCCESS);
 
       cudaStream_t stream;
       WM_CUDA_CHECK_NO_THROW(cudaStreamCreate(&stream));
@@ -318,8 +347,8 @@ void gather_scatter_benchmark(GatherScatterBenchParam& params)
       double gather_size_mb = (double)params.get_gather_size() / 1024.0 / 1024.0;
       if (local_rank == 0) {
         printf(
-          "%s, world_size=%d, memoryType=%s, memoryLocation=%s, elt_size=%ld, embeddingDim=%ld, "
-          "embeddingTableSize=%.2lf MB, gatherSize=%.2lf MB\n",
+          "%s, worldSize=%d, memoryType=%s, memoryLocation=%s, eltSize=%ld, embeddingDim=%ld, "
+          "embeddingTableSize=%.2lf MB, gatherSize=%.2lf MB, distributedBackend=%s\n",
           test_type.c_str(),
           world_size,
           get_memory_type_string(params.get_memory_type()).c_str(),
@@ -327,7 +356,8 @@ void gather_scatter_benchmark(GatherScatterBenchParam& params)
           wholememory_dtype_get_element_size(params.get_embedding_type()),
           params.get_embedding_dim(),
           emb_size_mb,
-          gather_size_mb);
+          gather_size_mb,
+          distributed_backend.c_str());
       }
 
       PerformanceMeter meter;
@@ -388,7 +418,7 @@ void gather_scatter_benchmark(GatherScatterBenchParam& params)
 int main(int argc, char** argv)
 {
   wholegraph::bench::gather_scatter::GatherScatterBenchParam params;
-  const char* optstr   = "ht:l:e:g:d:c:f:a:p:r:s:n:";
+  const char* optstr   = "ht:l:e:g:d:c:f:a:p:r:s:n:m:b:";
   struct option opts[] = {
     {"help", no_argument, NULL, 'h'},
     {"memory_type",
@@ -405,8 +435,9 @@ int main(int argc, char** argv)
     {"node_size", required_argument, NULL, 's'},    // node_size
     {"num_gpu", required_argument, NULL, 'n'},      // num gpu per node
     {"server_addr", required_argument, NULL, 'a'},  // server_addr
-    {"server_port", required_argument, NULL, 'p'}   // server_port
-  };
+    {"server_port", required_argument, NULL, 'p'},  // server_port
+    {"partition_method", required_argument, NULL, 'm'},
+    {"distributed_backend", required_argument, NULL, 'b'}};
 
   const char* usage =
     "Usage: %s [options]\n"
@@ -424,7 +455,9 @@ int main(int argc, char** argv)
     "  -s, --node_size    node_size or process count\n"
     "  -n, --num_gpu   num_gpu per process\n"
     "  -a, --server_addr    specify sideband server address\n"
-    "  -p, --server_port    specify sideband server port\n";
+    "  -p, --server_port    specify sideband server port\n"
+    "  -m, --partition_method   specify rank partition method, 0: Default, 1: Random\n"
+    "  -b, --distributed_backend   specify distributed backend: nccl or nvshmem\n";
 
   int c;
   bool has_option = false;
@@ -535,6 +568,26 @@ int main(int argc, char** argv)
           exit(EXIT_FAILURE);
         }
         params.set_num_gpu(val);
+        break;
+      case 'm':
+        val = std::atoi(optarg);
+        if (val != 0 && val != 1) {
+          printf("Invalid argument for option -m\n");
+          printf(usage, argv[0]);
+          exit(EXIT_FAILURE);
+        }
+        params.set_partition_method(val);
+        break;
+      case 'b':
+        if (strcmp(optarg, "nccl") == 0) {
+          params.set_distributed_backend("nccl");
+        } else if (strcmp(optarg, "nvshmem") == 0) {
+          params.set_distributed_backend("nvshmem");
+        } else {
+          printf("Invalid argument for option -b\n");
+          printf(usage, argv[0]);
+          exit(EXIT_FAILURE);
+        }
         break;
       default:
         printf("Invalid or unrecognized option\n");

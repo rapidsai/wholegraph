@@ -260,23 +260,25 @@ __global__ void gather_func_kernel(wholememory_gref_t embedding_gref,
                                    OutputT* output,
                                    wholememory_matrix_description_t output_desc)
 {
-  auto block  = cooperative_groups::this_thread_block();
-  auto mywarp = cooperative_groups::tiled_partition<32>(block);
-  __shared__ char shm_in_char[16384];
-  OutputT* all_sh = reinterpret_cast<OutputT*>(shm_in_char);
-  OutputT* my_shared;
+  auto block                    = cooperative_groups::this_thread_block();
+  auto mywarp                   = cooperative_groups::tiled_partition<32>(block);
+  constexpr size_t shm_max_size = 16384;
+  __shared__ char shm_in_char[shm_max_size];
   int warp_id = (threadIdx.x + blockIdx.x * blockDim.x) / 32;
   int lane_id = threadIdx.x % 32;
 
   int embedding_size       = embedding_desc.sizes[1];
   int64_t embedding_stride = embedding_desc.stride;
   int64_t output_stride    = output_desc.stride;
-  int shm_size             = 16384 / sizeof(OutputT);
+
   wholememory::device_reference<EmbeddingT> embedding_dev_ref(embedding_gref);
 
   typed_data_vector<EmbeddingT, ALIGNMENT> embeddings;
   typed_data_vector<OutputT, ALIGNMENT> outputs;
 
+  int shm_size    = shm_max_size / sizeof(OutputT);
+  OutputT* all_sh = reinterpret_cast<OutputT*>(shm_in_char);
+  OutputT* my_shared;
   bool use_shm = true;
   if (shm_size / (blockDim.x / 32) < output_desc.sizes[1]) {  //
     use_shm = false;
@@ -342,6 +344,7 @@ __global__ void gather_func_sub_warp_kernel(wholememory_gref_t embedding_gref,
   int sub_warp_num = subwarp.meta_group_size() * gridDim.x;
 
   int lane_id_in_sub_warp = subwarp.thread_rank();
+
   wholememory::device_reference<EmbeddingT> embedding_dev_ref(embedding_gref);
 
   int embedding_size       = embedding_desc.sizes[1];
@@ -358,11 +361,10 @@ __global__ void gather_func_sub_warp_kernel(wholememory_gref_t embedding_gref,
     if (embedding_table_idx < 0) continue;
     int64_t embedding_offset =
       embedding_desc.storage_offset + embedding_table_idx * embedding_stride;
-
+    EmbeddingT* emb_ptr = &embedding_dev_ref[embedding_offset];
     for (int emb_idx = lane_id_in_sub_warp * ALIGNMENT; emb_idx < embedding_size;
          emb_idx += ALIGNMENT * SUB_WARP_SIZE) {
-      mov_data<sizeof(EmbeddingT) * ALIGNMENT>(&embeddings,
-                                               &embedding_dev_ref[embedding_offset + emb_idx]);
+      mov_data<sizeof(EmbeddingT) * ALIGNMENT>(&embeddings, &emb_ptr[emb_idx]);
 #pragma unroll
       for (int sub_idx = 0; sub_idx < ALIGNMENT; sub_idx++) {
         typed_data_vector_at(outputs, sub_idx) =
@@ -522,11 +524,10 @@ __global__ void scatter_func_kernel(const InputT* input,
                                     wholememory_gref_t embedding_gref,
                                     wholememory_matrix_description_t embedding_desc)
 {
-  auto block  = cooperative_groups::this_thread_block();
-  auto mywarp = cooperative_groups::tiled_partition<32>(block);
-  __shared__ char shm_in_char[24576];
-  InputT* all_sh = reinterpret_cast<InputT*>(shm_in_char);
-  InputT* my_shared;
+  auto block                    = cooperative_groups::this_thread_block();
+  auto mywarp                   = cooperative_groups::tiled_partition<32>(block);
+  constexpr size_t shm_max_size = 24576;
+  __shared__ char shm_in_char[shm_max_size];
   int warp_id = (threadIdx.x + blockIdx.x * blockDim.x) / 32;
   int lane_id = threadIdx.x % 32;
 
@@ -535,11 +536,13 @@ __global__ void scatter_func_kernel(const InputT* input,
   int64_t input_stride     = input_desc.stride;
   int async_copy_align     = sizeof(InputT) > 4 ? 1 : 4 / sizeof(InputT);
 
-  int shm_size = 24576 / sizeof(InputT);
+  wholememory::device_reference<EmbeddingT> embedding_dev_ref(embedding_gref);
 
+  int shm_size   = shm_max_size / sizeof(InputT);
+  InputT* all_sh = reinterpret_cast<InputT*>(shm_in_char);
+  InputT* my_shared;
   int batch_size = (shm_size / (blockDim.x / 32) - async_copy_align) /
                    input_stride;  // indices batch size in lines
-  wholememory::device_reference<EmbeddingT> embedding_dev_ref(embedding_gref);
 
   typed_data_vector<EmbeddingT, ALIGNMENT> embeddings;
   typed_data_vector<InputT, ALIGNMENT> inputs;

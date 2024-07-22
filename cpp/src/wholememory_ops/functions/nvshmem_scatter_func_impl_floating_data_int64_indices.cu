@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, NVIDIA CORPORATION.
+ * Copyright (c) 2023-2024, NVIDIA CORPORATION.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,24 +31,23 @@ void nvshmem_scatter_floating_int64_temp_func(wholememory_comm_t wm_comm,
                                               int64_t indice_count,
                                               wholememory_nvshmem_ref_t embeding_nvshmem_ptr,
                                               wholememory_matrix_description_t embedding_desc,
-                                              size_t embedding_entry_count_per_rank,
+                                              size_t* embedding_entry_offsets,
                                               wholememory_env_func_t* p_env_fns,
                                               cudaStream_t stream,
                                               int scatter_sms)
 {
-  nvshmem_scatter_temp_put_mem_sort_idx_func<InputT, int64_t, EmbeddingT>(
-    wm_comm,
-    input,
-    temp_input,
-    input_desc,
-    indices,
-    indice_count,
-    embeding_nvshmem_ptr,
-    embedding_desc,
-    embedding_entry_count_per_rank,
-    p_env_fns,
-    stream,
-    scatter_sms);
+  nvshmem_scatter_temp_put_mem_sort_idx_func<InputT, int64_t, EmbeddingT>(wm_comm,
+                                                                          input,
+                                                                          temp_input,
+                                                                          input_desc,
+                                                                          indices,
+                                                                          indice_count,
+                                                                          embeding_nvshmem_ptr,
+                                                                          embedding_desc,
+                                                                          embedding_entry_offsets,
+                                                                          p_env_fns,
+                                                                          stream,
+                                                                          scatter_sms);
 }
 
 REGISTER_DISPATCH_TWO_TYPES(NvshmemScatterFuncFloatingInt64,
@@ -65,7 +64,7 @@ wholememory_error_code_t nvshmem_scatter_floating_int64_func(
   wholememory_array_description_t indices_desc,
   wholememory_nvshmem_ref_t embeding_nvshmem_ptr,
   wholememory_matrix_description_t embedding_desc,
-  size_t embedding_entry_count_per_rank,
+  size_t* embedding_entry_offsets,
   wholememory_env_func_t* p_env_fns,
   cudaStream_t stream,
   int scatter_sms)
@@ -86,7 +85,7 @@ wholememory_error_code_t nvshmem_scatter_floating_int64_func(
                        indices_desc.size,
                        embeding_nvshmem_ptr,
                        embedding_desc,
-                       embedding_entry_count_per_rank,
+                       embedding_entry_offsets,
                        p_env_fns,
                        stream,
                        scatter_sms);

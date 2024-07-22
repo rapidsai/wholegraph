@@ -114,6 +114,7 @@ struct EmbeddingBackwardTestParams {
               WHOLEMEMORY_SUCCESS);
     return cache_policy;
   }
+  int get_rank_partition_method() const { return rank_partition_method; }
   EmbeddingBackwardTestParams& set_use_cache()
   {
     use_cache = true;
@@ -139,6 +140,11 @@ struct EmbeddingBackwardTestParams {
     lr_ = lr;
     return *this;
   }
+  EmbeddingBackwardTestParams& use_random_partition()
+  {
+    rank_partition_method = 1;
+    return *this;
+  }
   wholememory_array_description_t indice_description;
   wholememory_matrix_description_t embedding_description;
   wholememory_matrix_description_t grad_description;
@@ -154,6 +160,7 @@ struct EmbeddingBackwardTestParams {
   float lr_ = 0.1;
 
   std::map<std::string, float> optimizer_params;
+  int rank_partition_method = 0;  // 0-default, 1-random
 };
 
 class WholeMemoryEmbeddingBackwardParameterTests
@@ -586,13 +593,18 @@ TEST_P(WholeMemoryEmbeddingBackwardParameterTests, EmbeddingGatherGradientApplyT
                     optimizer, param_name_value.first.c_str(), &param_name_value.second),
                   WHOLEMEMORY_SUCCESS);
       }
-
+      std::vector<size_t> rank_partition(world_size);
+      wholememory_ops::testing::host_random_partition(
+        rank_partition.data(), embedding_tensor_description.sizes[0], world_size);
+      size_t* rank_partition_ptr = nullptr;
+      if (params.get_rank_partition_method() == 1) { rank_partition_ptr = rank_partition.data(); }
       EXPECT_EQ(wholememory_create_embedding(&wm_embedding,
                                              &embedding_tensor_description,
                                              wm_comm,
                                              params.memory_type,
                                              params.memory_location,
-                                             cache_policy),
+                                             cache_policy,
+                                             rank_partition_ptr),
                 WHOLEMEMORY_SUCCESS);
       EXPECT_EQ(wholememory_embedding_set_optimizer(wm_embedding, optimizer), WHOLEMEMORY_SUCCESS);
       wholememory_tensor_t embedding_tensor =
@@ -602,19 +614,18 @@ TEST_P(WholeMemoryEmbeddingBackwardParameterTests, EmbeddingGatherGradientApplyT
                 WHOLEMEMORY_SUCCESS);
       wholememory_handle_t embedding_handle =
         wholememory_tensor_get_memory_handle(embedding_tensor);
-      auto entry_per_partition  = wholememory_tensor_get_entry_per_partition(embedding_tensor);
-      int64_t total_entry_count = params.embedding_description.sizes[0];
-      int64_t rank_start_entry =
-        std::min<int64_t>(world_rank * entry_per_partition, total_entry_count);
-      int64_t rank_end_entry =
-        std::min<int64_t>((world_rank + 1) * entry_per_partition, total_entry_count);
-      int64_t rank_entry_count = rank_end_entry - rank_start_entry;
-
+      size_t rank_entry_count = 0;
+      size_t rank_start_entry = 0;
+      EXPECT_EQ(wholememory_tensor_get_local_entry_count(&rank_entry_count, embedding_tensor),
+                WHOLEMEMORY_SUCCESS);
+      EXPECT_EQ(wholememory_tensor_get_local_entry_start(&rank_start_entry, embedding_tensor),
+                WHOLEMEMORY_SUCCESS);
+      rank_entry_count = std::min<int64_t>(
+        rank_entry_count, params.embedding_description.sizes[0] - rank_start_entry);
       auto* dst_base_ptr =
         static_cast<float*>(wholememory_tensor_get_data_pointer(local_embed_tensor));
       size_t dst_stride = wholememory_tensor_get_tensor_description(local_embed_tensor)->strides[0];
       size_t embedding_copy_size = embedding_dim * sizeof(float);
-
       for (int64_t i = 0; i < rank_entry_count; i++) {
         WM_CUDA_CHECK_NO_THROW(cudaMemcpy(dst_base_ptr + i * dst_stride,
                                           start_embedding_table[rank_start_entry + i].data(),
@@ -738,6 +749,30 @@ INSTANTIATE_TEST_SUITE_P(
 #endif
     EmbeddingBackwardTestParams().set_entry_count(500).set_indice_count(400).set_embedding_dim(4),
     EmbeddingBackwardTestParams().set_embedding_dim(3),
+    EmbeddingBackwardTestParams()
+      .set_memory_location(WHOLEMEMORY_ML_DEVICE)
+      .set_optimizer_type(WHOLEMEMORY_OPT_RMSPROP)
+      .use_random_partition(),
+    EmbeddingBackwardTestParams()
+      .set_memory_location(WHOLEMEMORY_ML_DEVICE)
+      .set_optimizer_type(WHOLEMEMORY_OPT_ADAGRAD)
+      .use_random_partition(),
+    EmbeddingBackwardTestParams()
+      .set_memory_location(WHOLEMEMORY_ML_DEVICE)
+      .set_optimizer_type(WHOLEMEMORY_OPT_LAZY_ADAM)
+      .use_random_partition(),
+    EmbeddingBackwardTestParams()
+      .set_memory_type(WHOLEMEMORY_MT_DISTRIBUTED)
+      .set_optimizer_type(WHOLEMEMORY_OPT_RMSPROP)
+      .use_random_partition(),
+    EmbeddingBackwardTestParams()
+      .set_memory_type(WHOLEMEMORY_MT_DISTRIBUTED)
+      .set_optimizer_type(WHOLEMEMORY_OPT_ADAGRAD)
+      .use_random_partition(),
+    EmbeddingBackwardTestParams()
+      .set_memory_type(WHOLEMEMORY_MT_DISTRIBUTED)
+      .set_optimizer_type(WHOLEMEMORY_OPT_LAZY_ADAM)
+      .use_random_partition(),
     EmbeddingBackwardTestParams().set_use_cache().set_grad_stride(131),
     EmbeddingBackwardTestParams().set_use_cache().set_grad_stride(131).set_optimizer_type(
       WHOLEMEMORY_OPT_RMSPROP),

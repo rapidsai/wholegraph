@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, NVIDIA CORPORATION.
+ * Copyright (c) 2023-2024, NVIDIA CORPORATION.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -34,6 +34,8 @@ namespace wholegraph::bench {
 void host_random_init_integer_indices(void* indices,
                                       wholememory_array_description_t indices_desc,
                                       int64_t max_indices);
+
+void host_random_partition(size_t* partition_sizes, size_t total_size, int partition_count);
 
 struct Metric {
   Metric(const std::string& metrics_name,

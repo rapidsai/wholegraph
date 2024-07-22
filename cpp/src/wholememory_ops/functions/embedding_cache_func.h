@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2023, NVIDIA CORPORATION.
+ * Copyright (c) 2019-2024, NVIDIA CORPORATION.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -67,7 +67,7 @@ wholememory_error_code_t update_cache_different_comm(
   wholememory_array_description_t indice_desc,
   wholememory_tensor_t wm_raw_memory_embedding,
   wholememory_comm_t cache_comm,
-  size_t embedding_entry_count_per_cache_rank,
+  size_t* embedding_entry_offsets,
   const wholememory::embedding_cache_local_data* cache_local_data,
   int cache_set_coverage,
   wholememory_env_func_t* p_env_fns,

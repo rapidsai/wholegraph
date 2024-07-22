@@ -1,4 +1,4 @@
-# Copyright (c) 2019-2023, NVIDIA CORPORATION.
+# Copyright (c) 2019-2024, NVIDIA CORPORATION.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -15,6 +15,7 @@ import pylibwholegraph.binding.wholememory_binding as wmb
 from pylibwholegraph.utils.multiprocess import multiprocess_run
 from pylibwholegraph.torch.initialize import init_torch_env_and_create_wm_comm
 from pylibwholegraph.torch.dlpack_utils import torch_import_from_dlpack
+from pylibwholegraph.test_utils.test_comm import random_partition
 import torch
 import pylibwholegraph.torch.wholememory_ops as wm_ops
 
@@ -45,6 +46,7 @@ def scatter_gather_test_cast(
     embedding_dim,
     indice_count,
     use_python_binding=True,
+    entry_partition=None
 ):
     world_rank = wm_comm.get_rank()
     world_size = wm_comm.get_size()
@@ -53,7 +55,7 @@ def scatter_gather_test_cast(
         % (world_rank, embedding_count, embedding_dim, indice_count, dt, mt, ml)
     )
     wm_embedding = wmb.create_wholememory_matrix(
-        dt, embedding_count, embedding_dim, -1, wm_comm, mt, ml
+        dt, embedding_count, embedding_dim, -1, wm_comm, mt, ml, entry_partition
     )
 
     scatter_indice = torch.arange(
@@ -86,22 +88,15 @@ def scatter_gather_test_cast(
         torch_import_from_dlpack, wmb.WholeMemoryMemoryLocation.MlDevice, world_rank
     )
 
-    local_ref_start = min(
-        wmb.determine_partition_plan(embedding_count, world_size) * world_rank,
-        embedding_count,
-    )
-    local_ref_end = min(
-        wmb.determine_partition_plan(embedding_count, world_size) * (world_rank + 1),
-        embedding_count,
-    )
-    local_ref_count = local_ref_end - local_ref_start
+    local_ref_start = wm_embedding.get_local_entry_start()
+    local_ref_count = wm_embedding.get_local_entry_count()
     assert local_start == local_ref_start
     assert local_tensor_cuda.dim() == 2
     assert local_tensor_cuda.shape[0] == local_ref_count
     assert local_tensor_cuda.shape[1] == embedding_dim
 
     local_tensor = local_tensor_cuda.cpu()
-    local_indices = torch.arange(local_ref_start, local_ref_end, dtype=torch.int64)
+    local_indices = torch.arange(local_ref_start, local_ref_start + local_ref_count, dtype=torch.int64)
     local_tensor_ref = gen_int_embedding(local_indices, embedding_dim, torch.float)
     # print('\nlocal_tensor %s =%s\nlocal_tensor_ref %s =%s' % (
     #    local_tensor.shape, local_tensor, local_tensor_ref.shape, local_tensor_ref))
@@ -142,6 +137,7 @@ def routine_func(world_rank: int, world_size: int):
     embedding_dim = 256
     indice_count = 100001
     dt = wmb.WholeMemoryDataType.DtFloat
+    entry_partition = random_partition(embedding_count, world_size)
 
     print("")
 
@@ -156,7 +152,7 @@ def routine_func(world_rank: int, world_size: int):
         ]:
             if wm_comm.support_type_location(mt, ml):
                 scatter_gather_test_cast(
-                    wm_comm, dt, mt, ml, embedding_count, embedding_dim, indice_count, True
+                    wm_comm, dt, mt, ml, embedding_count, embedding_dim, indice_count, True, entry_partition
                 )
                 # scatter_gather_test_cast(wm_comm, dt, mt, ml, embedding_count, embedding_dim, indice_count, False)
     wmb.finalize()

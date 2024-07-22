@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2023, NVIDIA CORPORATION.
+ * Copyright (c) 2019-2024, NVIDIA CORPORATION.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -37,6 +37,7 @@ typedef struct wholememory_tensor_* wholememory_tensor_t;
  * @param comm : WholeMemory Communicator
  * @param memory_type : Memory Type of the underlying WholeMemory
  * @param memory_location : Memory Location of the underlying WholeMemory
+ * @param tensor_entry_partition : Tensor entry count of each rank, the length must be world_size.
  * @return : wholememory_error_code_t
  */
 wholememory_error_code_t wholememory_create_tensor(
@@ -44,7 +45,8 @@ wholememory_error_code_t wholememory_create_tensor(
   wholememory_tensor_description_t* tensor_description,
   wholememory_comm_t comm,
   wholememory_memory_type_t memory_type,
-  wholememory_memory_location_t memory_location);
+  wholememory_memory_location_t memory_location,
+  size_t* tensor_entry_partition = nullptr);
 
 /**
  * Destroy WholeMemory Tensor
@@ -131,11 +133,40 @@ wholememory_error_code_t wholememory_tensor_map_local_tensor(
 void* wholememory_tensor_get_data_pointer(wholememory_tensor_t wholememory_tensor);
 
 /**
- * Get entry count per rank of a WholeMemory Tensor
+ * Get entry offset of each rank from WholeMemory Tensor
+ * @param entry_offsets : returned entry offset of each rank
  * @param wholememory_tensor : WholeMemory Tensor
- * @return : entry count per rank
+ * @return : wholememory_error_code_t
  */
-size_t wholememory_tensor_get_entry_per_partition(wholememory_tensor_t wholememory_tensor);
+wholememory_error_code_t wholememory_tensor_get_entry_offsets(
+  size_t* entry_offsets, wholememory_tensor_t wholememory_tensor);
+
+/**
+ * Get entry count of each rank from WholeMemory Tensor
+ * @param entry_offsets : returned entry count of each rank
+ * @param wholememory_tensor : WholeMemory Tensor
+ * @return : wholememory_error_code_t
+ */
+wholememory_error_code_t wholememory_tensor_get_entry_partition_sizes(
+  size_t* entry_partition, wholememory_tensor_t wholememory_tensor);
+
+/**
+ * Get entry count of current rank from WholeMemory Tensor
+ * @param local_entry_count  : returned entry count of current rank
+ * @param wholememory_tensor : WholeMemory Tensor
+ * @return : wholememory_error_code_t
+ */
+wholememory_error_code_t wholememory_tensor_get_local_entry_count(
+  size_t* local_entry_count, wholememory_tensor_t wholememory_tensor);
+
+/**
+ * Get entry start of current rank from WholeMemory Tensor
+ * @param local_entry_start  : returned entry start id of current rank
+ * @param wholememory_tensor : WholeMemory Tensor
+ * @return : wholememory_error_code_t
+ */
+wholememory_error_code_t wholememory_tensor_get_local_entry_start(
+  size_t* local_entry_start, wholememory_tensor_t wholememory_tensor);
 
 /**
  * Get sub tensor of a WholeMemory Tensor

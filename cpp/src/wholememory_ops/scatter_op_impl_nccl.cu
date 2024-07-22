@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2023, NVIDIA CORPORATION.
+ * Copyright (c) 2019-2024, NVIDIA CORPORATION.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -53,21 +53,8 @@ wholememory_error_code_t wholememory_scatter_nccl(void* input,
 
     wm_thrust_allocator thrust_allocator(p_env_fns);
 
-    size_t embedding_size_per_rank;
-    WHOLEMEMORY_RETURN_ON_FAIL(
-      wholememory_get_partition_plan(&embedding_size_per_rank, wholememory_handle));
-
     size_t element_size         = wholememory_dtype_get_element_size(wholememory_desc.dtype);
     size_t embedding_entry_size = element_size * wholememory_desc.stride;
-
-    WHOLEMEMORY_EXPECTS_NOTHROW(
-      embedding_size_per_rank % embedding_entry_size == 0,
-      "embedding_size_per_rank=%ld is not multiple of embedding_entry_size=%ldx%ld",
-      embedding_size_per_rank,
-      element_size,
-      wholememory_desc.stride);
-
-    size_t embedding_entry_count_per_rank = embedding_size_per_rank / embedding_entry_size;
 
     wholememory_comm_t wm_comm;
     WHOLEMEMORY_RETURN_ON_FAIL(wholememory_get_communicator(&wm_comm, wholememory_handle));
@@ -87,13 +74,39 @@ wholememory_error_code_t wholememory_scatter_nccl(void* input,
       static_cast<int64_t*>(dev_raw_indice.device_malloc(indices_desc.size, WHOLEMEMORY_DT_INT64));
 
     int64_t total_recv_count = 0;
+
+    temp_memory_handle dev_embedding_entry_offsets_handle(p_env_fns);
+    size_t* dev_embedding_entry_offsets_ptr = static_cast<size_t*>(
+      dev_embedding_entry_offsets_handle.device_malloc(world_size + 1, WHOLEMEMORY_DT_INT64));
+    temp_memory_handle host_embedding_entry_offsets_handle(p_env_fns);
+    size_t* host_embedding_entry_offsets_ptr = static_cast<size_t*>(
+      host_embedding_entry_offsets_handle.host_malloc(world_size + 1, WHOLEMEMORY_DT_INT64));
+
+    WHOLEMEMORY_RETURN_ON_FAIL(
+      wholememory_get_rank_partition_offsets(host_embedding_entry_offsets_ptr, wholememory_handle));
+    for (int i = 0; i < world_size + 1; i++) {
+      size_t offset = host_embedding_entry_offsets_ptr[i];
+      WHOLEMEMORY_EXPECTS_NOTHROW(
+        offset % embedding_entry_size == 0,
+        "embedding memory offset of rank%d=%ld is not multiple of embedding_entry_size=%ldx%ld",
+        i,
+        offset,
+        element_size,
+        wholememory_desc.stride);
+      host_embedding_entry_offsets_ptr[i] /= embedding_entry_size;
+    }
+    WM_CUDA_CHECK(cudaMemcpyAsync(dev_embedding_entry_offsets_ptr,
+                                  host_embedding_entry_offsets_ptr,
+                                  (world_size + 1) * sizeof(size_t),
+                                  cudaMemcpyHostToDevice,
+                                  stream));
     WHOLEMEMORY_RETURN_ON_FAIL(bucket_and_exchange_ids_func(indices,
                                                             indices_desc,
                                                             host_recv_rank_id_count_ptr,
                                                             host_rank_id_count_ptr,
                                                             &dev_recv_indice_buffer,
                                                             dev_raw_indice_ptr,
-                                                            embedding_entry_count_per_rank,
+                                                            dev_embedding_entry_offsets_ptr,
                                                             wm_comm,
                                                             &thrust_allocator,
                                                             p_env_fns,
