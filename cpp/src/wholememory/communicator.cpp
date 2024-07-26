@@ -897,6 +897,13 @@ wholememory_error_code_t communicator_get_size(int* size, wholememory_comm_t com
   return WHOLEMEMORY_SUCCESS;
 }
 
+wholememory_error_code_t communicator_get_local_size(int* local_size,
+                                                     wholememory_comm_t comm) noexcept
+{
+  *local_size = comm->intra_node_rank_num;
+  return WHOLEMEMORY_SUCCESS;
+}
+
 // wholememory_error_code_t communicator_get_clique_rank(int* clique_rank,
 //                                                       wholememory_comm_t comm) noexcept
 // {

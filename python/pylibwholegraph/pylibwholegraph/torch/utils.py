@@ -1,4 +1,4 @@
-# Copyright (c) 2019-2023, NVIDIA CORPORATION.
+# Copyright (c) 2019-2024, NVIDIA CORPORATION.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -92,9 +92,11 @@ def str_to_wmb_wholememory_memory_type(str_wmb_type: str):
         return wmb.WholeMemoryMemoryType.MtChunked
     elif str_wmb_type == "distributed":
         return wmb.WholeMemoryMemoryType.MtDistributed
+    elif str_wmb_type == "hierarchy":
+        return wmb.WholeMemoryMemoryType.MtHierarchy
     else:
         raise ValueError(
-            "WholeMemory type %s not supported, should be (continuous, chunked, distributed)"
+            "WholeMemory type %s not supported, should be (continuous, chunked, distributed, hierarchy)"
             % (str_wmb_type,)
         )
 

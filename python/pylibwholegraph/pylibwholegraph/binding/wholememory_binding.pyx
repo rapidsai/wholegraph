@@ -61,6 +61,7 @@ cdef extern from "wholememory/wholememory.h":
         WHOLEMEMORY_MT_CONTINUOUS           "WHOLEMEMORY_MT_CONTINUOUS"
         WHOLEMEMORY_MT_CHUNKED              "WHOLEMEMORY_MT_CHUNKED"
         WHOLEMEMORY_MT_DISTRIBUTED          "WHOLEMEMORY_MT_DISTRIBUTED"
+        WHOLEMEMORY_MT_HIERARCHY            "WHOLEMEMORY_MT_HIERARCHY"
 
     ctypedef enum wholememory_memory_location_t:
         WHOLEMEMORY_ML_NONE                 "WHOLEMEMORY_ML_NONE"
@@ -226,6 +227,7 @@ cpdef enum WholeMemoryMemoryType:
     MtContinuous = WHOLEMEMORY_MT_CONTINUOUS
     MtChunked = WHOLEMEMORY_MT_CHUNKED
     MtDistributed = WHOLEMEMORY_MT_DISTRIBUTED
+    MtHierarchy = WHOLEMEMORY_MT_HIERARCHY
 
 cpdef enum WholeMemoryMemoryLocation:
     MlNone = WHOLEMEMORY_ML_NONE

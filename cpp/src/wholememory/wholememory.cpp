@@ -75,6 +75,13 @@ wholememory_error_code_t wholememory_communicator_get_size(int* size, wholememor
 {
   return wholememory::communicator_get_size(size, comm);
 }
+
+wholememory_error_code_t wholememory_communicator_get_local_size(int* local_size,
+                                                                 wholememory_comm_t comm)
+{
+  return wholememory::communicator_get_local_size(local_size, comm);
+}
+
 bool wholememory_communicator_is_bind_to_nvshmem(wholememory_comm_t comm)
 {
 #ifdef WITH_NVSHMEM_SUPPORT
@@ -163,6 +170,15 @@ wholememory_error_code_t wholememory_get_local_memory(void** local_ptr,
                                                       wholememory_handle_t wholememory_handle)
 {
   return wholememory::get_local_memory_from_handle(
+    local_ptr, local_size, local_offset, wholememory_handle);
+}
+
+wholememory_error_code_t wholememory_get_local_node_memory(void** local_ptr,
+                                                           size_t* local_size,
+                                                           size_t* local_offset,
+                                                           wholememory_handle_t wholememory_handle)
+{
+  return wholememory::get_local_node_memory_from_handle(
     local_ptr, local_size, local_offset, wholememory_handle);
 }
 
