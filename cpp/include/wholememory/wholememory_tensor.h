@@ -143,7 +143,7 @@ wholememory_error_code_t wholememory_tensor_get_entry_offsets(
 
 /**
  * Get entry count of each rank from WholeMemory Tensor
- * @param entry_offsets : returned entry count of each rank
+ * @param entry_partition : returned entry count of each rank
  * @param wholememory_tensor : WholeMemory Tensor
  * @return : wholememory_error_code_t
  */

@@ -55,7 +55,7 @@ wholememory_error_code_t update_cache_direct_same_comm(
  * @param wm_raw_memory_embedding : the WholeMemory Tensor that is to be cached which stores all
  * embeddings.
  * @param cache_comm : communicator of cache
- * @param embedding_entry_count_per_cache_rank : embedding entries covered by each cache rank
+ * @param embedding_entry_offsets : embedding entry offset of each cache rank
  * @param cache_local_data : embedding_cache_local_data of wm_raw_memory_embedding
  * @param cache_set_coverage : cache set coverage
  * @param p_env_fns : env fns
