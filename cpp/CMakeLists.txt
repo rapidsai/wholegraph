@@ -14,7 +14,7 @@
 # limitations under the License.
 #=============================================================================
 
-set(RAPIDS_VERSION "24.08")
+set(RAPIDS_VERSION "24.10")
 set(WHOLEGRAPH_VERSION "${RAPIDS_VERSION}.00")
 
 cmake_minimum_required(VERSION 3.23.1 FATAL_ERROR)
@@ -198,6 +198,11 @@ PUBLIC
 PRIVATE
     NCCL::NCCL
 )
+
+if (CUDAToolkit_VERSION VERSION_GREATER "12.3")
+    # Link the NVML library if CUDA version is greater than 12.3
+    target_link_libraries(wholegraph PRIVATE CUDA::nvml)
+endif()
 
 if(BUILD_WITH_NVSHMEM)
 

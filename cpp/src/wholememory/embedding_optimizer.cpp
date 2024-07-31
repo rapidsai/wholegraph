@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2023, NVIDIA CORPORATION.
+ * Copyright (c) 2019-2024, NVIDIA CORPORATION.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -80,7 +80,6 @@ wholememory_tensor_t embedding_optimizer_impl_base::get_optimizer_state(
   WHOLEMEMORY_CHECK_NOTHROW(optimizer_state != nullptr);
   WHOLEMEMORY_CHECK_NOTHROW(state_names_.size() == optimizer_state->cachable_states.size() +
                                                      optimizer_state->uncachable_states.size() + 1);
-  WHOLEMEMORY_FAIL_NOTHROW("optimizer state name %s not found for %s", state_name, name_);
   for (size_t i = 0; i < optimizer_state->cachable_states.size(); i++) {
     if (strcmp(state_name, optimizer_state->cachable_states[i].name.c_str()) == 0) {
       WHOLEMEMORY_CHECK_NOTHROW(strcmp(state_name, state_names_[i]) == 0);
@@ -94,6 +93,7 @@ wholememory_tensor_t embedding_optimizer_impl_base::get_optimizer_state(
       return optimizer_state->uncachable_states[i].global_raw_sub_tensor;
     }
   }
+  WHOLEMEMORY_FAIL_NOTHROW("optimizer state name %s not found for %s", state_name, name_);
   return nullptr;
 }
 

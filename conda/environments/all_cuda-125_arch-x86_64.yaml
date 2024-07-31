@@ -11,11 +11,12 @@ dependencies:
 - c-compiler
 - clang-tools==16.0.6
 - clangxx==16.0.6
-- cmake>=3.26.4
+- cmake>=3.26.4,!=3.30.0
 - cuda-cudart-dev
 - cuda-nvcc
+- cuda-nvml-dev
 - cuda-nvtx
-- cuda-version=12.2
+- cuda-version=12.5
 - cudnn=8.8
 - cxx-compiler
 - cython>=3.0.0
@@ -25,8 +26,8 @@ dependencies:
 - graphviz
 - ipykernel
 - ipython
-- libraft-headers==24.8.*
-- librmm==24.8.*
+- libraft-headers==24.10.*,>=0.0.0a0
+- librmm==24.10.*,>=0.0.0a0
 - nanobind>=0.2.0
 - nbsphinx
 - nccl
@@ -39,6 +40,7 @@ dependencies:
 - pytest-forked
 - pytest-xdist
 - python>=3.9,<3.12
+- rapids-build-backend>=0.3.0,<0.4.0.dev0
 - recommonmark
 - scikit-build-core>=0.7.0
 - sphinx-copybutton
@@ -46,4 +48,4 @@ dependencies:
 - sphinx<6
 - sphinxcontrib-websupport
 - sysroot_linux-64=2.17
-name: all_cuda-122_arch-x86_64
+name: all_cuda-125_arch-x86_64

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2023, NVIDIA CORPORATION.
+ * Copyright (c) 2019-2024, NVIDIA CORPORATION.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -192,6 +192,7 @@ struct wholememory_comm_ {
 
   bool is_intranode() const;
 
+  bool is_intra_mnnvl() const;
   bool support_type_location(wholememory_memory_type_t memory_type,
                              wholememory_memory_location_t memory_location) const;
 
@@ -212,10 +213,13 @@ struct wholememory_comm_ {
   int intra_node_rank_num       = 0;
   int intra_node_first_rank_pid = -1;
 
+  clique_info_t clique_info;
+
   int comm_id = -1;
 
   int dev_id            = -1;
   int local_gpu_ids[16] = {0};
+  bool support_mnnvl    = false;
 
   size_t alloc_granularity = 2 * 1024 * 1024UL;
 
@@ -267,6 +271,11 @@ wholememory_error_code_t create_communicator(wholememory_comm_t* comm,
                                              int rank,
                                              int size) noexcept;
 
+wholememory_error_code_t split_communicator(wholememory_comm_t* new_comm,
+                                            wholememory_comm_t parent_comm,
+                                            int color,
+                                            int key) noexcept;
+
 wholememory_error_code_t destroy_communicator_locked(wholememory_comm_t comm) noexcept;
 
 wholememory_error_code_t destroy_communicator(wholememory_comm_t comm) noexcept;
@@ -282,9 +291,14 @@ wholememory_error_code_t communicator_get_rank(int* rank, wholememory_comm_t com
 
 wholememory_error_code_t communicator_get_size(int* size, wholememory_comm_t comm) noexcept;
 
+wholememory_error_code_t communicator_get_clique_info(clique_info_t* clique_info,
+                                                      wholememory_comm_t comm) noexcept;
+
 void communicator_barrier(wholememory_comm_t comm);
 
 bool is_intranode_communicator(wholememory_comm_t comm) noexcept;
+
+bool is_intra_mnnvl_communicator(wholememory_comm_t comm) noexcept;
 
 std::string get_temporary_directory_path(wholememory_comm_t comm);
 

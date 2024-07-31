@@ -185,6 +185,24 @@ cdef extern from "wholememory/wholememory.h":
     cdef wholememory_distributed_backend_t wholememory_communicator_get_distributed_backend(
                                                                             wholememory_comm_t comm)
     cdef bool wholememory_is_intranode_communicator(wholememory_comm_t comm)
+    cdef bool wholememory_is_intra_mnnvl_communicator(wholememory_comm_t comm)
+
+
+    cdef struct clique_info_t:
+        int is_in_clique
+        int clique_first_rank
+        int clique_rank
+        int clique_rank_num
+        int clique_id
+        int clique_num
+
+    cdef wholememory_error_code_t wholememory_communicator_get_clique_info(clique_info_t* clique_info, wholememory_comm_t comm)
+
+
+    cdef wholememory_error_code_t wholememory_split_communicator(wholememory_comm_t* new_comm,
+                                                        wholememory_comm_t comm,
+                                                        int color,
+                                                        int key)
 
 cpdef enum WholeMemoryErrorCode:
     Success = WHOLEMEMORY_SUCCESS
@@ -624,13 +642,16 @@ cdef extern from "wholememory/embedding.h":
             wholememory_comm_t comm,
             wholememory_memory_type_t memory_type,
             wholememory_memory_location_t memory_location,
-            wholememory_embedding_optimizer_t optimizer,
             wholememory_embedding_cache_policy_t cache_policy,
             int user_defined_sms,
             int round_robin_size)
 
     cdef wholememory_error_code_t wholememory_destroy_embedding(
             wholememory_embedding_t wholememory_embedding)
+
+    cdef wholememory_error_code_t wholememory_embedding_set_optimizer(
+            wholememory_embedding_t  wholememory_embedding,
+            wholememory_embedding_optimizer_t optimizer);
 
     cdef wholememory_error_code_t wholememory_embedding_gather(wholememory_embedding_t wholememory_embedding,
                                                                wholememory_tensor_t indices,
@@ -700,6 +721,10 @@ cdef class WholeMemoryOptimizer:
             key_bytes = param_key.encode('utf-8')
             check_wholememory_error_code(
                 wholememory_optimizer_set_parameter(self.wm_optimizer, key_bytes, &param_value))
+
+    def add_embedding(self,
+                    PyWholeMemoryEmbedding embedding):
+        wholememory_embedding_set_optimizer(embedding.wm_embedding, self.wm_optimizer)
 
     def destroy_optimizer(self):
         if self.wm_optimizer == NULL:
@@ -789,7 +814,6 @@ cdef class PyWholeMemoryEmbedding:
                          PyWholeMemoryComm comm,
                          WholeMemoryMemoryType memory_type,
                          WholeMemoryMemoryLocation memory_location,
-                         WholeMemoryOptimizer optimizer,
                          WholeMemoryCachePolicy cache_policy,
                          int user_defined_sms,
                          int round_robin_size):
@@ -800,7 +824,6 @@ cdef class PyWholeMemoryEmbedding:
                                                                   comm.comm_id,
                                                                   self.memory_type,
                                                                   self.memory_location,
-                                                                  optimizer.wm_optimizer,
                                                                   cache_policy.cache_policy,
                                                                   user_defined_sms,
                                                                   round_robin_size))
@@ -828,9 +851,10 @@ cdef class PyWholeMemoryEmbedding:
         result = []
         cdef const char * const * state_names
         state_names = wholememory_embedding_get_optimizer_state_names(self.wm_embedding)
-        while state_names[i] != NULL:
-            result.append(<object> PyUnicode_FromString(state_names[i]))
-            i += 1
+        if state_names != NULL:
+            while state_names[i] != NULL:
+                result.append(<object> PyUnicode_FromString(state_names[i]))
+                i += 1
         return result
 
     def get_optimizer_state(self,
@@ -847,7 +871,6 @@ def create_embedding(PyWholeMemoryTensorDescription tensor_desc,
                      PyWholeMemoryComm comm,
                      WholeMemoryMemoryType memory_type,
                      WholeMemoryMemoryLocation memory_location,
-                     WholeMemoryOptimizer optimizer,
                      WholeMemoryCachePolicy cache_policy,
                      int user_defined_sms,
                      int round_robin_size):
@@ -856,7 +879,6 @@ def create_embedding(PyWholeMemoryTensorDescription tensor_desc,
                                   comm,
                                   memory_type,
                                   memory_location,
-                                  optimizer,
                                   cache_policy,
                                   user_defined_sms,
                                   round_robin_size)
@@ -1263,6 +1285,14 @@ cdef class PyWholeMemoryComm:
         cdef int world_size = -1
         check_wholememory_error_code(wholememory_communicator_get_size(&world_size, self.comm_id))
         return world_size
+    def get_clique_info(self):
+        cdef clique_info_t clique_info
+        check_wholememory_error_code(wholememory_communicator_get_clique_info(&clique_info,self.comm_id))
+
+        cdef bint is_in_clique = clique_info.is_in_clique > 0
+
+        return is_in_clique,clique_info.clique_first_rank,clique_info.clique_rank,clique_info.clique_rank_num,clique_info.clique_id,clique_info.clique_num
+
     def barrier(self):
         check_wholememory_error_code(wholememory_communicator_barrier(self.comm_id))
 
@@ -1624,6 +1654,10 @@ def create_communicator(PyWholeMemoryUniqueID py_uid, int world_rank, int world_
 def destroy_communicator(PyWholeMemoryComm py_comm):
     check_wholememory_error_code(wholememory_destroy_communicator(py_comm.comm_id))
 
+def split_communicator(PyWholeMemoryComm comm,int color,int key):
+    py_comm = PyWholeMemoryComm()
+    check_wholememory_error_code(wholememory_split_communicator(&py_comm.comm_id,comm.comm_id,color,key))
+    return py_comm
 
 def communicator_set_distributed_backend(PyWholeMemoryComm py_comm,WholeMemoryDistributedBackend distributed_backend):
     check_wholememory_error_code(wholememory_communicator_set_distributed_backend(py_comm.comm_id,int(distributed_backend)))
