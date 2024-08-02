@@ -238,6 +238,7 @@ typedef struct wholememory_handle_* wholememory_handle_t;
  * @param memory_type : WholeMemory type
  * @param memory_location : memory location, host or device
  * @param data_granularity : granularity size of data, which is guaranteed not to be partitioned.
+ * @param rank_entry_partition : entry count of each rank (size of entry equal to data_granularity)
  * @return : wholememory_error_code_t
  */
 wholememory_error_code_t wholememory_malloc(wholememory_handle_t* wholememory_handle_ptr,
@@ -245,7 +246,8 @@ wholememory_error_code_t wholememory_malloc(wholememory_handle_t* wholememory_ha
                                             wholememory_comm_t comm,
                                             wholememory_memory_type_t memory_type,
                                             wholememory_memory_location_t memory_location,
-                                            size_t data_granularity);
+                                            size_t data_granularity,
+                                            size_t* rank_entry_partition = nullptr);
 
 /**
  * Free allocated WholeMemory Handle
@@ -310,6 +312,24 @@ wholememory_error_code_t wholememory_get_local_memory(void** local_ptr,
                                                       wholememory_handle_t wholememory_handle);
 
 /**
+ * Get local memory size from WholeMemory Handle of current rank
+ * @param local_size : returned local memory size
+ * @param wholememory_handle : WholeMemory Handle
+ * @return : wholememory_error_code_t
+ */
+wholememory_error_code_t wholememory_get_local_size(size_t* local_size,
+                                                    wholememory_handle_t wholememory_handle);
+
+/**
+ * Get local memory offset from WholeMemory Handle of current rank
+ * @param local_offset : returned local memory offset
+ * @param wholememory_handle : WholeMemory Handle
+ * @return : wholememory_error_code_t
+ */
+wholememory_error_code_t wholememory_get_local_offset(size_t* local_offset,
+                                                      wholememory_handle_t wholememory_handle);
+
+/**
  * Get local memory of specified rank from WholeMemory Handle
  * @param rank_memory_ptr : returned local memory pointer of specified rank
  * @param rank_memory_size : returned local memory size of specified rank
@@ -323,6 +343,17 @@ wholememory_error_code_t wholememory_get_rank_memory(void** rank_memory_ptr,
                                                      size_t* rank_memory_offset,
                                                      int rank,
                                                      wholememory_handle_t wholememory_handle);
+
+/**
+ * Get the equal partition plan WholeMemory uses by default
+ * @param entry_per_rank : returned entry count per rank
+ * @param total_entry_count : total entry count
+ * @param world_size : communicator world size
+ * @return : wholememory_error_code_t
+ */
+wholememory_error_code_t wholememory_equal_entry_partition_plan(size_t* entry_per_rank,
+                                                                size_t total_entry_count,
+                                                                int world_size);
 
 /**
  * Get global memory pointer from WholeMemory Handle.
@@ -345,38 +376,22 @@ wholememory_error_code_t wholememory_get_global_reference(wholememory_gref_t* wh
                                                           wholememory_handle_t wholememory_handle);
 
 /**
- * Get the partition plan WholeMemory will use
- * @param size_per_rank : returned size per rank
- * @param total_size : total size
- * @param data_granularity : data granularity
- * @param world_size : communicator world size
- * @return : wholememory_error_code_t
- */
-wholememory_error_code_t wholememory_determine_partition_plan(size_t* size_per_rank,
-                                                              size_t total_size,
-                                                              size_t data_granularity,
-                                                              int world_size);
-
-/**
- * Get the partition plan WholeMemory will use based on entry count.
- * Entry is number of data granularity
- * @param entry_per_rank : returned entry count per rank
- * @param total_entry_count : total entry count
- * @param world_size : communicator world size
- * @return : wholememory_error_code_t
- */
-wholememory_error_code_t wholememory_determine_entry_partition_plan(size_t* entry_per_rank,
-                                                                    size_t total_entry_count,
-                                                                    int world_size);
-
-/**
- * Get the partition plan used in WholeMemory Handle
- * @param size_per_rank : returned size per rank
+ * Get memory size of each rank from WholeMemory Handle
+ * @param rank_mem_sizes : returned memory size of each rank
  * @param wholememory_handle : WholeMemory Handle
  * @return : wholememory_error_code_t
  */
-wholememory_error_code_t wholememory_get_partition_plan(size_t* size_per_rank,
-                                                        wholememory_handle_t wholememory_handle);
+wholememory_error_code_t wholememory_get_rank_partition_sizes(
+  size_t* rank_mem_sizes, wholememory_handle_t wholememory_handle);
+
+/**
+ * Get memory offset of each rank from WholeMemory Handle
+ * @param rank_mem_offsets : returned memory offset of each rank
+ * @param wholememory_handle : WholeMemory Handle
+ * @return : wholememory_error_code_t
+ */
+wholememory_error_code_t wholememory_get_rank_partition_offsets(
+  size_t* rank_mem_offsets, wholememory_handle_t wholememory_handle);
 
 /**
  * Fork a new process and get device count. Should be called before other CUDA call

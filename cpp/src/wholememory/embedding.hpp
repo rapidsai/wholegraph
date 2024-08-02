@@ -45,7 +45,8 @@ class embedding_base : public wholememory_embedding_ {
                                     wholememory_comm_t comm,
                                     wholememory_memory_type_t memory_type,
                                     wholememory_memory_location_t memory_location,
-                                    wholememory_embedding_cache_policy_t policy) noexcept;
+                                    wholememory_embedding_cache_policy_t policy,
+                                    size_t* embedding_entry_partition) noexcept;
   void deallocate() noexcept;
   virtual wholememory_error_code_t gather(wholememory_tensor_t indices,
                                           wholememory_tensor_t output,

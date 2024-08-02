@@ -384,9 +384,10 @@ def create_embedding(
     sizes: List[int],
     *,
     cache_policy: Union[WholeMemoryCachePolicy, None] = None,
+    embedding_entry_partition: Union[List[int], None] = None,
     random_init: bool = False,
     gather_sms: int = -1,
-    round_robin_size: int = 0,
+    round_robin_size: int = 0
 ):
     r"""
     Create embedding
@@ -396,6 +397,9 @@ def create_embedding(
     :param dtype: data type
     :param sizes: size of the embedding, must be 2D
     :param cache_policy: cache policy
+    :param embedding_entry_partition: rank partition based on entry; embedding_entry_partition[i] determines the
+    entry count of rank i and shoud be a positive integer; the sum of embedding_entry_partition should equal to
+    total entry count; entries will be equally partitioned if None
     :param gather_sms: the number of SMs used in gather process
     :param round_robin_size: continuous embedding size of a rank using round robin shard strategy
     :return: WholeMemoryEmbedding
@@ -415,7 +419,12 @@ def create_embedding(
             raise AssertionError
         ("The caching feature is not supported yet when using NVSHMEM."
          "Please consider disable it by passing cache_policy = None.")
-
+    if embedding_entry_partition is not None and cache_policy is not None:
+        print("embedding_entry_partition is ignored because cache_policy is specified")
+        embedding_entry_partition = None
+    if embedding_entry_partition is not None and round_robin_size != 0:
+        print("round_robin_size is ignored because embedding_entry_partition is specified")
+        round_robin_size = 0
     wm_embedding = WholeMemoryEmbedding(
         wmb.create_embedding(
             tensor_desc,
@@ -423,8 +432,9 @@ def create_embedding(
             str_to_wmb_wholememory_memory_type(memory_type),
             str_to_wmb_wholememory_location(memory_location),
             wmb_cache_policy,
+            embedding_entry_partition=embedding_entry_partition,
             user_defined_sms=gather_sms,
-            round_robin_size=round_robin_size,
+            round_robin_size=round_robin_size
         ),
         cache_policy,
     )
@@ -447,8 +457,9 @@ def create_embedding_from_filelist(
     last_dim_size: int,
     *,
     cache_policy: Union[WholeMemoryCachePolicy, None] = None,
+    embedding_entry_partition: Union[List[int], None] = None,
     gather_sms: int = -1,
-    round_robin_size: int = 0,
+    round_robin_size: int = 0
 ):
     r"""
     Create embedding from file list
@@ -459,6 +470,9 @@ def create_embedding_from_filelist(
     :param dtype: data type
     :param last_dim_size: size of last dim
     :param cache_policy: cache policy
+    :param embedding_entry_partition: rank partition based on entry; embedding_entry_partition[i] determines the
+    entry count of rank i and shoud be a positive integer; the sum of embedding_entry_partition should equal to
+    total entry count; entries will be equally partitioned if None
     :param gather_sms: the number of SMs used in gather process
     :param round_robin_size: continuous embedding size of a rank using round robin shard strategy
     :return:
@@ -466,6 +480,12 @@ def create_embedding_from_filelist(
     if isinstance(filelist, str):
         filelist = [filelist]
     assert last_dim_size > 0
+    if embedding_entry_partition is not None and cache_policy is not None:
+        print("embedding_entry_partition is ignored because cache_policy is specified")
+        embedding_entry_partition = None
+    if embedding_entry_partition is not None and round_robin_size != 0:
+        print("round_robin_size is ignored because embedding_entry_partition is specified")
+        round_robin_size = 0
     element_size = torch.tensor([], dtype=dtype).element_size()
     file_entry_size = element_size * last_dim_size
     total_file_size = 0
@@ -485,8 +505,9 @@ def create_embedding_from_filelist(
         dtype,
         [total_entry_count, last_dim_size],
         cache_policy=cache_policy,
+        embedding_entry_partition=embedding_entry_partition,
         gather_sms=gather_sms,
-        round_robin_size=round_robin_size,
+        round_robin_size=round_robin_size
     )
     wm_embedding.get_embedding_tensor().from_filelist(filelist, round_robin_size)
     return wm_embedding

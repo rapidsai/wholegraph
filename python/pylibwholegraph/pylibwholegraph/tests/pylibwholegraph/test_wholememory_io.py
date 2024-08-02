@@ -16,6 +16,7 @@ import pylibwholegraph.binding.wholememory_binding as wmb
 from pylibwholegraph.utils.multiprocess import multiprocess_run
 from pylibwholegraph.torch.initialize import init_torch_env_and_create_wm_comm
 from pylibwholegraph.torch.dlpack_utils import torch_import_from_dlpack
+from pylibwholegraph.test_utils.test_comm import random_partition
 import torch
 import numpy as np
 import os
@@ -56,6 +57,7 @@ def load_routine_func(
     embedding_stride,
     storage_offset,
     round_robin_size=0,
+    entry_partition=None
 ):
     wm_comm, _ = init_torch_env_and_create_wm_comm(
         world_rank, world_size, world_rank, world_size
@@ -78,12 +80,18 @@ def load_routine_func(
             + first_rank_extra_embedding_entry_count * world_size
         )
 
-    per_rank_entry = wmb.determine_partition_plan(extra_embedding_count, world_size)
-    rank_start_entry = min(per_rank_entry * world_rank, extra_embedding_count)
-    rank_end_entry = min(per_rank_entry * (world_rank + 1), extra_embedding_count)
-    rank_entry_count = rank_end_entry - rank_start_entry
+    if entry_partition is None:
+        per_rank_entry = wmb.equal_partition_plan(extra_embedding_count, world_size)
+        rank_start_entry = min(per_rank_entry * world_rank, extra_embedding_count)
+        rank_end_entry = min(per_rank_entry * (world_rank + 1), extra_embedding_count)
+        rank_entry_count = rank_end_entry - rank_start_entry
+    else:
+        rank_start_entry = np.sum(entry_partition[:world_rank])
+        rank_entry_count = entry_partition[world_rank]
+        rank_end_entry = rank_start_entry + rank_entry_count
 
     if round_robin_size != 0:
+        per_rank_entry = wmb.equal_partition_plan(extra_embedding_count, world_size)
         first_rank_extra_embedding_entry_count = embedding_entry_count % (
             world_size * round_robin_size
         )
@@ -137,6 +145,7 @@ def load_routine_func(
                 wm_comm,
                 mt,
                 ml,
+                entry_partition
             )
 
             wholememory_tensor = wholememory_root_tensor.get_sub_tensor(
@@ -173,6 +182,7 @@ def load_routine_func(
 @pytest.mark.parametrize("embedding_stride", [16, 32, 64])
 @pytest.mark.parametrize("storage_offset", [0, 3])
 @pytest.mark.parametrize("round_robin_size", [256, 1024, 0])
+@pytest.mark.parametrize("partition_method", ['random', 'default'])
 def test_wholememory_load(
     file_part_count,
     embedding_entry_count,
@@ -180,6 +190,7 @@ def test_wholememory_load(
     embedding_stride,
     storage_offset,
     round_robin_size,
+    partition_method
 ):
     if embedding_stride < storage_offset + embedding_dim:
         pytest.skip(
@@ -189,9 +200,18 @@ def test_wholememory_load(
         pytest.skip(
             "Skipping due to round_robin_size!=0 and storage offset !=0 , the configuration is not valid."
         )
+    if partition_method != 'default' and round_robin_size != 0:
+        pytest.skip(
+            "Skipping due to round_robin_size!=0 and partition method != 'default' , the configuration is not valid."
+        )
     global gpu_count
     if not gpu_count:
         gpu_count = 1
+
+    entry_partition = None
+    if partition_method == 'random':
+        entry_partition = random_partition(embedding_entry_count, gpu_count)
+
     extra_embedding_count = embedding_entry_count
     if round_robin_size != 0:
         first_rank_extra_embedding_entry_count = embedding_entry_count % (
@@ -229,7 +249,7 @@ def test_wholememory_load(
         )
 
     if round_robin_size != 0:
-        entry_per_rank = wmb.determine_partition_plan(extra_embedding_count, gpu_count)
+        entry_per_rank = wmb.equal_partition_plan(extra_embedding_count, gpu_count)
 
         cpu_embedding_tensor_base_extra = torch.empty(
             (extra_embedding_count, embedding_dim), dtype=torch.int, device="cpu"
@@ -260,6 +280,7 @@ def test_wholememory_load(
         embedding_stride=embedding_stride,
         storage_offset=storage_offset,
         round_robin_size=round_robin_size,
+        entry_partition=entry_partition
     )
 
     multiprocess_run(gpu_count, load_routine_func_partial)
@@ -278,6 +299,7 @@ def store_routine_func(
     embedding_dim,
     embedding_stride,
     storage_offset,
+    entry_partition
 ):
     (wm_comm, _) = init_torch_env_and_create_wm_comm(
         world_rank, world_size, world_rank, world_size
@@ -297,6 +319,7 @@ def store_routine_func(
         wm_comm,
         mt,
         ml,
+        entry_partition
     )
     local_root_tensor, local_root_offset = wholememory_root_tensor.get_local_tensor(
         torch_import_from_dlpack, wmb.WholeMemoryMemoryLocation.MlHost, world_rank
@@ -324,13 +347,19 @@ def store_routine_func(
 @pytest.mark.parametrize("embedding_dim", [16, 31, 33])
 @pytest.mark.parametrize("embedding_stride", [16, 32, 64])
 @pytest.mark.parametrize("storage_offset", [0, 3])
+@pytest.mark.parametrize("partition_method", ['random'])
 def test_wholememory_store(
-    embedding_entry_count, embedding_dim, embedding_stride, storage_offset
+    embedding_entry_count, embedding_dim, embedding_stride, storage_offset, partition_method
 ):
     if embedding_stride < storage_offset + embedding_dim:
         pytest.skip(
             "Skipping due to embedding_stride, embedding_dim and storage_offset configuration not valid."
         )
+
+    global gpu_count
+    entry_partition = None
+    if partition_method == 'random':
+        entry_partition = random_partition(embedding_entry_count, gpu_count)
     file_name_prefix = "pytest_store_temp_file"
     store_routine_func_partial = partial(
         store_routine_func,
@@ -339,9 +368,9 @@ def test_wholememory_store(
         embedding_dim=embedding_dim,
         embedding_stride=embedding_stride,
         storage_offset=storage_offset,
+        entry_partition=entry_partition
     )
 
-    global gpu_count
     multiprocess_run(gpu_count, store_routine_func_partial)
     embedding_entry_offset = 0
     file_part_count = gpu_count

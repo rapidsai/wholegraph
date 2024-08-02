@@ -107,10 +107,16 @@ wholememory_error_code_t wholememory_malloc(wholememory_handle_t* wholememory_ha
                                             wholememory_comm_t comm,
                                             wholememory_memory_type_t memory_type,
                                             wholememory_memory_location_t memory_location,
-                                            size_t data_granularity)
+                                            size_t data_granularity,
+                                            size_t* rank_entry_partition)
 {
-  return wholememory::create_wholememory(
-    wholememory_handle_ptr, total_size, comm, memory_type, memory_location, data_granularity);
+  return wholememory::create_wholememory(wholememory_handle_ptr,
+                                         total_size,
+                                         comm,
+                                         memory_type,
+                                         memory_location,
+                                         data_granularity,
+                                         rank_entry_partition);
 }
 
 wholememory_error_code_t wholememory_free(wholememory_handle_t wholememory_handle)
@@ -170,6 +176,13 @@ wholememory_error_code_t wholememory_get_rank_memory(void** rank_memory_ptr,
     rank_memory_ptr, rank_memory_size, rank_memory_offset, rank, wholememory_handle);
 }
 
+wholememory_error_code_t wholememory_equal_entry_partition_plan(size_t* entry_per_rank,
+                                                                size_t total_entry_count,
+                                                                int world_size)
+{
+  return wholememory::equal_partition_plan(entry_per_rank, total_entry_count, world_size);
+}
+
 wholememory_error_code_t wholememory_get_global_pointer(void** global_ptr,
                                                         wholememory_handle_t wholememory_handle)
 {
@@ -193,28 +206,28 @@ wholememory_error_code_t wholememory_get_nvshmem_reference(
 
 #endif
 
-wholememory_error_code_t wholememory_determine_partition_plan(size_t* size_per_rank,
-                                                              size_t total_size,
-                                                              size_t data_granularity,
-                                                              int world_size)
+wholememory_error_code_t wholememory_get_rank_partition_sizes(
+  size_t* rank_sizes, wholememory_handle_t wholememory_handle)
 {
-  return wholememory::determine_partition_plan(
-    size_per_rank, total_size, data_granularity, world_size);
+  return wholememory::get_rank_partition_sizes_from_handle(rank_sizes, wholememory_handle);
 }
 
-wholememory_error_code_t wholememory_determine_entry_partition_plan(size_t* entry_per_rank,
-                                                                    size_t total_entry_count,
-                                                                    int world_size)
+wholememory_error_code_t wholememory_get_rank_partition_offsets(
+  size_t* rank_offsets, wholememory_handle_t wholememory_handle)
 {
-  if (entry_per_rank == nullptr) { return WHOLEMEMORY_INVALID_INPUT; }
-  *entry_per_rank = wholememory::determine_entry_partition_plan(total_entry_count, world_size);
-  return WHOLEMEMORY_SUCCESS;
+  return wholememory::get_rank_partition_offsets_from_handle(rank_offsets, wholememory_handle);
 }
 
-wholememory_error_code_t wholememory_get_partition_plan(size_t* size_per_rank,
-                                                        wholememory_handle_t wholememory_handle)
+wholememory_error_code_t wholememory_get_local_size(size_t* local_size,
+                                                    wholememory_handle_t wholememory_handle)
 {
-  return wholememory::get_partition_plan_from_handle(size_per_rank, wholememory_handle);
+  return wholememory::get_local_size_from_handle(local_size, wholememory_handle);
+}
+
+wholememory_error_code_t wholememory_get_local_offset(size_t* local_size,
+                                                      wholememory_handle_t wholememory_handle)
+{
+  return wholememory::get_local_offset_from_handle(local_size, wholememory_handle);
 }
 
 int fork_get_device_count()
