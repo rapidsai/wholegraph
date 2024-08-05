@@ -284,6 +284,25 @@ wholememory_error_code_t wholememory_get_communicator(wholememory_comm_t* comm,
                                                       wholememory_handle_t wholememory_handle);
 
 /**
+ * Get underlying Wholememory Local Communicator for "Hierarchy" memory type from WholeMemory Handle
+ * @param comm : returned Local WholeMemory Communicator
+ * @param wholememory_handle : WholeMemory Handle
+ * @return : wholememory_error_code_t
+ */
+wholememory_error_code_t wholememory_get_local_communicator(
+  wholememory_comm_t* comm, wholememory_handle_t wholememory_handle);
+
+/**
+ * Get underlying Wholememory Cross Communicator for "Hierarchy" memory type from WholeMemory Handle
+ * One comminicator includes all rank with a same local id from different nodes
+ * @param comm : returned Local WholeMemory Communicator
+ * @param wholememory_handle : WholeMemory Handle
+ * @return : wholememory_error_code_t
+ */
+wholememory_error_code_t wholememory_get_cross_communicator(
+  wholememory_comm_t* comm, wholememory_handle_t wholememory_handle);
+
+/**
  * Get WholeMemory Type
  * @param wholememory_handle : WholeMemory Handle
  * @return : WholeMemory Type

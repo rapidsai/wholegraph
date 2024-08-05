@@ -131,6 +131,12 @@ cdef extern from "wholememory/wholememory.h":
     cdef wholememory_error_code_t wholememory_get_communicator(wholememory_comm_t * comm,
                                                                wholememory_handle_t wholememory_handle)
 
+    cdef wholememory_error_code_t wholememory_get_local_communicator(wholememory_comm_t * comm,
+                                                                     wholememory_handle_t wholememory_handle)
+
+    cdef wholememory_error_code_t wholememory_get_cross_communicator(wholememory_comm_t * comm,
+                                                                     wholememory_handle_t wholememory_handle)
+
     cdef wholememory_memory_type_t wholememory_get_memory_type(wholememory_handle_t wholememory_handle)
 
     cdef wholememory_memory_location_t wholememory_get_memory_location(wholememory_handle_t wholememory_handle)
@@ -1342,6 +1348,16 @@ cdef class PyWholeMemoryHandle:
     def get_communicator(self):
         py_comm = PyWholeMemoryComm()
         check_wholememory_error_code(wholememory_get_communicator(&py_comm.comm_id, self.wholememory_handle))
+        return py_comm
+
+    def get_local_communicator(self):
+        py_comm = PyWholeMemoryComm()
+        check_wholememory_error_code(wholememory_get_local_communicator(&py_comm.comm_id, self.wholememory_handle))
+        return py_comm
+
+    def get_cross_communicator(self):
+        py_comm = PyWholeMemoryComm()
+        check_wholememory_error_code(wholememory_get_cross_communicator(&py_comm.comm_id, self.wholememory_handle))
         return py_comm
 
     def get_memory_type(self):

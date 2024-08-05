@@ -1766,6 +1766,23 @@ class hierarchy_wholememory_impl : public wholememory_impl {
   {
     WHOLEMEMORY_CHECK(memory_type == WHOLEMEMORY_MT_HIERARCHY);
     local_comm_ = local_comm;
+    if (SupportEGM() && is_intra_mnnvl_communicator(global_comm)) {
+#if CUDA_VERSION >= 12030
+      clique_info_t* clique_info = nullptr;
+      wholememory_communicator_get_clique_info(clique_info, global_comm);
+      WHOLEMEMORY_CHECK_NOTHROW(clique_info->is_in_clique);
+      wholememory_split_communicator(
+        &cross_comm_, global_comm, clique_info->clique_rank, clique_info->clique_id);
+#else
+      WHOLEMEMORY_FAIL_NOTHROW("Multinode CONTINUOUS is only supported on CUDA Version >= 12.3");
+#endif
+    } else {
+      int world_rank = -1, local_size = -1;
+      wholememory_communicator_get_size(&world_rank, global_comm);
+      wholememory_communicator_get_local_size(&local_size, global_comm);
+      wholememory_split_communicator(
+        &cross_comm_, global_comm, world_rank % local_size, world_rank / local_size);
+    }
   }
   void create_memory() override
   {
@@ -1846,6 +1863,7 @@ class hierarchy_wholememory_impl : public wholememory_impl {
     return local_memory_handle_->impl->get_partition_stride();
   }
   [[nodiscard]] wholememory_comm_t get_local_comm() const { return local_comm_; }
+  [[nodiscard]] wholememory_comm_t get_cross_comm() const { return cross_comm_; }
   void destroy_memory() noexcept override { destroy_wholememory(local_memory_handle_); }
   bool contains_pointer(const void* ptr) const override
   {
@@ -1874,6 +1892,7 @@ class hierarchy_wholememory_impl : public wholememory_impl {
 
   wholememory_handle_t local_memory_handle_;
   wholememory_comm_t local_comm_;
+  wholememory_comm_t cross_comm_;
   void* local_node_memory_pointer_;
   struct partition_strategy {
     // size of memory this rank is responsible for
@@ -2103,6 +2122,36 @@ wholememory_error_code_t get_communicator_from_handle(
     return WHOLEMEMORY_INVALID_INPUT;
   }
   *comm = wholememory_handle->impl->get_comm();
+  return WHOLEMEMORY_SUCCESS;
+}
+
+wholememory_error_code_t get_local_communicator_from_handle(
+  wholememory_comm_t* comm, wholememory_handle_t wholememory_handle) noexcept
+{
+  if (wholememory_handle == nullptr || wholememory_handle->impl == nullptr) {
+    return WHOLEMEMORY_INVALID_INPUT;
+  }
+  if (get_memory_type(wholememory_handle) != WHOLEMEMORY_MT_HIERARCHY) {
+    return WHOLEMEMORY_NOT_SUPPORTED;
+  }
+  hierarchy_wholememory_impl* hierarchy_impl =
+    dynamic_cast<hierarchy_wholememory_impl*>(wholememory_handle->impl);
+  *comm = hierarchy_impl->get_local_comm();
+  return WHOLEMEMORY_SUCCESS;
+}
+
+wholememory_error_code_t get_cross_communicator_from_handle(
+  wholememory_comm_t* comm, wholememory_handle_t wholememory_handle) noexcept
+{
+  if (wholememory_handle == nullptr || wholememory_handle->impl == nullptr) {
+    return WHOLEMEMORY_INVALID_INPUT;
+  }
+  if (get_memory_type(wholememory_handle) != WHOLEMEMORY_MT_HIERARCHY) {
+    return WHOLEMEMORY_NOT_SUPPORTED;
+  }
+  hierarchy_wholememory_impl* hierarchy_impl =
+    dynamic_cast<hierarchy_wholememory_impl*>(wholememory_handle->impl);
+  *comm = hierarchy_impl->get_cross_comm();
   return WHOLEMEMORY_SUCCESS;
 }
 

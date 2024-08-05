@@ -137,6 +137,18 @@ wholememory_error_code_t wholememory_get_communicator(wholememory_comm_t* comm,
   return wholememory::get_communicator_from_handle(comm, wholememory_handle);
 }
 
+wholememory_error_code_t wholememory_get_local_communicator(wholememory_comm_t* comm,
+                                                            wholememory_handle_t wholememory_handle)
+{
+  return wholememory::get_local_communicator_from_handle(comm, wholememory_handle);
+}
+
+wholememory_error_code_t wholememory_get_cross_communicator(wholememory_comm_t* comm,
+                                                            wholememory_handle_t wholememory_handle)
+{
+  return wholememory::get_cross_communicator_from_handle(comm, wholememory_handle);
+}
+
 wholememory_memory_type_t wholememory_get_memory_type(wholememory_handle_t wholememory_handle)
 {
   return wholememory::get_memory_type(wholememory_handle);

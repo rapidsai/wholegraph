@@ -51,6 +51,12 @@ wholememory_error_code_t destroy_wholememory(wholememory_handle_t wholememory_ha
 wholememory_error_code_t get_communicator_from_handle(
   wholememory_comm_t* comm, wholememory_handle_t wholememory_handle) noexcept;
 
+wholememory_error_code_t get_local_communicator_from_handle(
+  wholememory_comm_t* comm, wholememory_handle_t wholememory_handle) noexcept;
+
+wholememory_error_code_t get_cross_communicator_from_handle(
+  wholememory_comm_t* comm, wholememory_handle_t wholememory_handle) noexcept;
+
 wholememory_memory_type_t get_memory_type(wholememory_handle_t wholememory_handle) noexcept;
 
 wholememory_memory_location_t get_memory_location(wholememory_handle_t wholememory_handle) noexcept;
