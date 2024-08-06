@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2023, NVIDIA CORPORATION.
+ * Copyright (c) 2019-2024, NVIDIA CORPORATION.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -53,7 +53,8 @@ wholememory_error_code_t wholememory_create_tensor(
   wholememory_tensor_description_t* tensor_description,
   wholememory_comm_t comm,
   wholememory_memory_type_t memory_type,
-  wholememory_memory_location_t memory_location)
+  wholememory_memory_location_t memory_location,
+  size_t* tensor_entry_partition)
 {
   if (p_wholememory_tensor == nullptr) {
     WHOLEMEMORY_ERROR("p_wholememory_tensor is nullptr");
@@ -98,7 +99,8 @@ wholememory_error_code_t wholememory_create_tensor(
                                      comm,
                                      memory_type,
                                      memory_location,
-                                     granularity);
+                                     granularity,
+                                     tensor_entry_partition);
   inc_tensor_count();
   if (ret_code != WHOLEMEMORY_SUCCESS) { free(wholememory_tensor); }
   return ret_code;
@@ -259,16 +261,10 @@ wholememory_error_code_t wholememory_tensor_map_local_tensor(
     wholememory_get_local_memory(&local_ptr, &local_size, &local_offset, handle));
   size_t const element_size = wholememory_dtype_get_element_size(wm_desc->dtype);
   size_t const gran_size    = wm_desc->dim == 1 ? element_size : element_size * wm_desc->strides[0];
-  size_t size_per_rank;
-  WHOLEMEMORY_RETURN_ON_FAIL(wholememory_get_partition_plan(&size_per_rank, handle));
-  WHOLEMEMORY_CHECK_NOTHROW(size_per_rank % gran_size == 0);
-  size_t entry_per_rank = size_per_rank / gran_size;
-  int64_t local_start   = std::min<int64_t>(entry_per_rank * world_rank, wm_desc->sizes[0]);
-  int64_t local_end     = std::min<int64_t>(entry_per_rank * (world_rank + 1), wm_desc->sizes[0]);
+  local_size = std::min<size_t>(local_size, wm_desc->sizes[0] * gran_size - local_offset);
   if (local_size % gran_size != 0) return WHOLEMEMORY_LOGIC_ERROR;
   wholememory_tensor_description_t local_desc = *wm_desc;
-  // local_desc.sizes[0]                         = local_size / gran_size;
-  local_desc.sizes[0] = (local_end - local_start);
+  local_desc.sizes[0]                         = local_size / gran_size;
   WHOLEMEMORY_RETURN_ON_FAIL(
     wholememory_make_tensor_from_pointer(local_tensor, local_ptr, &local_desc));
 
@@ -297,36 +293,120 @@ void* wholememory_tensor_get_data_pointer(wholememory_tensor_t wholememory_tenso
            wholememory_tensor->tensor_description.storage_offset;
 }
 
-size_t wholememory_tensor_get_entry_per_partition(wholememory_tensor_t wholememory_tensor)
+wholememory_error_code_t wholememory_tensor_get_entry_offsets(
+  size_t* entry_offsets, wholememory_tensor_t wholememory_tensor)
 {
   wholememory_tensor_t root_tensor = wholememory_tensor_get_root(wholememory_tensor);
   WHOLEMEMORY_CHECK_NOTHROW(
     (root_tensor->tensor_description.dim == 1 || root_tensor->tensor_description.dim == 2));
   if (wholememory_tensor->is_wholememory) {
-    size_t size_per_rank;
-    wholememory_get_partition_plan(&size_per_rank,
-                                   wholememory_tensor_get_memory_handle(root_tensor));
     size_t embedding_stride = 1;
     size_t const element_size =
       wholememory_dtype_get_element_size(wholememory_tensor->tensor_description.dtype);
     if (root_tensor->tensor_description.dim == 2) {
       embedding_stride = root_tensor->tensor_description.strides[0];
     }
-    WHOLEMEMORY_CHECK_NOTHROW(size_per_rank % (embedding_stride * element_size) == 0);
 
-    size_t det_entry_per_rank;
     int world_size;
     wholememory_comm_t comm;
     WHOLEMEMORY_RETURN_ON_FAIL(wholememory_get_communicator(
       &comm, wholememory_tensor_get_memory_handle(wholememory_tensor)));
     WHOLEMEMORY_RETURN_ON_FAIL(wholememory_communicator_get_size(&world_size, comm));
-    WHOLEMEMORY_RETURN_ON_FAIL(wholememory_determine_entry_partition_plan(
-      &det_entry_per_rank, root_tensor->tensor_description.sizes[0], world_size));
-    WHOLEMEMORY_CHECK_NOTHROW(det_entry_per_rank ==
-                              size_per_rank / (embedding_stride * element_size));
-    return det_entry_per_rank;
+
+    wholememory_get_rank_partition_offsets(
+      entry_offsets, wholememory_tensor_get_memory_handle(wholememory_tensor));
+    for (int i = 0; i < world_size + 1; i++) {
+      WHOLEMEMORY_CHECK_NOTHROW(entry_offsets[i] % (embedding_stride * element_size) == 0);
+      entry_offsets[i] /= (embedding_stride * element_size);
+    }
+    return WHOLEMEMORY_SUCCESS;
   }
-  return root_tensor->tensor_description.sizes[0];
+  entry_offsets[0] = 0;
+  entry_offsets[1] = root_tensor->tensor_description.sizes[0];
+  return WHOLEMEMORY_SUCCESS;
+}
+
+wholememory_error_code_t wholememory_tensor_get_entry_partition_sizes(
+  size_t* entry_partition, wholememory_tensor_t wholememory_tensor)
+{
+  wholememory_tensor_t root_tensor = wholememory_tensor_get_root(wholememory_tensor);
+  WHOLEMEMORY_CHECK_NOTHROW(
+    (root_tensor->tensor_description.dim == 1 || root_tensor->tensor_description.dim == 2));
+  if (wholememory_tensor->is_wholememory) {
+    size_t embedding_stride = 1;
+    size_t const element_size =
+      wholememory_dtype_get_element_size(wholememory_tensor->tensor_description.dtype);
+    if (root_tensor->tensor_description.dim == 2) {
+      embedding_stride = root_tensor->tensor_description.strides[0];
+    }
+
+    int world_size;
+    wholememory_comm_t comm;
+    WHOLEMEMORY_RETURN_ON_FAIL(wholememory_get_communicator(
+      &comm, wholememory_tensor_get_memory_handle(wholememory_tensor)));
+    WHOLEMEMORY_RETURN_ON_FAIL(wholememory_communicator_get_size(&world_size, comm));
+
+    wholememory_get_rank_partition_sizes(entry_partition,
+                                         wholememory_tensor_get_memory_handle(wholememory_tensor));
+    for (int i = 0; i < world_size; i++) {
+      WHOLEMEMORY_CHECK_NOTHROW(entry_partition[i] % (embedding_stride * element_size) == 0);
+      entry_partition[i] /= (embedding_stride * element_size);
+    }
+    return WHOLEMEMORY_SUCCESS;
+  }
+  entry_partition[0] = root_tensor->tensor_description.sizes[0];
+  return WHOLEMEMORY_SUCCESS;
+}
+
+wholememory_error_code_t wholememory_tensor_get_local_entry_count(
+  size_t* local_entry_count, wholememory_tensor_t wholememory_tensor)
+{
+  wholememory_tensor_t root_tensor = wholememory_tensor_get_root(wholememory_tensor);
+  WHOLEMEMORY_CHECK_NOTHROW(
+    (root_tensor->tensor_description.dim == 1 || root_tensor->tensor_description.dim == 2));
+  if (wholememory_tensor->is_wholememory) {
+    size_t embedding_stride = 1;
+    size_t const element_size =
+      wholememory_dtype_get_element_size(wholememory_tensor->tensor_description.dtype);
+    if (root_tensor->tensor_description.dim == 2) {
+      embedding_stride = root_tensor->tensor_description.strides[0];
+    }
+
+    size_t entry_cnt;
+    wholememory_get_local_size(&entry_cnt,
+                               wholememory_tensor_get_memory_handle(wholememory_tensor));
+    WHOLEMEMORY_CHECK_NOTHROW(entry_cnt % (embedding_stride * element_size) == 0);
+    entry_cnt /= (embedding_stride * element_size);
+    *local_entry_count = entry_cnt;
+    return WHOLEMEMORY_SUCCESS;
+  }
+  *local_entry_count = root_tensor->tensor_description.sizes[0];
+  return WHOLEMEMORY_SUCCESS;
+}
+
+wholememory_error_code_t wholememory_tensor_get_local_entry_start(
+  size_t* local_entry_start, wholememory_tensor_t wholememory_tensor)
+{
+  wholememory_tensor_t root_tensor = wholememory_tensor_get_root(wholememory_tensor);
+  WHOLEMEMORY_CHECK_NOTHROW(
+    (root_tensor->tensor_description.dim == 1 || root_tensor->tensor_description.dim == 2));
+  if (wholememory_tensor->is_wholememory) {
+    size_t embedding_stride = 1;
+    size_t const element_size =
+      wholememory_dtype_get_element_size(wholememory_tensor->tensor_description.dtype);
+    if (root_tensor->tensor_description.dim == 2) {
+      embedding_stride = root_tensor->tensor_description.strides[0];
+    }
+    size_t entry_start;
+    wholememory_get_local_offset(&entry_start,
+                                 wholememory_tensor_get_memory_handle(wholememory_tensor));
+    WHOLEMEMORY_CHECK_NOTHROW(entry_start % (embedding_stride * element_size) == 0);
+    entry_start /= (embedding_stride * element_size);
+    *local_entry_start = entry_start;
+    return WHOLEMEMORY_SUCCESS;
+  }
+  *local_entry_start = 0;
+  return WHOLEMEMORY_SUCCESS;
 }
 
 wholememory_error_code_t wholememory_tensor_get_subtensor(

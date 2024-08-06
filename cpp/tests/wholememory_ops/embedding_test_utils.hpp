@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2023, NVIDIA CORPORATION.
+ * Copyright (c) 2019-2024, NVIDIA CORPORATION.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -62,6 +62,8 @@ void host_check_embedding_same(void* host_embedding,
                                wholememory_matrix_description_t reference_desc);
 
 void host_random_init_float(float* data, int64_t len, float max_value, float min_value);
+
+void host_random_partition(size_t* partition_sizes, size_t total_size, int partition_count);
 
 }  // namespace testing
 }  // namespace wholememory_ops

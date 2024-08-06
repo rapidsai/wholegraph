@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2023, NVIDIA CORPORATION.
+ * Copyright (c) 2019-2024, NVIDIA CORPORATION.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -348,10 +348,9 @@ wholememory_error_code_t update_cache_direct_same_comm(
 
   auto* raw_embedding_desc =
     wholememory_tensor_get_tensor_description(wholememory_tensor_get_root(wm_raw_memory_embedding));
-  size_t embedding_entry_count_per_rank = 0;
-  WHOLEMEMORY_RETURN_ON_FAIL(wholememory_determine_entry_partition_plan(
-    &embedding_entry_count_per_rank, raw_embedding_desc->sizes[0], world_size));
-
+  size_t embedding_entry_start = 0;
+  WHOLEMEMORY_RETURN_ON_FAIL(
+    wholememory_tensor_get_local_entry_start(&embedding_entry_start, wm_raw_memory_embedding));
   int indices_num_run = 0;
   temp_memory_handle unique_indice_handle(p_env_fns), unique_count_handle(p_env_fns);
   try {
@@ -380,7 +379,7 @@ wholememory_error_code_t update_cache_direct_same_comm(
                     &unique_cache_set_start_handle,
                     &unique_cache_set_count_handle,
                     &cache_set_num_run,
-                    world_rank * embedding_entry_count_per_rank,
+                    embedding_entry_start,
                     cache_set_coverage,
                     &thrust_allocator,
                     p_env_fns,
@@ -414,7 +413,7 @@ wholememory_error_code_t update_cache_direct_same_comm(
     static_cast<int4*>(embedding_local_pointer),
     embedding_dim_in_int4,
     cache_set_num_run,
-    world_rank * embedding_entry_count_per_rank,
+    embedding_entry_start,
     cache_set_coverage,
     stream);
 
@@ -525,7 +524,7 @@ wholememory_error_code_t update_cache_different_comm(
   wholememory_array_description_t indice_desc,
   wholememory_tensor_t wm_raw_memory_embedding,
   wholememory_comm_t cache_comm,
-  size_t embedding_entry_count_per_cache_rank,
+  size_t* embedding_entry_offsets,
   const wholememory::embedding_cache_local_data* cache_local_data,
   int cache_set_coverage,
   wholememory_env_func_t* p_env_fns,
@@ -554,7 +553,6 @@ wholememory_error_code_t update_cache_different_comm(
     WHOLEMEMORY_ERROR("SortUniqueLocalIndicesTempFunc failed.");
     return WHOLEMEMORY_LOGIC_ERROR;
   }
-
   temp_memory_handle unique_cache_set_lid_handle(p_env_fns),
     unique_cache_set_start_handle(p_env_fns), unique_cache_set_count_handle(p_env_fns);
   int cache_set_num_run;
@@ -566,7 +564,7 @@ wholememory_error_code_t update_cache_different_comm(
                     &unique_cache_set_start_handle,
                     &unique_cache_set_count_handle,
                     &cache_set_num_run,
-                    cache_world_rank * embedding_entry_count_per_cache_rank,
+                    embedding_entry_offsets[cache_world_rank],
                     cache_set_coverage,
                     &thrust_allocator,
                     p_env_fns,
@@ -595,7 +593,7 @@ wholememory_error_code_t update_cache_different_comm(
       static_cast<int64_t*>(wholememory_tensor_get_data_pointer(cache_local_data->access_count_)),
       local_write_cache_index_ptr,
       global_load_gid_ptr,
-      cache_world_rank * embedding_entry_count_per_cache_rank,
+      embedding_entry_offsets[cache_world_rank],
       cache_set_coverage,
       cache_set_num_run,
       stream);
@@ -697,11 +695,12 @@ wholememory_error_code_t writeback_cache_direct_same_comm(
 
   auto* raw_embedding_desc =
     wholememory_tensor_get_tensor_description(wholememory_tensor_get_root(wm_raw_memory_embedding));
-  size_t embedding_entry_count_per_rank = 0;
-  WHOLEMEMORY_RETURN_ON_FAIL(wholememory_determine_entry_partition_plan(
-    &embedding_entry_count_per_rank, raw_embedding_desc->sizes[0], world_size));
 
-  WHOLEMEMORY_CHECK_NOTHROW(embedding_entry_count_per_rank % cache_set_coverage == 0);
+  size_t embedding_entry_count = 0;
+  WHOLEMEMORY_RETURN_ON_FAIL(
+    wholememory_tensor_get_local_entry_count(&embedding_entry_count, wm_raw_memory_embedding));
+  WHOLEMEMORY_CHECK_NOTHROW(embedding_entry_count % cache_set_coverage == 0);
+
   wholememory_tensor_t raw_local_tensor;
   WHOLEMEMORY_RETURN_ON_FAIL(
     wholememory_tensor_map_local_tensor(wm_raw_memory_embedding, &raw_local_tensor));

@@ -28,7 +28,7 @@ __global__ void storage_idx2wm_emb_idx_kernel(IndexT* indice,
                                               IndexT* mapped_indice,
                                               int64_t indice_size,
                                               int world_size,
-                                              int64_t entry_per_rank,
+                                              int64_t entry_start,
                                               int round_robin_size)
 {
   int64_t tid = threadIdx.x + blockIdx.x * blockDim.x;
@@ -38,7 +38,7 @@ __global__ void storage_idx2wm_emb_idx_kernel(IndexT* indice,
     IndexT table_off   = target_idx % round_robin_size;
     int rank_id        = table_idx % world_size;
     int rank_table_idx = table_idx / world_size;
-    IndexT wmidx       = entry_per_rank * rank_id + round_robin_size * rank_table_idx + table_off;
+    IndexT wmidx       = entry_start + round_robin_size * rank_table_idx + table_off;
     mapped_indice[i]   = wmidx;
   }
   return;
@@ -49,7 +49,7 @@ void storage_idx2wm_emb_idx_temp_fn(void* indice_ptr,
                                     void* mapped_indice_ptr,
                                     int64_t indice_size,
                                     int world_size,
-                                    int64_t entry_per_rank,
+                                    int64_t entry_start,
                                     int round_robin_size,
                                     cudaStream_t stream)
 {
@@ -59,7 +59,7 @@ void storage_idx2wm_emb_idx_temp_fn(void* indice_ptr,
   IndexT* indice        = static_cast<IndexT*>(indice_ptr);
   IndexT* mapped_indice = static_cast<IndexT*>(mapped_indice_ptr);
   storage_idx2wm_emb_idx_kernel<<<block_num, block_size, 0, stream>>>(
-    indice, mapped_indice, indice_size, world_size, entry_per_rank, round_robin_size);
+    indice, mapped_indice, indice_size, world_size, entry_start, round_robin_size);
   WM_CUDA_CHECK(cudaStreamSynchronize(stream));
   return;
 }
@@ -85,14 +85,16 @@ wholememory_error_code_t storage_index2wm_embedding_index(wholememory_tensor_t i
     WHOLEMEMORY_RETURN_ON_FAIL(wholememory_get_communicator(&wm_comm, handle));
     WHOLEMEMORY_RETURN_ON_FAIL(wholememory_communicator_get_size(&world_size, wm_comm));
 
-    int64_t entry_per_rank = wholememory_tensor_get_entry_per_partition(allocated_embedding);
+    size_t entry_start = 0;
+    WHOLEMEMORY_RETURN_ON_FAIL(
+      wholememory_tensor_get_local_entry_start(&entry_start, allocated_embedding));
     DISPATCH_ONE_TYPE(indice_desc->dtype,
                       storageidx2wmembidx,
                       indice_ptr,
                       mapped_indice_ptr,
                       indice_size,
                       world_size,
-                      entry_per_rank,
+                      entry_start,
                       round_robin_size,
                       (cudaStream_t)stream_int);
     WM_CUDA_CHECK(cudaGetLastError());

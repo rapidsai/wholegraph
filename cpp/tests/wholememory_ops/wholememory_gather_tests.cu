@@ -50,7 +50,7 @@ typedef struct WholeMemoryGatherTestParam {
   {
     return embedding_stride * wholememory_dtype_get_element_size(embedding_type);
   }
-
+  int get_rank_partition_method() const { return rank_partition_method; }
   WholeMemoryGatherTestParam& set_memory_type(wholememory_memory_type_t new_memory_type)
   {
     memory_type = new_memory_type;
@@ -109,6 +109,11 @@ typedef struct WholeMemoryGatherTestParam {
     distributed_backend = new_distributed_backend;
     return *this;
   }
+  WholeMemoryGatherTestParam& use_random_partition()
+  {
+    rank_partition_method = 1;
+    return *this;
+  }
   wholememory_memory_type_t memory_type                 = WHOLEMEMORY_MT_CHUNKED;
   wholememory_memory_location_t memory_location         = WHOLEMEMORY_ML_DEVICE;
   int64_t embedding_entry_count                         = 1000000LL;
@@ -123,6 +128,7 @@ typedef struct WholeMemoryGatherTestParam {
   int64_t indices_storage_offset                        = 0;
   int64_t output_storage_offset                         = 0;
   wholememory_distributed_backend_t distributed_backend = WHOLEMEMORY_DB_NCCL;
+  int rank_partition_method                             = 0;  // 0-default, 1-random
 } WholeMemoryGatherTestParam;
 
 class WholeMemoryGatherParameterTests
@@ -164,14 +170,19 @@ TEST_P(WholeMemoryGatherParameterTests, GatherTest)
       auto indices_desc           = params.get_indices_desc();
       auto output_desc            = params.get_output_desc();
       size_t embedding_entry_size = params.get_embedding_granularity();
+      std::vector<size_t> rank_partition(world_size);
+      wholememory_ops::testing::host_random_partition(
+        rank_partition.data(), embedding_desc.sizes[0], world_size);
+      size_t* rank_partition_ptr = nullptr;
+      if (params.get_rank_partition_method() == 1) { rank_partition_ptr = rank_partition.data(); }
       EXPECT_EQ(wholememory_malloc(&embedding_handle,
                                    wholememory_get_memory_size_from_matrix(&embedding_desc),
                                    wm_comm,
                                    params.memory_type,
                                    params.memory_location,
-                                   embedding_entry_size),
+                                   embedding_entry_size,
+                                   rank_partition_ptr),
                 WHOLEMEMORY_SUCCESS);
-
       cudaStream_t stream;
       EXPECT_EQ(cudaStreamCreate(&stream), cudaSuccess);
 
@@ -301,6 +312,12 @@ INSTANTIATE_TEST_SUITE_P(
     WholeMemoryGatherTestParam()
       .set_memory_type(WHOLEMEMORY_MT_DISTRIBUTED)
       .set_memory_location(WHOLEMEMORY_ML_HOST),
+    WholeMemoryGatherTestParam().set_memory_type(WHOLEMEMORY_MT_CHUNKED).use_random_partition(),
+    WholeMemoryGatherTestParam().set_memory_type(WHOLEMEMORY_MT_DISTRIBUTED).use_random_partition(),
+    WholeMemoryGatherTestParam()
+      .set_memory_type(WHOLEMEMORY_MT_DISTRIBUTED)
+      .set_memory_location(WHOLEMEMORY_ML_HOST)
+      .use_random_partition(),
     WholeMemoryGatherTestParam()
       .set_memory_type(WHOLEMEMORY_MT_CONTINUOUS)
       .set_memory_location(WHOLEMEMORY_ML_HOST)
@@ -415,6 +432,10 @@ INSTANTIATE_TEST_SUITE_P(
     WholeMemoryGatherTestParam()
       .set_memory_type(WHOLEMEMORY_MT_DISTRIBUTED)
       .set_distributed_backend(WHOLEMEMORY_DB_NVSHMEM),
+    WholeMemoryGatherTestParam()
+      .set_memory_type(WHOLEMEMORY_MT_DISTRIBUTED)
+      .set_distributed_backend(WHOLEMEMORY_DB_NVSHMEM)
+      .use_random_partition(),
     WholeMemoryGatherTestParam()
       .set_memory_type(WHOLEMEMORY_MT_DISTRIBUTED)
       .set_embedding_dim(11)

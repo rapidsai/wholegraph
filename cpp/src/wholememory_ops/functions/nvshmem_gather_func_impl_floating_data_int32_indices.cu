@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, NVIDIA CORPORATION.
+ * Copyright (c) 2023-2024, NVIDIA CORPORATION.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,24 +31,23 @@ void nvshmem_gather_floating_int32_temp_func(wholememory_comm_t wm_comm,
                                              void* output,
                                              void* temp_output,
                                              wholememory_matrix_description_t output_desc,
-                                             size_t embedding_entry_count_per_rank,
+                                             size_t* embedding_entry_offsets,
                                              wholememory_env_func_t* p_env_fns,
                                              cudaStream_t stream,
                                              int gather_sms)
 {
-  nvshmem_gather_temp_get_mem_sort_idx_func<EmbeddingT, int32_t, OutputT>(
-    wm_comm,
-    embeding_nvshmem_ptr,
-    embedding_desc,
-    indices,
-    indice_count,
-    output,
-    temp_output,
-    output_desc,
-    embedding_entry_count_per_rank,
-    p_env_fns,
-    stream,
-    gather_sms);
+  nvshmem_gather_temp_get_mem_sort_idx_func<EmbeddingT, int32_t, OutputT>(wm_comm,
+                                                                          embeding_nvshmem_ptr,
+                                                                          embedding_desc,
+                                                                          indices,
+                                                                          indice_count,
+                                                                          output,
+                                                                          temp_output,
+                                                                          output_desc,
+                                                                          embedding_entry_offsets,
+                                                                          p_env_fns,
+                                                                          stream,
+                                                                          gather_sms);
 }
 
 REGISTER_DISPATCH_TWO_TYPES(NvshmemGatherFuncFloatingInt32,
@@ -65,7 +64,7 @@ wholememory_error_code_t nvshmem_gather_floating_int32_func(
   void* output,
   void* temp_output,
   wholememory_matrix_description_t output_desc,
-  size_t embedding_entry_count_per_rank,
+  size_t* embedding_entry_offsets,
   wholememory_env_func_t* p_env_fns,
   cudaStream_t stream,
   int gather_sms)
@@ -86,7 +85,7 @@ wholememory_error_code_t nvshmem_gather_floating_int32_func(
                        output,
                        temp_output,
                        output_desc,
-                       embedding_entry_count_per_rank,
+                       embedding_entry_offsets,
                        p_env_fns,
                        stream,
                        gather_sms);

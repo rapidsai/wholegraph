@@ -57,7 +57,8 @@ class wholememory_impl {
                    wholememory_comm_t comm,
                    wholememory_memory_type_t memory_type,
                    wholememory_memory_location_t memory_location,
-                   size_t data_granularity)
+                   size_t data_granularity,
+                   size_t* rank_entry_partition)
     : handle_(wholememory_handle),
       comm_(comm),
       type_(memory_type),
@@ -65,6 +66,16 @@ class wholememory_impl {
       total_size_(total_size),
       data_granularity_(data_granularity)
   {
+    if (rank_entry_partition != nullptr) {
+      rank_partition_strategy_.partition_sizes_.resize(comm_->world_size, 0);
+      rank_partition_strategy_.partition_offsets_.resize(comm_->world_size + 1, 0);
+      for (int i = 0; i < comm_->world_size; i++) {
+        rank_partition_strategy_.partition_sizes_[i] = rank_entry_partition[i] * data_granularity_;
+        rank_partition_strategy_.partition_offsets_[i + 1] =
+          rank_partition_strategy_.partition_offsets_[i] +
+          rank_entry_partition[i] * data_granularity_;
+      }
+    }
     distrubuted_backend_ = WHOLEMEMORY_DB_NCCL;
   }
   wholememory_impl()                         = delete;
@@ -89,16 +100,17 @@ class wholememory_impl {
   [[nodiscard]] virtual wholememory_gref_t get_global_reference() const noexcept
   {
     wholememory_gref_t gref{};
-    gref.pointer = nullptr;
-    gref.stride  = 0;
+    gref.pointer    = nullptr;
+    gref.stride     = 0;
+    gref.world_size = comm_->world_size;
     return gref;
   }
   virtual bool contains_pointer(const void* ptr) const = 0;
   void get_local_memory(void** local_ptr, size_t* local_size, size_t* local_offset) const
   {
     if (local_ptr != nullptr) *local_ptr = local_partition_memory_pointer_;
-    if (local_size != nullptr) *local_size = rank_partition_strategy_.local_mem_size;
-    if (local_offset != nullptr) *local_offset = rank_partition_strategy_.local_mem_offset;
+    if (local_size != nullptr) *local_size = get_local_size();
+    if (local_offset != nullptr) *local_offset = get_local_offset();
     if (location_ == WHOLEMEMORY_ML_HOST && (type_ == WHOLEMEMORY_MT_CONTINUOUS) &&
         (!(comm_->is_intranode()))) {
       WHOLEMEMORY_WARN(
@@ -120,6 +132,19 @@ class wholememory_impl {
   {
     return rank_partition_strategy_.partition_mem_stride;
   }
+  [[nodiscard]] size_t get_local_size() const
+  {
+    return rank_partition_strategy_.partition_sizes_[comm_->world_rank];
+  }
+  [[nodiscard]] size_t get_local_offset() const
+  {
+    return rank_partition_strategy_.partition_offsets_[comm_->world_rank];
+  }
+  std::vector<size_t> get_rank_sizes() const { return rank_partition_strategy_.partition_sizes_; }
+  std::vector<size_t> get_rank_offsets() const
+  {
+    return rank_partition_strategy_.partition_offsets_;
+  }
 
  protected:
   // In WholeMemory, memory is first allocated by one or all ranks, and then partition the whole
@@ -136,18 +161,19 @@ class wholememory_impl {
   // first rank responsible for all memory allocation, continuous or chunked host shared memory may
   // use this mode.
   void first_rank_allocate_all_strategy();
-  // each rank allocate exactly the same size, chunked device memory or nccl memory may use this
-  // mode.
-  void each_rank_same_chunk_strategy();
+  // each rank allocate different size, chunked device memory or nccl memory may use this
+  // mode. If rank_entry_partition isn't set, each rank allocate exactly the same size.
+  void each_rank_different_chunk_strategy();
   // each rank allocate a multiple of pages, and map the whole memory by page, continuous device
   // memory use this mode.
   void each_rank_multiple_page_strategy();
 
   // For now, memory rank partitioning strategy is the same for all WholeMemory types.
-  // Each rank is response for memory of size local_mem_size_ starting from local_mem_offset_.
-  // And local_mem_offset_ can also be got by rank_mem_stride_ * rank for ranks with local_mem_size_
-  // != 0 That means for a valid memory offset position, offset / rank_mem_stride_ can be used to
-  // get the rank which is responsible for it.
+  // Each rank is response for memory of size local_mem_size starting from local_mem_offset.
+  // Local_mem_size can be got by calling get_local_size(), and local_mem_offset can be got
+  // by calling get_local_offset(). rank_partition_strategy_.partition_sizes_ and
+  // rank_partition_strategy_.partition_offsets_ record the memory size and memory offset of
+  // all ranks.
   void generate_rank_partition_strategy();
 
   /*
@@ -182,12 +208,12 @@ class wholememory_impl {
   } alloc_strategy_;
 
   struct partition_strategy {
-    // size of memory this rank is responsible for
-    size_t local_mem_size = 0;
-    // start location of the memory this rank is responsible for
-    size_t local_mem_offset     = 0;
+    std::vector<size_t> partition_sizes_;
+    std::vector<size_t> partition_offsets_;
     size_t partition_mem_stride = 0;
+    bool same_chunk;
   } rank_partition_strategy_;
+
   void* local_partition_memory_pointer_ = nullptr;
 
   void get_rank_partition_info(size_t* rank_mem_size,
@@ -195,12 +221,9 @@ class wholememory_impl {
                                int rank) const noexcept
   {
     WHOLEMEMORY_CHECK_NOTHROW(rank >= 0 && rank <= comm_->world_size);
-    size_t rank_mem_part_start =
-      std::min(rank_partition_strategy_.partition_mem_stride * rank, total_size_);
-    size_t rank_mem_part_end =
-      std::min(rank_partition_strategy_.partition_mem_stride * (rank + 1), total_size_);
-    if (rank_mem_size != nullptr) *rank_mem_size = rank_mem_part_end - rank_mem_part_start;
-    if (rank_mem_start != nullptr) *rank_mem_start = rank_mem_part_start;
+    if (rank_mem_size != nullptr) *rank_mem_size = rank_partition_strategy_.partition_sizes_[rank];
+    if (rank_mem_start != nullptr)
+      *rank_mem_start = rank_partition_strategy_.partition_offsets_[rank];
   }
 
   static constexpr size_t HUGE_PAGE_THRESHOLD = 16UL * 1024UL * 1024UL * 1024UL;
@@ -293,16 +316,22 @@ class distributed_wholememory_impl : public wholememory_impl {
                                wholememory_comm_t comm,
                                wholememory_memory_type_t memory_type,
                                wholememory_memory_location_t memory_location,
-                               size_t data_granularity)
-    : wholememory_impl(
-        wholememory_handle, total_size, comm, memory_type, memory_location, data_granularity)
+                               size_t data_granularity,
+                               size_t* rank_entry_partition)
+    : wholememory_impl(wholememory_handle,
+                       total_size,
+                       comm,
+                       memory_type,
+                       memory_location,
+                       data_granularity,
+                       rank_entry_partition)
   {
     WHOLEMEMORY_CHECK(type_ == WHOLEMEMORY_MT_DISTRIBUTED);
   }
   void create_memory() override
   {
-    each_rank_same_chunk_strategy();
     generate_rank_partition_strategy();
+    each_rank_different_chunk_strategy();
     create_local_cuda_runtime_memory();
     register_private_memory();
   }
@@ -387,17 +416,23 @@ class global_mapped_host_wholememory_impl : public wholememory_impl {
                                       wholememory_comm_t comm,
                                       wholememory_memory_type_t memory_type,
                                       wholememory_memory_location_t memory_location,
-                                      size_t data_granularity)
-    : wholememory_impl(
-        wholememory_handle, total_size, comm, memory_type, memory_location, data_granularity)
+                                      size_t data_granularity,
+                                      size_t* rank_entry_partition)
+    : wholememory_impl(wholememory_handle,
+                       total_size,
+                       comm,
+                       memory_type,
+                       memory_location,
+                       data_granularity,
+                       rank_entry_partition)
   {
     WHOLEMEMORY_CHECK(type_ == WHOLEMEMORY_MT_CONTINUOUS || type_ == WHOLEMEMORY_MT_CHUNKED);
     WHOLEMEMORY_CHECK(location_ == WHOLEMEMORY_ML_HOST);
   }
   void create_memory() override
   {
-    first_rank_allocate_all_strategy();
     generate_rank_partition_strategy();
+    first_rank_allocate_all_strategy();
     create_and_map_shared_host_memory();
     register_host_memory();
   }
@@ -413,8 +448,9 @@ class global_mapped_host_wholememory_impl : public wholememory_impl {
   [[nodiscard]] wholememory_gref_t get_global_reference() const noexcept override
   {
     wholememory_gref_t gref{};
-    gref.pointer = get_continuous_mapping_pointer();
-    gref.stride  = 0;
+    gref.pointer    = get_continuous_mapping_pointer();
+    gref.stride     = 0;
+    gref.world_size = comm_->world_size;
     return gref;
   }
   bool contains_pointer(const void* ptr) const override
@@ -423,6 +459,7 @@ class global_mapped_host_wholememory_impl : public wholememory_impl {
     uint64_t int_start_ptr = reinterpret_cast<uint64_t>(shared_host_handle_.shared_host_memory_ptr);
     return int_ptr >= int_start_ptr && int_ptr < int_start_ptr + total_size_;
   }
+
   bool get_rank_memory(void** rank_memory_ptr,
                        size_t* rank_memory_size,
                        size_t* rank_memory_offset,
@@ -531,9 +568,7 @@ class global_mapped_host_wholememory_impl : public wholememory_impl {
         nullptr, alloc_strategy_.total_alloc_size, PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0);
       WHOLEMEMORY_CHECK(mmap_ptr != (void*)-1);
     }
-    memset(static_cast<char*>(mmap_ptr) + rank_partition_strategy_.local_mem_offset,
-           0,
-           rank_partition_strategy_.local_mem_size);
+    memset(static_cast<char*>(mmap_ptr) + get_local_offset(), 0, get_local_size());
     WM_CUDA_CHECK_NO_THROW(
       cudaHostRegister(mmap_ptr, alloc_strategy_.total_alloc_size, cudaHostRegisterDefault));
     if (!use_systemv_shm_) WHOLEMEMORY_CHECK(close(shm_fd) == 0);
@@ -541,8 +576,7 @@ class global_mapped_host_wholememory_impl : public wholememory_impl {
     WM_CUDA_CHECK_NO_THROW(cudaHostGetDevicePointer(&dev_ptr, mmap_ptr, 0));
     WHOLEMEMORY_CHECK(dev_ptr == mmap_ptr);
     shared_host_handle_.shared_host_memory_ptr = dev_ptr;
-    local_partition_memory_pointer_ =
-      static_cast<char*>(dev_ptr) + rank_partition_strategy_.local_mem_offset;
+    local_partition_memory_pointer_            = static_cast<char*>(dev_ptr) + get_local_offset();
   }
 
   void unmap_and_destroy_shared_host_memory() noexcept
@@ -603,17 +637,23 @@ class continuous_device_wholememory_impl : public wholememory_impl {
                                      wholememory_comm_t comm,
                                      wholememory_memory_type_t memory_type,
                                      wholememory_memory_location_t memory_location,
-                                     size_t data_granularity)
-    : wholememory_impl(
-        wholememory_handle, total_size, comm, memory_type, memory_location, data_granularity)
+                                     size_t data_granularity,
+                                     size_t* rank_entry_partition)
+    : wholememory_impl(wholememory_handle,
+                       total_size,
+                       comm,
+                       memory_type,
+                       memory_location,
+                       data_granularity,
+                       rank_entry_partition)
   {
     WHOLEMEMORY_CHECK(type_ == WHOLEMEMORY_MT_CONTINUOUS);
   }
   void create_memory() override
   {
     WHOLEMEMORY_CHECK(location_ == WHOLEMEMORY_ML_DEVICE);
-    each_rank_multiple_page_strategy();
     generate_rank_partition_strategy();
+    each_rank_multiple_page_strategy();
     create_and_map_driver_device_memory();
     register_continuous_device_memory();
   }
@@ -629,8 +669,9 @@ class continuous_device_wholememory_impl : public wholememory_impl {
   [[nodiscard]] wholememory_gref_t get_global_reference() const noexcept override
   {
     wholememory_gref_t gref{};
-    gref.pointer = get_continuous_mapping_pointer();
-    gref.stride  = 0;
+    gref.pointer    = get_continuous_mapping_pointer();
+    gref.stride     = 0;
+    gref.world_size = comm_->world_size;
     return gref;
   }
   bool contains_pointer(const void* ptr) const override
@@ -960,8 +1001,8 @@ class continuous_device_wholememory_impl : public wholememory_impl {
     close_unix_domain_sockets();
     map_driver_device_memory_handles(&recv_ipc_sharable_cu_handles);
     communicator_barrier(comm_);
-    local_partition_memory_pointer_ = static_cast<char*>(cu_alloc_handle_.mapped_whole_memory) +
-                                      rank_partition_strategy_.local_mem_offset;
+    local_partition_memory_pointer_ =
+      static_cast<char*>(cu_alloc_handle_.mapped_whole_memory) + get_local_offset();
   }
   void unmap_and_destroy_driver_device_memory() noexcept
   {
@@ -1017,17 +1058,23 @@ class chunked_device_wholememory_impl : public wholememory_impl {
                                   wholememory_comm_t comm,
                                   wholememory_memory_type_t memory_type,
                                   wholememory_memory_location_t memory_location,
-                                  size_t data_granularity)
-    : wholememory_impl(
-        wholememory_handle, total_size, comm, memory_type, memory_location, data_granularity)
+                                  size_t data_granularity,
+                                  size_t* rank_entry_partition)
+    : wholememory_impl(wholememory_handle,
+                       total_size,
+                       comm,
+                       memory_type,
+                       memory_location,
+                       data_granularity,
+                       rank_entry_partition)
   {
     WHOLEMEMORY_CHECK(type_ == WHOLEMEMORY_MT_CHUNKED);
     WHOLEMEMORY_CHECK(location_ == WHOLEMEMORY_ML_DEVICE);
   }
   void create_memory() override
   {
-    each_rank_same_chunk_strategy();
     generate_rank_partition_strategy();
+    each_rank_different_chunk_strategy();
     create_and_map_runtime_device_memory();
     register_chunked_device_memory();
   }
@@ -1044,7 +1091,7 @@ class chunked_device_wholememory_impl : public wholememory_impl {
     for (int i = 0; i < comm_->world_size; i++) {
       size_t mem_size_of_this_rank_and_after = total_size_ - acc_size;
       size_t mem_size_for_current_rank =
-        std::min(mem_size_of_this_rank_and_after, rank_partition_strategy_.partition_mem_stride);
+        std::min(mem_size_of_this_rank_and_after, rank_partition_strategy_.partition_sizes_[i]);
       uint64_t int_start_ptr = reinterpret_cast<uint64_t>(cuda_ipc_handle_.mapped_ptrs[i]);
       if (int_ptr >= int_start_ptr && int_ptr < int_start_ptr + mem_size_for_current_rank) {
         return true;
@@ -1074,7 +1121,7 @@ class chunked_device_wholememory_impl : public wholememory_impl {
     for (int i = 0; i < comm_->world_size; i++) {
       size_t mem_size_of_this_rank_and_after = total_size_ - acc_size;
       size_t mem_size_for_current_rank =
-        std::min(mem_size_of_this_rank_and_after, rank_partition_strategy_.partition_mem_stride);
+        std::min(mem_size_of_this_rank_and_after, rank_partition_strategy_.partition_sizes_[i]);
       if (mem_size_for_current_rank > 0) {
         register_wholememory_vma_range_locked(
           cuda_ipc_handle_.mapped_ptrs[i], mem_size_for_current_rank, handle_);
@@ -1089,7 +1136,7 @@ class chunked_device_wholememory_impl : public wholememory_impl {
     for (int i = 0; i < comm_->world_size; i++) {
       size_t mem_size_of_this_rank_and_after = total_size_ - acc_size;
       size_t mem_size_for_current_rank =
-        std::min(mem_size_of_this_rank_and_after, rank_partition_strategy_.partition_mem_stride);
+        std::min(mem_size_of_this_rank_and_after, rank_partition_strategy_.partition_sizes_[i]);
       if (mem_size_for_current_rank > 0) {
         unregister_wholememory_vma_range_locked(
           cuda_ipc_handle_.mapped_ptrs[i], mem_size_for_current_rank, handle_);
@@ -1124,12 +1171,20 @@ class chunked_device_wholememory_impl : public wholememory_impl {
                              cuda_ipc_handle_.mapped_ptrs.data(),
                              sizeof(void*) * comm_->world_size,
                              cudaMemcpyHostToDevice));
-    gref_.stride = rank_partition_strategy_.partition_mem_stride;
+    WM_CUDA_CHECK(cudaMalloc(&gref_.rank_memory_offsets, sizeof(size_t) * (comm_->world_size + 1)));
+    WM_CUDA_CHECK(cudaMemcpy(gref_.rank_memory_offsets,
+                             get_rank_offsets().data(),
+                             sizeof(size_t) * (comm_->world_size + 1),
+                             cudaMemcpyHostToDevice));
+    gref_.world_size = comm_->world_size;
+    gref_.stride     = rank_partition_strategy_.partition_mem_stride;
+    gref_.same_chunk = rank_partition_strategy_.same_chunk;
   }
   void unmap_and_destroy_runtime_device_memory() noexcept
   {
     try {
       WM_CUDA_CHECK(cudaFree(gref_.pointer));
+      WM_CUDA_CHECK(cudaFree(gref_.rank_memory_offsets));
       gref_.pointer = nullptr;
       for (int i = 0; i < comm_->world_size; i++) {
         if (i != comm_->world_rank) {
@@ -1164,9 +1219,15 @@ class nvshmem_device_wholememory_impl : public wholememory_impl {
                                   wholememory_comm_t comm,
                                   wholememory_memory_type_t memory_type,
                                   wholememory_memory_location_t memory_location,
-                                  size_t data_granularity)
-    : wholememory_impl(
-        wholememory_handle, total_size, comm, memory_type, memory_location, data_granularity)
+                                  size_t data_granularity,
+                                  size_t* rank_entry_partition)
+    : wholememory_impl(wholememory_handle,
+                       total_size,
+                       comm,
+                       memory_type,
+                       memory_location,
+                       data_granularity,
+                       rank_entry_partition)
   {
     WHOLEMEMORY_CHECK(type_ == WHOLEMEMORY_MT_DISTRIBUTED);
     WHOLEMEMORY_CHECK(location_ == WHOLEMEMORY_ML_DEVICE);
@@ -1179,8 +1240,8 @@ class nvshmem_device_wholememory_impl : public wholememory_impl {
 
   void create_memory() override
   {
-    each_rank_same_chunk_strategy();
     generate_rank_partition_strategy();
+    each_rank_different_chunk_strategy();
     nvshmem_malloc_device_memory();
     register_nvshmem_device_memory();
   }
@@ -1198,7 +1259,7 @@ class nvshmem_device_wholememory_impl : public wholememory_impl {
     for (int i = 0; i < comm_->world_size; i++) {
       size_t mem_size_of_this_rank_and_after = total_size_ - acc_size;
       size_t mem_size_for_current_rank =
-        std::min(mem_size_of_this_rank_and_after, rank_partition_strategy_.partition_mem_stride);
+        std::min(mem_size_of_this_rank_and_after, rank_partition_strategy_.partition_sizes_[i]);
       acc_size += mem_size_for_current_rank;
       uint64_t int_start_ptr =
         reinterpret_cast<uint64_t>(nvshmem_ptr(nvshmem_memory_handle_.local_alloc_mem_ptr, i));
@@ -1226,6 +1287,8 @@ class nvshmem_device_wholememory_impl : public wholememory_impl {
     return true;
   }
 
+  [[nodiscard]] wholememory_gref_t get_global_reference() const noexcept override { return gref_; }
+
  protected:
   void register_nvshmem_device_memory()
   {
@@ -1234,7 +1297,7 @@ class nvshmem_device_wholememory_impl : public wholememory_impl {
     for (int i = 0; i < comm_->world_size; i++) {
       size_t mem_size_of_this_rank_and_after = total_size_ - acc_size;
       size_t mem_size_for_current_rank =
-        std::min(mem_size_of_this_rank_and_after, rank_partition_strategy_.partition_mem_stride);
+        std::min(mem_size_of_this_rank_and_after, rank_partition_strategy_.partition_sizes_[i]);
       if (mem_size_for_current_rank > 0) {
         void* ptr = nvshmem_ptr(nvshmem_memory_handle_.local_alloc_mem_ptr, i);
         if (ptr != nullptr) {
@@ -1251,7 +1314,7 @@ class nvshmem_device_wholememory_impl : public wholememory_impl {
     for (int i = 0; i < comm_->world_size; i++) {
       size_t mem_size_of_this_rank_and_after = total_size_ - acc_size;
       size_t mem_size_for_current_rank =
-        std::min(mem_size_of_this_rank_and_after, rank_partition_strategy_.partition_mem_stride);
+        std::min(mem_size_of_this_rank_and_after, rank_partition_strategy_.partition_sizes_[i]);
       if (mem_size_for_current_rank > 0) {
         void* ptr = nvshmem_ptr(nvshmem_memory_handle_.local_alloc_mem_ptr, i);
         if (ptr != nullptr) {
@@ -1270,10 +1333,22 @@ class nvshmem_device_wholememory_impl : public wholememory_impl {
     nvshmem_memory_handle_.local_alloc_mem_ptr = nvshmem_malloc(alloc_size);
     local_partition_memory_pointer_            = nvshmem_memory_handle_.local_alloc_mem_ptr;
     distrubuted_backend_                       = WHOLEMEMORY_DB_NVSHMEM;
+
+    WM_CUDA_CHECK(cudaMalloc(&gref_.rank_memory_offsets, sizeof(size_t) * (comm_->world_size + 1)));
+    WM_CUDA_CHECK(cudaMemcpy(gref_.rank_memory_offsets,
+                             get_rank_offsets().data(),
+                             sizeof(size_t) * (comm_->world_size + 1),
+                             cudaMemcpyHostToDevice));
+    gref_.pointer    = local_partition_memory_pointer_;
+    gref_.world_size = comm_->world_size;
+    gref_.stride     = rank_partition_strategy_.partition_mem_stride;
+    gref_.same_chunk = rank_partition_strategy_.same_chunk;
   }
 
   void nvshmem_free_device_memory()
   {
+    WM_CUDA_CHECK(cudaFree(gref_.rank_memory_offsets));
+    gref_.pointer = nullptr;
     if (nvshmem_memory_handle_.local_alloc_mem_ptr) {
       nvshmem_free(nvshmem_memory_handle_.local_alloc_mem_ptr);
 
@@ -1307,6 +1382,8 @@ class nvshmem_device_wholememory_impl : public wholememory_impl {
     void* local_alloc_mem_ptr = nullptr;
   } nvshmem_memory_handle_;
   inline static bool has_set_nvshmem_heap = false;
+
+  wholememory_gref_t gref_;
 };
 #endif
 // Implementation for MNNVL wholememory that use cuda driver api.
@@ -1320,9 +1397,15 @@ class continuous_mnnvl_wholememory_impl : public continuous_device_wholememory_i
                                     wholememory_comm_t comm,
                                     wholememory_memory_type_t memory_type,
                                     wholememory_memory_location_t memory_location,
-                                    size_t data_granularity)
-    : continuous_device_wholememory_impl(
-        wholememory_handle, total_size, comm, memory_type, memory_location, data_granularity)
+                                    size_t data_granularity,
+                                    size_t* rank_entry_partition)
+    : continuous_device_wholememory_impl(wholememory_handle,
+                                         total_size,
+                                         comm,
+                                         memory_type,
+                                         memory_location,
+                                         data_granularity,
+                                         rank_entry_partition)
   {
     WHOLEMEMORY_INFO("Using continuous_mnnvl_wholememory_impl");
     WHOLEMEMORY_CHECK_NOTHROW(type_ == WHOLEMEMORY_MT_CONTINUOUS);
@@ -1335,8 +1418,8 @@ class continuous_mnnvl_wholememory_impl : public continuous_device_wholememory_i
   void create_memory() override
   {
     check_valid();
-    each_rank_multiple_page_strategy();
     generate_rank_partition_strategy();
+    each_rank_multiple_page_strategy();
     create_and_map_driver_memory();
     register_continuous_mnnvl_memory();
   }
@@ -1474,8 +1557,8 @@ class continuous_mnnvl_wholememory_impl : public continuous_device_wholememory_i
                                         &cu_alloc_handle_.local_ipc_fabric_handle);
 
     map_driver_memory_handles(&recv_ipc_sharable_cu_fabric_handles);
-    local_partition_memory_pointer_ = static_cast<char*>(cu_alloc_handle_.mapped_whole_memory) +
-                                      rank_partition_strategy_.local_mem_offset;
+    local_partition_memory_pointer_ =
+      static_cast<char*>(cu_alloc_handle_.mapped_whole_memory) + get_local_offset();
   }
   void unmap_and_destroy_driver_host_memory() noexcept
   {
@@ -1513,16 +1596,37 @@ class continuous_mnnvl_wholememory_impl : public continuous_device_wholememory_i
 
 void wholememory_impl::generate_rank_partition_strategy()
 {
-  size_t data_slot_count      = total_size_ / data_granularity_;
-  size_t data_slot_per_rank   = determine_entry_partition_plan(data_slot_count, comm_->world_size);
-  size_t rank_data_slot_start = std::min(comm_->world_rank * data_slot_per_rank, data_slot_count);
-  size_t rank_data_slot_end =
-    std::min((comm_->world_rank + 1) * data_slot_per_rank, data_slot_count);
-  size_t rank_data_slot_count = rank_data_slot_end - rank_data_slot_start;
+  if (!rank_partition_strategy_.partition_sizes_.empty()) {
+    rank_partition_strategy_.partition_mem_stride = total_size_ / comm_->world_size;
+    bool check_same                               = true;
+    for (int i = 0; i < comm_->world_size - 2; i++) {  // ignore the last rank
+      if (rank_partition_strategy_.partition_sizes_[i] !=
+          rank_partition_strategy_.partition_sizes_[i + 1]) {
+        check_same = false;
+        break;
+      }
+    }
+    rank_partition_strategy_.same_chunk = check_same;
+    return;
+  }
+  size_t data_slot_count = total_size_ / data_granularity_;
 
-  rank_partition_strategy_.local_mem_size       = rank_data_slot_count * data_granularity_;
-  rank_partition_strategy_.local_mem_offset     = rank_data_slot_start * data_granularity_;
+  size_t data_slot_per_rank = 0;
+  equal_partition_plan(&data_slot_per_rank, data_slot_count, comm_->world_size);
+
+  rank_partition_strategy_.partition_sizes_.resize(comm_->world_size, 0);
+  rank_partition_strategy_.partition_offsets_.resize(comm_->world_size + 1, 0);
+  for (int i = 0; i < comm_->world_size; i++) {
+    size_t tmp_slot_start = std::min(i * data_slot_per_rank, data_slot_count);
+    size_t tmp_slot_end   = std::min((i + 1) * data_slot_per_rank, data_slot_count);
+    rank_partition_strategy_.partition_sizes_[i] =
+      (tmp_slot_end - tmp_slot_start) * data_granularity_;
+    rank_partition_strategy_.partition_offsets_[i] = tmp_slot_start * data_granularity_;
+  }
+  rank_partition_strategy_.partition_offsets_[comm_->world_size] =
+    data_slot_count * data_granularity_;
   rank_partition_strategy_.partition_mem_stride = data_slot_per_rank * data_granularity_;
+  rank_partition_strategy_.same_chunk           = true;
 }
 
 void wholememory_impl::first_rank_allocate_all_strategy()
@@ -1542,28 +1646,33 @@ void wholememory_impl::first_rank_allocate_all_strategy()
   alloc_strategy_.alloc_sizes[0] = alloc_strategy_.total_alloc_size;
 }
 
-void wholememory_impl::each_rank_same_chunk_strategy()
+void wholememory_impl::each_rank_different_chunk_strategy()
 {
-  size_t data_slot_count    = total_size_ / data_granularity_;
-  size_t data_slot_per_rank = determine_entry_partition_plan(data_slot_count, comm_->world_size);
-  // each rank allocate same size
-  alloc_strategy_.local_alloc_size = data_slot_per_rank * data_granularity_;
-  alloc_strategy_.alignment        = comm_->alloc_granularity;
-  if (total_size_ > HUGE_PAGE_THRESHOLD) {
-    alloc_strategy_.local_alloc_size =
-      round_up_unsafe(alloc_strategy_.local_alloc_size, HUGE_PAGE_SIZE);
-    alloc_strategy_.alignment = HUGE_PAGE_SIZE;
-  }
-  alloc_strategy_.total_alloc_size = alloc_strategy_.local_alloc_size * comm_->world_size;
-
   alloc_strategy_.alloc_offsets.clear();
   alloc_strategy_.alloc_offsets.resize(comm_->world_size, 0);
-  for (int i = 0; i < comm_->world_size; i++) {
-    alloc_strategy_.alloc_offsets[i] = alloc_strategy_.local_alloc_size * i;
-  }
-
   alloc_strategy_.alloc_sizes.clear();
-  alloc_strategy_.alloc_sizes.resize(comm_->world_size, alloc_strategy_.local_alloc_size);
+  alloc_strategy_.alloc_sizes.resize(comm_->world_size, 0);
+
+  size_t rank_local_alloc_offset = 0;
+  for (int i = 0; i < comm_->world_size; i++) {
+    size_t rank_local_alloc_size = rank_partition_strategy_.partition_sizes_[i];
+    size_t rank_alignment;
+    if (total_size_ > HUGE_PAGE_THRESHOLD) {
+      rank_local_alloc_size = round_up_unsafe(rank_local_alloc_size, HUGE_PAGE_SIZE);
+      rank_alignment        = HUGE_PAGE_SIZE;
+    } else {
+      rank_local_alloc_size = round_up_unsafe(rank_local_alloc_size, comm_->alloc_granularity);
+      rank_alignment        = comm_->alloc_granularity;
+    }
+    if (i == comm_->world_rank) {
+      alloc_strategy_.local_alloc_size = rank_local_alloc_size;
+      alloc_strategy_.alignment        = rank_alignment;
+    }
+    alloc_strategy_.alloc_offsets[i] = rank_local_alloc_offset;
+    alloc_strategy_.alloc_sizes[i]   = rank_local_alloc_size;
+    rank_local_alloc_offset += rank_local_alloc_size;
+  }
+  alloc_strategy_.total_alloc_size = rank_local_alloc_offset;
 }
 
 void wholememory_impl::each_rank_multiple_page_strategy()
@@ -1643,11 +1752,26 @@ wholememory_error_code_t create_wholememory(wholememory_handle_t* wholememory_ha
                                             wholememory_comm_t comm,
                                             wholememory_memory_type_t memory_type,
                                             wholememory_memory_location_t memory_location,
-                                            size_t data_granularity) noexcept
+                                            size_t data_granularity,
+                                            size_t* rank_entry_partition) noexcept
 {
   try {
     if (total_size % data_granularity != 0) return WHOLEMEMORY_INVALID_VALUE;
-
+    if (rank_entry_partition != nullptr) {
+      int64_t total_slot_count = 0;
+      for (int i = 0; i < comm->world_size; i++) {
+        WM_COMM_CHECK_ALL_SAME(comm, rank_entry_partition[i]);
+        if (rank_entry_partition[i] <= 0) { return WHOLEMEMORY_INVALID_VALUE; }
+        total_slot_count += rank_entry_partition[i];
+      }
+      if (total_slot_count * data_granularity != total_size) {
+        WHOLEMEMORY_ERROR("total slot count * data granularity (%ld*%ld) != total size (%ld)",
+                          total_slot_count,
+                          data_granularity,
+                          total_size);
+        return WHOLEMEMORY_INVALID_VALUE;
+      }
+    }
     *wholememory_handle_ptr = nullptr;
     std::unique_lock<std::mutex> mlock(comm->mu);
     auto* whole_memory_handle = new wholememory_handle_();
@@ -1660,27 +1784,52 @@ wholememory_error_code_t create_wholememory(wholememory_handle_t* wholememory_ha
     if (memory_type == WHOLEMEMORY_MT_DISTRIBUTED) {
 #ifdef WITH_NVSHMEM_SUPPORT
       if (comm->bind_to_nvshmem) {
-        whole_memory_handle->impl = new nvshmem_device_wholememory_impl(
-          whole_memory_handle, total_size, comm, memory_type, memory_location, data_granularity);
+        whole_memory_handle->impl = new nvshmem_device_wholememory_impl(whole_memory_handle,
+                                                                        total_size,
+                                                                        comm,
+                                                                        memory_type,
+                                                                        memory_location,
+                                                                        data_granularity,
+                                                                        rank_entry_partition);
       } else
 #endif
       {
-        whole_memory_handle->impl = new distributed_wholememory_impl(
-          whole_memory_handle, total_size, comm, memory_type, memory_location, data_granularity);
+        whole_memory_handle->impl = new distributed_wholememory_impl(whole_memory_handle,
+                                                                     total_size,
+                                                                     comm,
+                                                                     memory_type,
+                                                                     memory_location,
+                                                                     data_granularity,
+                                                                     rank_entry_partition);
       }
     } else if (memory_type == WHOLEMEMORY_MT_CONTINUOUS) {
       if (is_intranode_communicator(comm) || !SupportEGM()) {
         if (memory_location == WHOLEMEMORY_ML_HOST) {
-          whole_memory_handle->impl = new global_mapped_host_wholememory_impl(
-            whole_memory_handle, total_size, comm, memory_type, memory_location, data_granularity);
+          whole_memory_handle->impl = new global_mapped_host_wholememory_impl(whole_memory_handle,
+                                                                              total_size,
+                                                                              comm,
+                                                                              memory_type,
+                                                                              memory_location,
+                                                                              data_granularity,
+                                                                              rank_entry_partition);
         } else {
-          whole_memory_handle->impl = new continuous_device_wholememory_impl(
-            whole_memory_handle, total_size, comm, memory_type, memory_location, data_granularity);
+          whole_memory_handle->impl = new continuous_device_wholememory_impl(whole_memory_handle,
+                                                                             total_size,
+                                                                             comm,
+                                                                             memory_type,
+                                                                             memory_location,
+                                                                             data_granularity,
+                                                                             rank_entry_partition);
         }
       } else {
 #if CUDA_VERSION >= 12030
-        whole_memory_handle->impl = new continuous_mnnvl_wholememory_impl(
-          whole_memory_handle, total_size, comm, memory_type, memory_location, data_granularity);
+        whole_memory_handle->impl = new continuous_mnnvl_wholememory_impl(whole_memory_handle,
+                                                                          total_size,
+                                                                          comm,
+                                                                          memory_type,
+                                                                          memory_location,
+                                                                          data_granularity,
+                                                                          rank_entry_partition);
 #else
         WHOLEMEMORY_FAIL_NOTHROW("Multinode CONTINUOUS is only supported on CUDA Version >= 12.3");
 #endif
@@ -1688,11 +1837,21 @@ wholememory_error_code_t create_wholememory(wholememory_handle_t* wholememory_ha
     } else if (memory_type == WHOLEMEMORY_MT_CHUNKED) {
       WHOLEMEMORY_CHECK_NOTHROW(is_intranode_communicator(comm));
       if (memory_location == WHOLEMEMORY_ML_HOST) {
-        whole_memory_handle->impl = new global_mapped_host_wholememory_impl(
-          whole_memory_handle, total_size, comm, memory_type, memory_location, data_granularity);
+        whole_memory_handle->impl = new global_mapped_host_wholememory_impl(whole_memory_handle,
+                                                                            total_size,
+                                                                            comm,
+                                                                            memory_type,
+                                                                            memory_location,
+                                                                            data_granularity,
+                                                                            rank_entry_partition);
       } else {
-        whole_memory_handle->impl = new chunked_device_wholememory_impl(
-          whole_memory_handle, total_size, comm, memory_type, memory_location, data_granularity);
+        whole_memory_handle->impl = new chunked_device_wholememory_impl(whole_memory_handle,
+                                                                        total_size,
+                                                                        comm,
+                                                                        memory_type,
+                                                                        memory_location,
+                                                                        data_granularity,
+                                                                        rank_entry_partition);
       }
     } else {
       WHOLEMEMORY_FATAL("Unsupported memory_type (%d) and memory_location (%d).",
@@ -1858,45 +2017,69 @@ wholememory_error_code_t get_nvshmem_reference_frome_handle(
       (wholememory_handle->impl->get_distributed_backend() != WHOLEMEMORY_DB_NVSHMEM)) {
     return WHOLEMEMORY_INVALID_INPUT;
   }
-  *wholememory_nvshmem_ref = wholememory_nvshmem_ref_t{};
-  size_t local_size, local_offset;
-  void* pointer;
-
-  wholememory_handle->impl->get_local_memory(&pointer, &local_size, &local_offset);
-  wholememory_nvshmem_ref->pointer    = pointer;
-  wholememory_nvshmem_ref->stride     = wholememory_handle->impl->get_partition_stride();
-  wholememory_nvshmem_ref->world_rank = wholememory_handle->impl->get_comm()->world_rank;
-  wholememory_nvshmem_ref->world_size = wholememory_handle->impl->get_comm()->world_size;
+  wholememory_gref_t wholememory_gref_tmp      = wholememory_handle->impl->get_global_reference();
+  *wholememory_nvshmem_ref                     = wholememory_nvshmem_ref_t{};
+  wholememory_nvshmem_ref->pointer             = wholememory_gref_tmp.pointer;
+  wholememory_nvshmem_ref->rank_memory_offsets = wholememory_gref_tmp.rank_memory_offsets;
+  wholememory_nvshmem_ref->world_size          = wholememory_gref_tmp.world_size;
+  wholememory_nvshmem_ref->world_rank          = wholememory_handle->impl->get_comm()->world_rank;
+  wholememory_nvshmem_ref->stride              = wholememory_gref_tmp.stride;
+  wholememory_nvshmem_ref->same_chunk          = wholememory_gref_tmp.same_chunk;
   return (wholememory_nvshmem_ref->pointer == nullptr) ? WHOLEMEMORY_INVALID_INPUT
                                                        : WHOLEMEMORY_SUCCESS;
 }
 
 #endif
 
-wholememory_error_code_t determine_partition_plan(size_t* size_per_rank,
-                                                  size_t total_size,
-                                                  size_t data_granularity,
-                                                  int world_size) noexcept
+wholememory_error_code_t equal_partition_plan(size_t* entry_per_rank,
+                                              size_t total_entry_count,
+                                              int world_size) noexcept
 {
-  if (total_size % data_granularity != 0) { return WHOLEMEMORY_INVALID_VALUE; }
-  if (size_per_rank == nullptr) { return WHOLEMEMORY_INVALID_INPUT; }
-  size_t entry_per_rank = 0;
-  *size_per_rank        = determine_entry_partition_plan(total_size / data_granularity, world_size);
+  *entry_per_rank = div_rounding_up_safe<size_t>(total_entry_count, world_size);
   return WHOLEMEMORY_SUCCESS;
 }
 
-size_t determine_entry_partition_plan(size_t total_entry_count, int world_size) noexcept
-{
-  return div_rounding_up_safe<size_t>(total_entry_count, world_size);
-}
-
-wholememory_error_code_t get_partition_plan_from_handle(
-  size_t* size_per_rank, wholememory_handle_t wholememory_handle) noexcept
+wholememory_error_code_t get_rank_partition_sizes_from_handle(
+  size_t* rank_sizes, wholememory_handle_t wholememory_handle) noexcept
 {
   if (wholememory_handle == nullptr || wholememory_handle->impl == nullptr) {
     return WHOLEMEMORY_INVALID_INPUT;
   }
-  *size_per_rank = wholememory_handle->impl->get_partition_stride();
+  std::vector<size_t> rank_sizes_ = wholememory_handle->impl->get_rank_sizes();
+  for (int i = 0; i < rank_sizes_.size(); i++)
+    rank_sizes[i] = rank_sizes_[i];
+  return WHOLEMEMORY_SUCCESS;
+}
+
+wholememory_error_code_t get_rank_partition_offsets_from_handle(
+  size_t* rank_offsets, wholememory_handle_t wholememory_handle) noexcept
+{
+  if (wholememory_handle == nullptr || wholememory_handle->impl == nullptr) {
+    return WHOLEMEMORY_INVALID_INPUT;
+  }
+  std::vector<size_t> rank_offsets_ = wholememory_handle->impl->get_rank_offsets();
+  for (int i = 0; i < rank_offsets_.size(); i++)
+    rank_offsets[i] = rank_offsets_[i];
+  return WHOLEMEMORY_SUCCESS;
+}
+
+wholememory_error_code_t get_local_size_from_handle(
+  size_t* rank_size, wholememory_handle_t wholememory_handle) noexcept
+{
+  if (wholememory_handle == nullptr || wholememory_handle->impl == nullptr) {
+    return WHOLEMEMORY_INVALID_INPUT;
+  }
+  *rank_size = wholememory_handle->impl->get_local_size();
+  return WHOLEMEMORY_SUCCESS;
+}
+
+wholememory_error_code_t get_local_offset_from_handle(
+  size_t* local_offset, wholememory_handle_t wholememory_handle) noexcept
+{
+  if (wholememory_handle == nullptr || wholememory_handle->impl == nullptr) {
+    return WHOLEMEMORY_INVALID_INPUT;
+  }
+  *local_offset = wholememory_handle->impl->get_local_offset();
   return WHOLEMEMORY_SUCCESS;
 }
 
