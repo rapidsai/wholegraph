@@ -122,7 +122,8 @@ cdef extern from "wholememory/wholememory.h":
                                                      wholememory_comm_t comm,
                                                      wholememory_memory_type_t memory_type,
                                                      wholememory_memory_location_t memory_location,
-                                                     size_t data_granularity)
+                                                     size_t data_granularity,
+                                                     size_t * rank_entry_partition)
 
     cdef wholememory_error_code_t wholememory_free(wholememory_handle_t wholememory_handle)
 
@@ -140,26 +141,30 @@ cdef extern from "wholememory/wholememory.h":
                                                                size_t * local_offset,
                                                                wholememory_handle_t wholememory_handle)
 
+    cdef wholememory_error_code_t wholememory_get_local_size(size_t * local_size,
+                                                             wholememory_handle_t wholememory_handle)
+
+    cdef wholememory_error_code_t wholememory_get_local_offset(size_t * local_offset,
+                                                               wholememory_handle_t wholememory_handle)
+
     cdef wholememory_error_code_t wholememory_get_rank_memory(void** rank_memory_ptr,
                                                               size_t * rank_memory_size,
                                                               size_t * rank_memory_offset,
                                                               int rank,
                                                               wholememory_handle_t wholememory_handle)
 
+    cdef wholememory_error_code_t wholememory_equal_entry_partition_plan(size_t* entry_per_rank,
+                                                                           size_t total_entry_count,
+                                                                           int world_size)
+
     cdef wholememory_error_code_t wholememory_get_global_pointer(void** global_ptr,
                                                                  wholememory_handle_t wholememory_handle)
 
-    cdef wholememory_error_code_t wholememory_determine_partition_plan(size_t * size_per_rank,
-                                                                       size_t total_size,
-                                                                       size_t data_granularity,
-                                                                       int world_size)
+    cdef wholememory_error_code_t wholememory_get_rank_partition_sizes(size_t * rank_mem_sizes,
+                                                        wholememory_handle_t wholememory_handle)
 
-    cdef wholememory_error_code_t wholememory_determine_entry_partition_plan(size_t * entry_per_rank,
-                                                                             size_t total_entry_count,
-                                                                             int world_size)
-
-    cdef wholememory_error_code_t wholememory_get_partition_plan(size_t * size_per_rank,
-                                                                 wholememory_handle_t wholememory_handle)
+    cdef wholememory_error_code_t wholememory_get_rank_partition_offsets(size_t * rank_mem_offsets,
+                                                          wholememory_handle_t wholememory_handle)
 
     cdef int fork_get_device_count()
 
@@ -549,7 +554,8 @@ cdef extern from "wholememory/wholememory_tensor.h":
                                                             wholememory_tensor_description_t *tensor_description,
                                                             wholememory_comm_t comm,
                                                             wholememory_memory_type_t memory_type,
-                                                            wholememory_memory_location_t memory_location)
+                                                            wholememory_memory_location_t memory_location,
+                                                            size_t * tensor_entry_partition)
 
     cdef wholememory_error_code_t wholememory_destroy_tensor(wholememory_tensor_t wholememory_tensor)
 
@@ -567,6 +573,18 @@ cdef extern from "wholememory/wholememory_tensor.h":
 
     cdef wholememory_tensor_description_t * wholememory_tensor_get_tensor_description(
             wholememory_tensor_t wholememory_tensor)
+
+    cdef wholememory_error_code_t wholememory_tensor_get_entry_offsets(
+        size_t * entry_offsets, wholememory_tensor_t wholememory_tensor);
+
+    cdef wholememory_error_code_t wholememory_tensor_get_entry_partition_sizes(
+        size_t * entry_partition, wholememory_tensor_t wholememory_tensor);
+
+    cdef wholememory_error_code_t wholememory_tensor_get_local_entry_count(
+        size_t * local_entry_count, wholememory_tensor_t wholememory_tensor);
+
+    cdef wholememory_error_code_t wholememory_tensor_get_local_entry_start(
+        size_t * local_entry_start, wholememory_tensor_t wholememory_tensor);
 
     cdef wholememory_error_code_t wholememory_tensor_get_subtensor(wholememory_tensor_t wholememory_tensor,
                                                                    int64_t *starts,
@@ -643,6 +661,7 @@ cdef extern from "wholememory/embedding.h":
             wholememory_memory_type_t memory_type,
             wholememory_memory_location_t memory_location,
             wholememory_embedding_cache_policy_t cache_policy,
+            size_t * embedding_entry_partition,
             int user_defined_sms,
             int round_robin_size)
 
@@ -815,16 +834,21 @@ cdef class PyWholeMemoryEmbedding:
                          WholeMemoryMemoryType memory_type,
                          WholeMemoryMemoryLocation memory_location,
                          WholeMemoryCachePolicy cache_policy,
+                         cython.size_t[:] embedding_entry_partition,
                          int user_defined_sms,
                          int round_robin_size):
         self.memory_type = <wholememory_memory_type_t> <int> memory_type
         self.memory_location = <wholememory_memory_location_t> <int> memory_location
+        cdef size_t* partition_ptr = NULL
+        if embedding_entry_partition is not None and embedding_entry_partition.size > 0:
+            partition_ptr = <size_t*>&embedding_entry_partition[0]
         check_wholememory_error_code(wholememory_create_embedding(&self.wm_embedding,
                                                                   &tensor_desc.tensor_description,
                                                                   comm.comm_id,
                                                                   self.memory_type,
                                                                   self.memory_location,
                                                                   cache_policy.cache_policy,
+                                                                  partition_ptr,
                                                                   user_defined_sms,
                                                                   round_robin_size))
 
@@ -872,6 +896,7 @@ def create_embedding(PyWholeMemoryTensorDescription tensor_desc,
                      WholeMemoryMemoryType memory_type,
                      WholeMemoryMemoryLocation memory_location,
                      WholeMemoryCachePolicy cache_policy,
+                     cython.size_t[:] embedding_entry_partition,
                      int user_defined_sms,
                      int round_robin_size):
     wm_embedding = PyWholeMemoryEmbedding()
@@ -880,6 +905,7 @@ def create_embedding(PyWholeMemoryTensorDescription tensor_desc,
                                   memory_type,
                                   memory_location,
                                   cache_policy,
+                                  embedding_entry_partition,
                                   user_defined_sms,
                                   round_robin_size)
     return wm_embedding
@@ -1322,11 +1348,6 @@ cdef class PyWholeMemoryHandle:
     def get_memory_location(self):
         return WholeMemoryMemoryLocation(wholememory_get_memory_location(self.wholememory_handle))
 
-    def get_partition_plan(self):
-        cdef size_t size_per_rank
-        check_wholememory_error_code(wholememory_get_partition_plan(&size_per_rank, self.wholememory_handle))
-        return size_per_rank
-
     def get_global_flatten_tensor(self,
                                   object import_dlpack_fn,
                                   WholeMemoryDataType data_type,
@@ -1514,12 +1535,15 @@ cdef class PyWholeMemoryTensor:
     def storage_offset(self):
         return self.tensor_description.storage_offset
 
-    def get_partition_plan(self):
-        mem_size_per_rank = self.get_wholememory_handle().get_partition_plan()
-        element_size = wholememory_dtype_get_element_size(self.tensor_description.dtype)
-        vector_size = element_size * self.stride()[0]
-        assert mem_size_per_rank % vector_size == 0
-        return mem_size_per_rank // vector_size
+    def get_local_entry_count(self):
+        cdef size_t local_entry_count = 0
+        check_wholememory_error_code(wholememory_tensor_get_local_entry_count(&local_entry_count, self.wholememory_tensor))
+        return local_entry_count
+
+    def get_local_entry_start(self):
+        cdef size_t local_entry_start = 0
+        check_wholememory_error_code(wholememory_tensor_get_local_entry_start(&local_entry_start, self.wholememory_tensor))
+        return local_entry_start
 
     def get_sub_tensor(self, starts, ends):
         cdef int64_t start_array[2]
@@ -1662,10 +1686,10 @@ def split_communicator(PyWholeMemoryComm comm,int color,int key):
 def communicator_set_distributed_backend(PyWholeMemoryComm py_comm,WholeMemoryDistributedBackend distributed_backend):
     check_wholememory_error_code(wholememory_communicator_set_distributed_backend(py_comm.comm_id,int(distributed_backend)))
 
-def determine_partition_plan(int64_t entry_count,
+def equal_partition_plan(int64_t entry_count,
                              int world_size):
     cdef size_t per_rank_count
-    check_wholememory_error_code(wholememory_determine_entry_partition_plan(&per_rank_count,
+    check_wholememory_error_code(wholememory_equal_entry_partition_plan(&per_rank_count,
                                                                             entry_count,
                                                                             world_size))
     return per_rank_count
@@ -1674,11 +1698,15 @@ def malloc(cython.size_t total_size,
            PyWholeMemoryComm py_comm,
            WholeMemoryMemoryType memory_type,
            WholeMemoryMemoryLocation memory_location,
-           cython.size_t data_granularity):
+           cython.size_t data_granularity,
+           cython.size_t[:] rank_entry_partition=None):
     handle = PyWholeMemoryHandle()
+    cdef size_t* partition_ptr = NULL
+    if rank_entry_partition is not None and rank_entry_partition.size > 0:
+        partition_ptr = <size_t*>&rank_entry_partition[0]
     check_wholememory_error_code(wholememory_malloc(&handle.wholememory_handle, total_size, py_comm.comm_id,
                                                     int(memory_type), int(memory_location),
-                                                    data_granularity))
+                                                    data_granularity, partition_ptr))
     return handle
 
 def free(PyWholeMemoryHandle handle):
@@ -1688,18 +1716,23 @@ def create_wholememory_array(WholeMemoryDataType dtype,
                              int64_t size,
                              PyWholeMemoryComm comm,
                              WholeMemoryMemoryType mem_type,
-                             WholeMemoryMemoryLocation mem_location):
+                             WholeMemoryMemoryLocation mem_location,
+                             cython.size_t[:]  tensor_entry_partition=None):
     wholememory_tensor = PyWholeMemoryTensor()
     wholememory_tensor.tensor_description.dtype = int(dtype)
     wholememory_tensor.tensor_description.storage_offset = 0
     wholememory_tensor.tensor_description.dim = 1
     wholememory_tensor.tensor_description.strides[0] = 1
     wholememory_tensor.tensor_description.sizes[0] = size
+    cdef size_t* partition_ptr = NULL
+    if tensor_entry_partition is not None and tensor_entry_partition.size > 0:
+        partition_ptr = <size_t*>&tensor_entry_partition[0]
     check_wholememory_error_code(wholememory_create_tensor(&wholememory_tensor.wholememory_tensor,
                                                            &wholememory_tensor.tensor_description,
                                                            comm.comm_id,
                                                            int(mem_type),
-                                                           int(mem_location)))
+                                                           int(mem_location),
+                                                           partition_ptr))
     return wholememory_tensor
 
 def create_wholememory_matrix(WholeMemoryDataType dtype,
@@ -1708,7 +1741,8 @@ def create_wholememory_matrix(WholeMemoryDataType dtype,
                               int64_t stride,
                               PyWholeMemoryComm comm,
                               WholeMemoryMemoryType mem_type,
-                              WholeMemoryMemoryLocation mem_location):
+                              WholeMemoryMemoryLocation mem_location,
+                              cython.size_t[:] tensor_entry_partition=None):
     wholememory_tensor = PyWholeMemoryTensor()
     wholememory_tensor.tensor_description.dtype = int(dtype)
     wholememory_tensor.tensor_description.storage_offset = 0
@@ -1719,17 +1753,22 @@ def create_wholememory_matrix(WholeMemoryDataType dtype,
     wholememory_tensor.tensor_description.strides[1] = 1
     wholememory_tensor.tensor_description.sizes[0] = row
     wholememory_tensor.tensor_description.sizes[1] = column
+    cdef size_t* partition_ptr = NULL
+    if tensor_entry_partition is not None and tensor_entry_partition.size > 0:
+        partition_ptr = <size_t*>&tensor_entry_partition[0]
     check_wholememory_error_code(wholememory_create_tensor(&wholememory_tensor.wholememory_tensor,
                                                            &wholememory_tensor.tensor_description,
                                                            comm.comm_id,
                                                            int(mem_type),
-                                                           int(mem_location)))
+                                                           int(mem_location),
+                                                           partition_ptr))
     return wholememory_tensor
 
 def create_wholememory_tensor(PyWholeMemoryTensorDescription tensor_description,
                               PyWholeMemoryComm comm,
                               WholeMemoryMemoryType mem_type,
-                              WholeMemoryMemoryLocation mem_location):
+                              WholeMemoryMemoryLocation mem_location,
+                              cython.size_t[:] tensor_entry_partition=None):
     if tensor_description.dim() != 1 and tensor_description.dim() != 2:
         raise NotImplementedError('WholeMemory currently only support 1D or 2D tensor')
     if tensor_description.stride()[tensor_description.dim() - 1] != 1:
@@ -1738,11 +1777,15 @@ def create_wholememory_tensor(PyWholeMemoryTensorDescription tensor_description,
         raise ValueError('storage_offset be 0 when created')
     wholememory_tensor = PyWholeMemoryTensor()
     wholememory_tensor.tensor_description = tensor_description.tensor_description
+    cdef size_t* partition_ptr = NULL
+    if tensor_entry_partition is not None and tensor_entry_partition.size > 0:
+        partition_ptr = <size_t*>&tensor_entry_partition[0]
     check_wholememory_error_code(wholememory_create_tensor(&wholememory_tensor.wholememory_tensor,
                                                            &wholememory_tensor.tensor_description,
                                                            comm.comm_id,
                                                            int(mem_type),
-                                                           int(mem_location)))
+                                                           int(mem_location),
+                                                           partition_ptr))
     return wholememory_tensor
 
 def make_tensor_as_wholememory(PyWholeMemoryTensorDescription tensor_description,

@@ -89,7 +89,8 @@ wholememory_error_code_t embedding_base::allocate(
   wholememory_comm_t comm,
   wholememory_memory_type_t memory_type,
   wholememory_memory_location_t memory_location,
-  wholememory_embedding_cache_policy_t policy) noexcept
+  wholememory_embedding_cache_policy_t policy,
+  size_t* embedding_entry_partition) noexcept
 {
   cache_policy        = policy;
   raw_embedding_comm_ = comm;
@@ -109,6 +110,7 @@ wholememory_error_code_t embedding_base::allocate(
                                               comm,
                                               memory_type,
                                               memory_location));
+      embedding_entry_partition = nullptr;
     } else {
       wholememory_copy_matrix_desc_to_tensor(&padded_embedding_tensor_description,
                                              embedding_description);
@@ -123,7 +125,8 @@ wholememory_error_code_t embedding_base::allocate(
                                                          &padded_embedding_tensor_description,
                                                          comm,
                                                          memory_type,
-                                                         memory_location));
+                                                         memory_location,
+                                                         embedding_entry_partition));
     int64_t starts[2] = {0, 0};
     int64_t ends[2]   = {embedding_description->sizes[0], embedding_description->sizes[1]};
     WHOLEMEMORY_RETURN_ON_FAIL(
@@ -155,8 +158,6 @@ wholememory_error_code_t embedding_base::gather_gradient_apply(wholememory_tenso
     host_rank_id_count_handle(p_env_fns);
   wholememory_ops::temp_memory_handle dev_recv_indices_buffer_handle(p_env_fns);
   wholememory_ops::temp_memory_handle dev_raw_indice_handle(p_env_fns);
-  size_t const embedding_entry_count_per_rank =
-    wholememory_tensor_get_entry_per_partition(allocated_embedding);
   wholememory_ops::wm_thrust_allocator thrust_allocator(p_env_fns);
   int world_size = -1, world_rank = -1;
   int64_t* host_recv_rank_id_count_ptr = nullptr;
@@ -174,6 +175,21 @@ wholememory_error_code_t embedding_base::gather_gradient_apply(wholememory_tenso
   wholememory_array_description_t indice_array_desc;
   WHOLEMEMORY_CHECK_NOTHROW(
     wholememory_convert_tensor_desc_to_array(&indice_array_desc, indice_desc));
+
+  wholememory_ops::temp_memory_handle dev_embedding_entry_offsets_handle(p_env_fns);
+  size_t* dev_embedding_entry_offsets_ptr = static_cast<size_t*>(
+    dev_embedding_entry_offsets_handle.device_malloc(world_size + 1, WHOLEMEMORY_DT_INT64));
+  wholememory_ops::temp_memory_handle host_embedding_entry_offsets_handle(p_env_fns);
+  size_t* host_embedding_entry_offsets_ptr = static_cast<size_t*>(
+    host_embedding_entry_offsets_handle.host_malloc(world_size + 1, WHOLEMEMORY_DT_INT64));
+
+  WHOLEMEMORY_RETURN_ON_FAIL(
+    wholememory_tensor_get_entry_offsets(host_embedding_entry_offsets_ptr, allocated_embedding));
+  WM_CUDA_CHECK_NO_THROW(cudaMemcpy(dev_embedding_entry_offsets_ptr,
+                                    host_embedding_entry_offsets_ptr,
+                                    (world_size + 1) * sizeof(size_t),
+                                    cudaMemcpyHostToDevice));
+
   WHOLEMEMORY_RETURN_ON_FAIL(
     wholememory_ops::bucket_and_exchange_ids_func(wholememory_tensor_get_data_pointer(indices),
                                                   indice_array_desc,
@@ -181,7 +197,7 @@ wholememory_error_code_t embedding_base::gather_gradient_apply(wholememory_tenso
                                                   host_rank_id_count_ptr,
                                                   &dev_recv_indices_buffer_handle,
                                                   dev_raw_indice_ptr,
-                                                  embedding_entry_count_per_rank,
+                                                  dev_embedding_entry_offsets_ptr,
                                                   raw_embedding_comm_,
                                                   &thrust_allocator,
                                                   p_env_fns,
@@ -308,9 +324,9 @@ wholememory_error_code_t embedding_base::gather_gradient_apply(wholememory_tenso
 
 wholememory_error_code_t embedding_base::create_optimizer_states() noexcept
 {
+  wholememory_handle_t wm_handle = wholememory_tensor_get_memory_handle(allocated_embedding);
   wholememory_comm_t wm_raw_comm;
-  WHOLEMEMORY_RETURN_ON_FAIL(wholememory_get_communicator(
-    &wm_raw_comm, wholememory_tensor_get_memory_handle(allocated_embedding)));
+  WHOLEMEMORY_RETURN_ON_FAIL(wholememory_get_communicator(&wm_raw_comm, wm_handle));
 
   int world_rank, world_size;
   WHOLEMEMORY_RETURN_ON_FAIL(wholememory_communicator_get_rank(&world_rank, wm_raw_comm));
@@ -321,12 +337,16 @@ wholememory_error_code_t embedding_base::create_optimizer_states() noexcept
   int64_t start[2]            = {0, 0};
   int64_t end[2]              = {user_tensor_desc->sizes[1], -1};
 
-  size_t entry_per_rank;
-  WHOLEMEMORY_RETURN_ON_FAIL(wholememory_determine_entry_partition_plan(
-    &entry_per_rank, allocated_tensor_desc->sizes[0], world_size));
+  std::vector<size_t> allocated_tensor_entry_partition(world_size);
+  std::vector<size_t> user_tensor_entry_partition(world_size);
+  wholememory_tensor_get_entry_partition_sizes(allocated_tensor_entry_partition.data(),
+                                               allocated_embedding);
+  wholememory_tensor_get_entry_partition_sizes(user_tensor_entry_partition.data(), user_embedding);
 
   optimizer_state_                    = std::make_unique<optimizer_state_t>();
-  optimizer_state_->local_start_index = entry_per_rank * world_rank;
+  optimizer_state_->local_start_index = 0;
+  WHOLEMEMORY_RETURN_ON_FAIL(wholememory_tensor_get_local_entry_start(
+    (size_t*)&optimizer_state_->local_start_index, allocated_embedding));
   optimizer_impl_base_->create_optimizer_states(optimizer_state_.get(), user_tensor_desc->sizes[1]);
   bool const need_cachable_states = !optimizer_state_->cachable_states.empty();
   wholememory_tensor_description_t cachable_state_desc;
@@ -363,7 +383,8 @@ wholememory_error_code_t embedding_base::create_optimizer_states() noexcept
                                    raw_embedding_comm_,
                                    memory_type,
                                    memory_location,
-                                   cache_policy));
+                                   cache_policy,
+                                   user_tensor_entry_partition.data()));
 
     optimizer_state_->global_cachable_raw_user_tensor =
       wholememory_embedding_get_embedding_tensor(optimizer_state_->cachable_state_embedding);
@@ -391,7 +412,8 @@ wholememory_error_code_t embedding_base::create_optimizer_states() noexcept
                                                          &uc_desc,
                                                          wm_raw_comm,
                                                          WHOLEMEMORY_MT_DISTRIBUTED,
-                                                         WHOLEMEMORY_ML_DEVICE));
+                                                         WHOLEMEMORY_ML_DEVICE,
+                                                         allocated_tensor_entry_partition.data()));
     start[0] = 0;
     start[1] = 0;
     end[0]   = user_tensor_desc->sizes[0];
@@ -564,8 +586,6 @@ wholememory_error_code_t device_cached_host_embedding::gather(wholememory_tensor
     host_rank_id_count_handle(p_env_fns);
   wholememory_ops::temp_memory_handle dev_recv_indices_buffer_handle(p_env_fns);
   wholememory_ops::temp_memory_handle dev_raw_indice_handle(p_env_fns);
-  size_t const embedding_entry_count_per_rank =
-    wholememory_tensor_get_entry_per_partition(allocated_embedding);
   wholememory_ops::wm_thrust_allocator thrust_allocator(p_env_fns);
   int world_size = -1, world_rank = -1;
   int64_t* host_recv_rank_id_count_ptr = nullptr;
@@ -584,6 +604,20 @@ wholememory_error_code_t device_cached_host_embedding::gather(wholememory_tensor
     wholememory_array_description_t indice_array_desc;
     WHOLEMEMORY_CHECK_NOTHROW(
       wholememory_convert_tensor_desc_to_array(&indice_array_desc, indice_desc));
+
+    wholememory_ops::temp_memory_handle dev_embedding_entry_offsets_handle(p_env_fns);
+    size_t* dev_embedding_entry_offsets_ptr = static_cast<size_t*>(
+      dev_embedding_entry_offsets_handle.device_malloc(world_size + 1, WHOLEMEMORY_DT_INT64));
+    wholememory_ops::temp_memory_handle host_embedding_entry_offsets_handle(p_env_fns);
+    size_t* host_embedding_entry_offsets_ptr = static_cast<size_t*>(
+      host_embedding_entry_offsets_handle.host_malloc(world_size + 1, WHOLEMEMORY_DT_INT64));
+
+    WHOLEMEMORY_RETURN_ON_FAIL(
+      wholememory_tensor_get_entry_offsets(host_embedding_entry_offsets_ptr, allocated_embedding));
+    WM_CUDA_CHECK_NO_THROW(cudaMemcpy(dev_embedding_entry_offsets_ptr,
+                                      host_embedding_entry_offsets_ptr,
+                                      (world_size + 1) * sizeof(size_t),
+                                      cudaMemcpyHostToDevice));
     WHOLEMEMORY_RETURN_ON_FAIL(
       wholememory_ops::bucket_and_exchange_ids_func(wholememory_tensor_get_data_pointer(indices),
                                                     indice_array_desc,
@@ -591,7 +625,7 @@ wholememory_error_code_t device_cached_host_embedding::gather(wholememory_tensor
                                                     host_rank_id_count_ptr,
                                                     &dev_recv_indices_buffer_handle,
                                                     dev_raw_indice_ptr,
-                                                    embedding_entry_count_per_rank,
+                                                    dev_embedding_entry_offsets_ptr,
                                                     raw_embedding_comm_,
                                                     &thrust_allocator,
                                                     p_env_fns,
@@ -642,8 +676,10 @@ wholememory_error_code_t device_cached_host_embedding::gather(wholememory_tensor
     wholememory_gref_t cache_line_tag_gref;
     WHOLEMEMORY_RETURN_ON_FAIL(wholememory_tensor_get_global_reference(
       cache_ptr_->get_cache_local_data()->cache_line_tag_, &cache_line_tag_gref));
-    int64_t const rank_start_gid =
-      wholememory_tensor_get_entry_per_partition(allocated_embedding) * world_rank;
+
+    size_t rank_start_gid = 0;
+    WHOLEMEMORY_RETURN_ON_FAIL(
+      wholememory_tensor_get_local_entry_start(&rank_start_gid, allocated_embedding));
     wholememory_tensor_description_t recv_indices_desc;
     auto recv_indices_array_desc =
       wholememory_create_array_desc(total_recv_count, 0, indice_desc->dtype);
@@ -756,8 +792,6 @@ wholememory_error_code_t local_cached_global_readonly_embedding::gather(
     host_rank_id_count_handle(p_env_fns);
   wholememory_ops::temp_memory_handle dev_recv_indices_buffer_handle(p_env_fns);
   wholememory_ops::temp_memory_handle dev_raw_indice_handle(p_env_fns);
-  size_t const embedding_entry_count_per_rank =
-    wholememory_tensor_get_entry_per_partition(cache_ptr_->access_count_wm_tensor_);
   wholememory_ops::wm_thrust_allocator thrust_allocator(p_env_fns);
   int cache_world_size = -1, cache_world_rank = -1;
   int64_t* host_recv_rank_id_count_ptr = nullptr;
@@ -779,6 +813,19 @@ wholememory_error_code_t local_cached_global_readonly_embedding::gather(
     wholememory_array_description_t indice_array_desc;
     WHOLEMEMORY_CHECK_NOTHROW(
       wholememory_convert_tensor_desc_to_array(&indice_array_desc, indice_desc));
+
+    wholememory_ops::temp_memory_handle dev_embedding_entry_offsets_handle(p_env_fns);
+    size_t* dev_embedding_entry_offsets_ptr = static_cast<size_t*>(
+      dev_embedding_entry_offsets_handle.device_malloc(cache_world_size + 1, WHOLEMEMORY_DT_INT64));
+    wholememory_ops::temp_memory_handle host_embedding_entry_offsets_handle(p_env_fns);
+    size_t* host_embedding_entry_offsets_ptr = static_cast<size_t*>(
+      host_embedding_entry_offsets_handle.host_malloc(cache_world_size + 1, WHOLEMEMORY_DT_INT64));
+    WHOLEMEMORY_RETURN_ON_FAIL(wholememory_tensor_get_entry_offsets(
+      host_embedding_entry_offsets_ptr, cache_ptr_->access_count_wm_tensor_));
+    WM_CUDA_CHECK_NO_THROW(cudaMemcpy(dev_embedding_entry_offsets_ptr,
+                                      host_embedding_entry_offsets_ptr,
+                                      (cache_world_size + 1) * sizeof(size_t),
+                                      cudaMemcpyHostToDevice));
     WHOLEMEMORY_RETURN_ON_FAIL(
       wholememory_ops::bucket_and_exchange_ids_func(wholememory_tensor_get_data_pointer(indices),
                                                     indice_array_desc,
@@ -786,7 +833,7 @@ wholememory_error_code_t local_cached_global_readonly_embedding::gather(
                                                     host_rank_id_count_ptr,
                                                     &dev_recv_indices_buffer_handle,
                                                     dev_raw_indice_ptr,
-                                                    embedding_entry_count_per_rank,
+                                                    dev_embedding_entry_offsets_ptr,
                                                     cache_policy->cache_comm,
                                                     &thrust_allocator,
                                                     p_env_fns,
@@ -804,7 +851,7 @@ wholememory_error_code_t local_cached_global_readonly_embedding::gather(
                                                      update_indice_desc,
                                                      allocated_embedding,
                                                      cache_policy->cache_comm,
-                                                     embedding_entry_count_per_rank,
+                                                     host_embedding_entry_offsets_ptr,
                                                      cache_ptr_->get_cache_local_data(),
                                                      cache_ptr_->get_cache_set_coverage(),
                                                      p_env_fns,
@@ -903,6 +950,7 @@ wholememory_error_code_t wholememory_create_embedding(
   wholememory_memory_type_t memory_type,
   wholememory_memory_location_t memory_location,
   wholememory_embedding_cache_policy_t cache_policy,
+  size_t* embedding_entry_partition,
   int user_defined_sms,
   int round_robin_size)
 {
@@ -961,15 +1009,24 @@ wholememory_error_code_t wholememory_create_embedding(
       }
       embedding_impl_ptr = new wholememory::local_cached_global_readonly_embedding();
     }
+    embedding_entry_partition = nullptr;
   } else {
     embedding_impl_ptr = new wholememory::noncached_embedding();
+  }
+  if (embedding_entry_partition) {
+    if (round_robin_size != 0) { WHOLEMEMORY_WARN("Parameter 'round_robin_size' is ignored."); }
+    round_robin_size = 0;
   }
   WHOLEMEMORY_RETURN_ON_FAIL(wholememory_communicator_get_size(&embedding_world_size, comm));
   embedding_impl_ptr->set_shard_method(
     &embedding_matrix_description, embedding_world_size, round_robin_size);
   embedding_impl_ptr->set_gather_sms(user_defined_sms);
-  WHOLEMEMORY_RETURN_ON_FAIL(embedding_impl_ptr->allocate(
-    &embedding_matrix_description, comm, memory_type, memory_location, cache_policy));
+  WHOLEMEMORY_RETURN_ON_FAIL(embedding_impl_ptr->allocate(&embedding_matrix_description,
+                                                          comm,
+                                                          memory_type,
+                                                          memory_location,
+                                                          cache_policy,
+                                                          embedding_entry_partition));
   *wholememory_embedding = static_cast<wholememory_embedding_t>(embedding_impl_ptr);
   return WHOLEMEMORY_SUCCESS;
 }

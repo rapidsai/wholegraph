@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, NVIDIA CORPORATION.
+ * Copyright (c) 2023-2024, NVIDIA CORPORATION.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -50,6 +50,23 @@ void host_random_init_integer_indices(void* indices,
   } else {
     host_get_random_integer_indices<int64_t>(indices, indices_desc, max_indices);
   }
+}
+
+void host_random_partition(size_t* partition_sizes, size_t total_size, int partition_count)
+{
+  std::default_random_engine random_engine(0);
+  std::uniform_int_distribution<size_t> uniform(90, 100);
+  size_t acc_size   = 0;
+  size_t random_sum = 0;
+  for (int i = 0; i < partition_count; i++) {
+    partition_sizes[i] = (size_t)uniform(random_engine);
+    random_sum += partition_sizes[i];
+  }
+  for (int i = 0; i < partition_count; i++) {
+    partition_sizes[i] = (size_t)((partition_sizes[i] / (double)random_sum) * total_size);
+    acc_size += partition_sizes[i];
+  }
+  partition_sizes[0] += total_size - acc_size;
 }
 
 void MultiProcessMeasurePerformance(std::function<void()> run_fn,

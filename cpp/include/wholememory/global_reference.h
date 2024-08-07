@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2023, NVIDIA CORPORATION.
+ * Copyright (c) 2019-2024, NVIDIA CORPORATION.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,14 +24,18 @@ extern "C" {
 /**
  * @brief Global reference of a WholeMemory object
  *
- * A global reference is for Continuous of Chunked WholeMemory Type, in these types, each rank can
+ * A global reference is for Continuous or Chunked WholeMemory Type, in these types, each rank can
  * directly access all memory from all ranks. The global reference is used to do this direct access.
  */
 struct wholememory_gref_t {
   void* pointer; /*!< pointer to data for CONTINUOUS WholeMemory or pointer to data pointer array
                     for CHUNKED WholeMemory */
+  size_t*
+    rank_memory_offsets; /*!< memory offset of each rank, and the length must be world_size+1 */
+  int world_size;
   size_t
     stride; /*!< must be 0 for CONTINUOUS WholeMemory or memory size in byte for each pointer */
+  bool same_chunk; /*!< if true, rank can be got by offset/stride */
 };
 
 /**
@@ -43,9 +47,11 @@ wholememory_gref_t wholememory_create_continuous_global_reference(void* ptr);
 
 struct wholememory_nvshmem_ref_t {
   void* pointer;
+  size_t* rank_memory_offsets;
   size_t stride;
   int world_rank;
   int world_size;
+  bool same_chunk;
 };
 
 #ifdef __cplusplus

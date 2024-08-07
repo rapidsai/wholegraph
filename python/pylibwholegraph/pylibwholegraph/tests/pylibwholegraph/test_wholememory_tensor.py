@@ -1,4 +1,4 @@
-# Copyright (c) 2019-2023, NVIDIA CORPORATION.
+# Copyright (c) 2019-2024, NVIDIA CORPORATION.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -14,19 +14,20 @@
 import pylibwholegraph.binding.wholememory_binding as wmb
 from pylibwholegraph.utils.multiprocess import multiprocess_run
 from pylibwholegraph.torch.initialize import init_torch_env_and_create_wm_comm
+from pylibwholegraph.test_utils.test_comm import random_partition
 
 
 # Run with:
 # python3 -m pytest ../tests/pylibwholegraph/test_wholememory_tensor.py -s
 
 
-def array_test_case(wm_comm, dt, mt, ml, size):
+def array_test_case(wm_comm, dt, mt, ml, size, entry_partition):
     world_rank = wm_comm.get_rank()
     print(
         "Rank=%d testing array size=%d dt=%s, mt=%s, ml=%s"
         % (world_rank, size, dt, mt, ml)
     )
-    wm_array = wmb.create_wholememory_array(dt, size, wm_comm, mt, ml)
+    wm_array = wmb.create_wholememory_array(dt, size, wm_comm, mt, ml, entry_partition)
     assert wm_array.dtype == dt
     assert wm_array.dim() == 1
     assert len(wm_array.shape) == 1
@@ -47,14 +48,14 @@ def array_test_case(wm_comm, dt, mt, ml, size):
     wmb.destroy_wholememory_tensor(wm_array)
 
 
-def matrix_test_case(wm_comm, dt, mt, ml, mat_size):
+def matrix_test_case(wm_comm, dt, mt, ml, mat_size, entry_partition):
     world_rank = wm_comm.get_rank()
     print(
         "Rank=%d testing matrix size=%s dt=%s, mt=%s, ml=%s"
         % (world_rank, mat_size, dt, mt, ml)
     )
     wm_matrix = wmb.create_wholememory_matrix(
-        dt, mat_size[0], mat_size[1], -1, wm_comm, mt, ml
+        dt, mat_size[0], mat_size[1], -1, wm_comm, mt, ml, entry_partition
     )
 
     assert wm_matrix.dtype == dt
@@ -93,7 +94,8 @@ def routine_func(world_rank: int, world_size: int):
     single_array_size = 128 * 1024 * 1024 * world_size
     single_matrix_size = (1024 * 1024 * world_size, 128)
     dt = wmb.WholeMemoryDataType.DtFloat
-
+    array_entry_partition = random_partition(single_array_size, world_size)
+    matrix_entry_partition = random_partition(single_matrix_size[0], world_size)
     print("")
 
     for mt in [
@@ -106,8 +108,8 @@ def routine_func(world_rank: int, world_size: int):
             wmb.WholeMemoryMemoryLocation.MlDevice,
         ]:
             if wm_comm.support_type_location(mt, ml):
-                array_test_case(wm_comm, dt, mt, ml, single_array_size)
-                matrix_test_case(wm_comm, dt, mt, ml, single_matrix_size)
+                array_test_case(wm_comm, dt, mt, ml, single_array_size, array_entry_partition)
+                matrix_test_case(wm_comm, dt, mt, ml, single_matrix_size, matrix_entry_partition)
     wmb.finalize()
 
 
