@@ -45,10 +45,16 @@ class WholeMemoryOptimizer(object):
 
     def add_embedding(self, wm_embedding):
         """Add WholeMemory Embedding to this optimizer
-        NOTE: you don't need to call this method, it is automatic called when WholeMemory Embedding is created.
+        NOTE: you don't need to call this method, it is automatic called when WholeMemory Optimizer is created.
         :param wm_embedding: WholeMemory Embedding that use this optimizer
         :return: None
         """
+        assert isinstance(wm_embedding, WholeMemoryEmbedding)
+        if wm_embedding.wmb_optimizer is not None:
+            raise ValueError("optimizer can only be set once.")
+        wm_embedding.wmb_optimizer = self.wmb_opt
+        wm_embedding.dummy_input.requires_grad_(True)
+        self.wmb_opt.add_embedding(wm_embedding.wmb_embedding)
         self.embeddings.append(wm_embedding)
 
     def step(self, lr: float):
@@ -59,30 +65,6 @@ class WholeMemoryOptimizer(object):
             if wm_embedding.need_apply:
                 wm_embedding.apply_gradients(lr)
         self.global_comm.barrier()
-
-
-def create_wholememory_optimizer(optimizer_type: str, param_dict: dict):
-    """
-    Create WholeMemoryOptimizer.
-    :param optimizer_type: Type of the Optimizer
-    :param param_dict: parameters of the optimizer
-    :return: WholeMemoryOptimizer
-    """
-    wm_optimizer = WholeMemoryOptimizer(get_global_communicator())
-    wm_optimizer.wmb_opt.create_optimizer(
-        str_to_wmb_wholememory_optimizer_type(optimizer_type), param_dict
-    )
-    return wm_optimizer
-
-
-def destroy_wholememory_optimizer(optimizer: WholeMemoryOptimizer):
-    """
-    Destroy WholeMemoryOptimizer
-    :param optimizer: WholeMemoryOptimizer to destroy
-    :return: None
-    """
-    optimizer.wmb_opt.destroy_optimizer()
-    optimizer.wmb_opt = None
 
 
 class WholeMemoryCachePolicy(object):
@@ -261,24 +243,22 @@ class WholeMemoryEmbedding(object):
     def __init__(
         self,
         wmb_embedding: wmb.PyWholeMemoryEmbedding,
-        wmb_optimizer: Union[WholeMemoryOptimizer, None],
         wmb_cache_policy: Union[WholeMemoryCachePolicy, None],
     ):
         super().__init__()
         self.wmb_embedding = wmb_embedding
         self.embedding_tensor = None
-        self.optimizer_states = None
+        self.optimizer_states = dict()
 
-        self.wmb_optimizer = wmb_optimizer
         self.wmb_cache_policy = wmb_cache_policy
 
         self.adjust_cache = True if self.wmb_cache_policy is not None else False
 
-        dummy_input_need_grad = True if self.wmb_optimizer is not None else False
-        self.dummy_input = torch.nn.Parameter(
-            torch.zeros(1), requires_grad=dummy_input_need_grad
-        )
+        self.wmb_optimizer = None
 
+        self.dummy_input = torch.nn.Parameter(
+            torch.zeros(1), requires_grad=False
+        )
         self.need_apply = False
         self.sparse_indices = []
         self.sparse_grads = []
@@ -403,7 +383,6 @@ def create_embedding(
     dtype: torch.dtype,
     sizes: List[int],
     *,
-    optimizer: Union[WholeMemoryOptimizer, None] = None,
     cache_policy: Union[WholeMemoryCachePolicy, None] = None,
     random_init: bool = False,
     gather_sms: int = -1,
@@ -416,16 +395,11 @@ def create_embedding(
     :param memory_location: WholeMemory location, should be cpu or cuda
     :param dtype: data type
     :param sizes: size of the embedding, must be 2D
-    :param optimizer: optimizer
     :param cache_policy: cache policy
     :param gather_sms: the number of SMs used in gather process
     :param round_robin_size: continuous embedding size of a rank using round robin shard strategy
     :return: WholeMemoryEmbedding
     """
-    if optimizer is None:
-        wmb_optimizer = wmb.create_non_optimizer()
-    else:
-        wmb_optimizer = optimizer.wmb_opt
     if cache_policy is None:
         wmb_cache_policy = wmb.create_non_cache_policy()
     else:
@@ -448,16 +422,12 @@ def create_embedding(
             comm.wmb_comm,
             str_to_wmb_wholememory_memory_type(memory_type),
             str_to_wmb_wholememory_location(memory_location),
-            wmb_optimizer,
             wmb_cache_policy,
             user_defined_sms=gather_sms,
             round_robin_size=round_robin_size,
         ),
-        optimizer,
         cache_policy,
     )
-    if optimizer is not None:
-        optimizer.add_embedding(wm_embedding)
     if random_init is True:
         (
             local_tensor,
@@ -476,7 +446,6 @@ def create_embedding_from_filelist(
     dtype: torch.dtype,
     last_dim_size: int,
     *,
-    optimizer: Union[WholeMemoryOptimizer, None] = None,
     cache_policy: Union[WholeMemoryCachePolicy, None] = None,
     gather_sms: int = -1,
     round_robin_size: int = 0,
@@ -489,7 +458,6 @@ def create_embedding_from_filelist(
     :param filelist: list of files
     :param dtype: data type
     :param last_dim_size: size of last dim
-    :param optimizer: optimizer
     :param cache_policy: cache policy
     :param gather_sms: the number of SMs used in gather process
     :param round_robin_size: continuous embedding size of a rank using round robin shard strategy
@@ -516,7 +484,6 @@ def create_embedding_from_filelist(
         memory_location,
         dtype,
         [total_entry_count, last_dim_size],
-        optimizer=optimizer,
         cache_policy=cache_policy,
         gather_sms=gather_sms,
         round_robin_size=round_robin_size,
@@ -554,3 +521,35 @@ class WholeMemoryEmbeddingModule(torch.nn.Module):
             self.training,
             force_dtype,
         )
+
+
+def create_wholememory_optimizer(embeddings: Union[WholeMemoryEmbedding, List[WholeMemoryEmbedding]],
+                                 optimizer_type: str,
+                                 param_dict: dict):
+    """
+    Create WholeMemoryOptimizer.
+    :param embeddings: WholememoryEmbeddings to set the Optimizer
+    :param optimizer_type: Type of the Optimizer
+    :param param_dict: parameters of the optimizer
+    :return: WholeMemoryOptimizer
+    """
+    wm_optimizer = WholeMemoryOptimizer(get_global_communicator())
+    wm_optimizer.wmb_opt.create_optimizer(
+        str_to_wmb_wholememory_optimizer_type(optimizer_type), param_dict
+    )
+    if isinstance(embeddings, WholeMemoryEmbedding):
+        wm_optimizer.add_embedding(embeddings)
+    else:
+        for em in embeddings:
+            wm_optimizer.add_embedding(em)
+    return wm_optimizer
+
+
+def destroy_wholememory_optimizer(optimizer: WholeMemoryOptimizer):
+    """
+    Destroy WholeMemoryOptimizer
+    :param optimizer: WholeMemoryOptimizer to destroy
+    :return: None
+    """
+    optimizer.wmb_opt.destroy_optimizer()
+    optimizer.wmb_opt = None

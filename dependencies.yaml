@@ -3,7 +3,7 @@ files:
   all:
     output: [conda]
     matrix:
-      cuda: ["11.8", "12.2"]
+      cuda: ["11.8", "12.5"]
       arch: [x86_64]
     includes:
       - checks
@@ -11,6 +11,7 @@ files:
       - cuda
       - cuda_version
       - py_version
+      - rapids_build_skbuild
       - run
       - test_python
       - docs
@@ -44,6 +45,7 @@ files:
       - cuda
       - cuda_version
       - py_version
+      - rapids_build_skbuild
       - run
       - pytorch_cpu
       - clang_tools
@@ -52,6 +54,14 @@ files:
     pyproject_dir: python/pylibwholegraph
     extras:
       table: build-system
+    includes:
+      - rapids_build_skbuild
+  py_rapids_build_pylibwholegraph:
+    output: pyproject
+    pyproject_dir: python/pylibwholegraph
+    extras:
+      table: tool.rapids-build-backend
+      key: requires
     includes:
       - python_build_wheel
 channels:
@@ -69,16 +79,15 @@ dependencies:
       - output_types: conda
         packages:
           - c-compiler
-          - cmake>=3.26.4
+          - cmake>=3.26.4,!=3.30.0
           - cudnn=8.8
           - cxx-compiler
           - cython>=3.0.0
           - &doxygen doxygen==1.9.1
-          - libraft-headers==24.6.*
-          - librmm==24.6.*
+          - libraft-headers==24.8.*
+          - librmm==24.8.*
           - nanobind>=0.2.0
           - nccl
-          - scikit-build-core>=0.7.0
     specific:
       - output_types: conda
         matrices:
@@ -141,6 +150,10 @@ dependencies:
               cuda: "12.2"
             packages:
               - cuda-version=12.2
+          - matrix:
+              cuda: "12.5"
+            packages:
+              - cuda-version=12.5
   cuda:
     specific:
       - output_types: conda
@@ -169,6 +182,7 @@ dependencies:
               cuda: "12.*"
             packages:
               - cuda-cudart-dev
+              - cuda-nvml-dev
               - cuda-nvtx
   checks:
     common:
@@ -218,7 +232,7 @@ dependencies:
           - pytest-forked
           - pytest-xdist
     specific:
-      - output_types: [conda, requirements]
+      - output_types: [conda]
         matrices:
           - matrix:
               arch: x86_64
@@ -302,7 +316,7 @@ dependencies:
           - sphinxcontrib-websupport
   pytorch_cpu:
     common:
-      - output_types: [conda, requirements]
+      - output_types: [conda]
         packages:
           - pytorch=2.0.0
           - cpuonly
@@ -315,11 +329,21 @@ dependencies:
         packages:
           - clangxx==16.0.6
           - clang-tools==16.0.6
+  rapids_build_skbuild:
+    common:
+      - output_types: [conda, requirements, pyproject]
+        packages:
+          - rapids-build-backend>=0.3.0,<0.4.0.dev0
+      - output_types: conda
+        packages:
+          - scikit-build-core>=0.7.0
+      - output_types: [requirements, pyproject]
+        packages:
+          - scikit-build-core[pyproject]>=0.7.0
   python_build_wheel:
     common:
       - output_types: [pyproject]
         packages:
-          - cmake>=3.26.4
+          - cmake>=3.26.4,!=3.30.0
           - cython>=3.0.0
           - ninja
-          - scikit-build-core[pyproject]>=0.7.0

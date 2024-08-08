@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2023, NVIDIA CORPORATION.
+ * Copyright (c) 2019-2024, NVIDIA CORPORATION.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -513,5 +513,7 @@ void nccl_comms::device_multicast_sendrecv(const void* sendbuf,
 void nccl_comms::group_start() const { RAFT_NCCL_TRY(ncclGroupStart()); }
 
 void nccl_comms::group_end() const { RAFT_NCCL_TRY(ncclGroupEnd()); }
+
+ncclComm_t nccl_comms::raw_nccl_comm() const { return nccl_comm_; }
 
 }  // namespace wholememory

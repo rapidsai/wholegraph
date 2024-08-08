@@ -49,23 +49,53 @@ static int64_t align_embedding_dim(int64_t embedding_dim, size_t element_size)
   return embedding_stride;
 }
 
+wholememory_error_code_t embedding_base::set_optimizer(wholememory_embedding_optimizer_t opt)
+{
+  try {
+    if (optimizer != nullptr) {
+      WHOLEMEMORY_ERROR("optimizer can only be set once.");
+      return WHOLEMEMORY_NOT_SUPPORTED;
+    }
+    optimizer = opt;
+    if (optimizer != nullptr) {
+      if (embedding_dtype_ != WHOLEMEMORY_DT_FLOAT) {
+        WHOLEMEMORY_ERROR("Only float embedding supports training.");
+        return WHOLEMEMORY_NOT_IMPLEMENTED;
+      }
+      if (cache_policy != nullptr) {
+        WHOLEMEMORY_CHECK_NOTHROW(cache_policy->access_type == WHOLEMEMORY_AT_READWRITE);
+        if (cache_policy->cache_comm != raw_embedding_comm_) {
+          WHOLEMEMORY_ERROR("optimizer not supported for local cached global readonly embedding.");
+          return WHOLEMEMORY_INVALID_INPUT;
+        }
+      }
+      optimizer_impl_base_ = static_cast<embedding_optimizer_impl_base*>(optimizer);
+      WHOLEMEMORY_RETURN_ON_FAIL(create_optimizer_states());
+      WHOLEMEMORY_RETURN_ON_FAIL(init_optimizer_states());
+    }
+  } catch (std::bad_alloc& sba) {
+    WHOLEMEMORY_ERROR("bad_alloc");
+    return WHOLEMEMORY_OUT_OF_MEMORY;
+  } catch (...) {
+    WHOLEMEMORY_ERROR("Unknown error");
+    return WHOLEMEMORY_UNKNOW_ERROR;
+  }
+
+  return WHOLEMEMORY_SUCCESS;
+}
+
 wholememory_error_code_t embedding_base::allocate(
   wholememory_matrix_description_t* embedding_description,
   wholememory_comm_t comm,
   wholememory_memory_type_t memory_type,
   wholememory_memory_location_t memory_location,
-  wholememory_embedding_cache_policy_t policy,
-  wholememory_embedding_optimizer_t opt) noexcept
+  wholememory_embedding_cache_policy_t policy) noexcept
 {
   cache_policy        = policy;
-  optimizer           = opt;
   raw_embedding_comm_ = comm;
+  embedding_dtype_    = embedding_description->dtype;
   wholememory_tensor_description_t padded_embedding_tensor_description;
   try {
-    if (optimizer != nullptr && embedding_description->dtype != WHOLEMEMORY_DT_FLOAT) {
-      WHOLEMEMORY_ERROR("Only float embedding supports training.");
-      return WHOLEMEMORY_NOT_IMPLEMENTED;
-    }
     if (cache_policy != nullptr) {
       WHOLEMEMORY_CHECK_NOTHROW(cache_policy->cache_comm != nullptr);
       if (cache_policy->cache_comm != comm) {
@@ -99,14 +129,6 @@ wholememory_error_code_t embedding_base::allocate(
     WHOLEMEMORY_RETURN_ON_FAIL(
       wholememory_tensor_get_subtensor(allocated_embedding, &starts[0], &ends[0], &user_embedding));
     if (cache_ptr_ != nullptr) { WHOLEMEMORY_RETURN_ON_FAIL(cache_ptr_->allocate(user_embedding)); }
-    if (optimizer != nullptr) {
-      if (cache_policy != nullptr) {
-        WHOLEMEMORY_CHECK_NOTHROW(cache_policy->access_type == WHOLEMEMORY_AT_READWRITE);
-      }
-      optimizer_impl_base_ = static_cast<embedding_optimizer_impl_base*>(optimizer);
-      WHOLEMEMORY_RETURN_ON_FAIL(create_optimizer_states());
-      WHOLEMEMORY_RETURN_ON_FAIL(init_optimizer_states());
-    }
   } catch (std::bad_alloc& sba) {
     WHOLEMEMORY_ERROR("bad_alloc");
     return WHOLEMEMORY_OUT_OF_MEMORY;
@@ -341,7 +363,6 @@ wholememory_error_code_t embedding_base::create_optimizer_states() noexcept
                                    raw_embedding_comm_,
                                    memory_type,
                                    memory_location,
-                                   nullptr,
                                    cache_policy));
 
     optimizer_state_->global_cachable_raw_user_tensor =
@@ -881,7 +902,6 @@ wholememory_error_code_t wholememory_create_embedding(
   wholememory_comm_t comm,
   wholememory_memory_type_t memory_type,
   wholememory_memory_location_t memory_location,
-  wholememory_embedding_optimizer_t optimizer,
   wholememory_embedding_cache_policy_t cache_policy,
   int user_defined_sms,
   int round_robin_size)
@@ -939,10 +959,6 @@ wholememory_error_code_t wholememory_create_embedding(
           "Only ReadOnly access type supported for local cached global readonly embedding.");
         return WHOLEMEMORY_INVALID_INPUT;
       }
-      if (optimizer != nullptr) {
-        WHOLEMEMORY_ERROR("optimizer not supported for local cached global readonly embedding.");
-        return WHOLEMEMORY_INVALID_INPUT;
-      }
       embedding_impl_ptr = new wholememory::local_cached_global_readonly_embedding();
     }
   } else {
@@ -953,11 +969,18 @@ wholememory_error_code_t wholememory_create_embedding(
     &embedding_matrix_description, embedding_world_size, round_robin_size);
   embedding_impl_ptr->set_gather_sms(user_defined_sms);
   WHOLEMEMORY_RETURN_ON_FAIL(embedding_impl_ptr->allocate(
-    &embedding_matrix_description, comm, memory_type, memory_location, cache_policy, optimizer));
+    &embedding_matrix_description, comm, memory_type, memory_location, cache_policy));
   *wholememory_embedding = static_cast<wholememory_embedding_t>(embedding_impl_ptr);
   return WHOLEMEMORY_SUCCESS;
 }
 
+wholememory_error_code_t wholememory_embedding_set_optimizer(
+  wholememory_embedding_t wholememory_embedding, wholememory_embedding_optimizer_t optimizer)
+{
+  auto* embedding_impl_ptr = static_cast<wholememory::embedding_base*>(wholememory_embedding);
+  WHOLEMEMORY_RETURN_ON_FAIL(embedding_impl_ptr->set_optimizer(optimizer));
+  return WHOLEMEMORY_SUCCESS;
+}
 wholememory_error_code_t wholememory_destroy_embedding(
   wholememory_embedding_t wholememory_embedding)
 {

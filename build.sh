@@ -271,7 +271,11 @@ if buildAll || hasArg pylibwholegraph; then
     if ! hasArg --compile-cmd; then
         cd ${REPODIR}/python/pylibwholegraph
         env LIBWHOLEGRAPH_DIR=${LIBWHOLEGRAPH_DIR} \
-        SKBUILD_CMAKE_ARGS="-DCMAKE_BUILD_TYPE=${BUILD_TYPE};${EXTRA_CMAKE_ARGS/ /;}" ${PYTHON} -m pip install --no-build-isolation --no-deps .
+        SKBUILD_CMAKE_ARGS="-DCMAKE_BUILD_TYPE=${BUILD_TYPE};${EXTRA_CMAKE_ARGS/ /;}" ${PYTHON} -m pip install \
+            --no-build-isolation \
+            --no-deps \
+            --config-settings rapidsai.disable-cuda=true \
+            .
 
     else
         # just invoke cmake without going through scikit-build-core
