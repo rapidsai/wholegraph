@@ -43,7 +43,7 @@ dependencies:
 - pytorch=2.0.0
 - rapids-build-backend>=0.3.0,<0.4.0.dev0
 - recommonmark
-- scikit-build-core>=0.7.0
+- scikit-build-core>=0.10.0
 - sphinx-copybutton
 - sphinx-markdown-tables
 - sphinx<6

@@ -14,7 +14,7 @@ cmake_version:
   - ">=3.26.4,!=3.30.0"
 
 scikit_build_core_version:
-  - ">=0.7.0"
+  - ">=0.10.0"
 
 c_stdlib:
   - sysroot
