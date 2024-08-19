@@ -32,7 +32,7 @@ dependencies:
 - nbsphinx
 - nccl
 - ninja
-- numpy>=1.23,<2.0a0
+- numpy>=1.23,<3
 - numpydoc
 - pre-commit
 - pydata-sphinx-theme
