@@ -1778,7 +1778,7 @@ class hierarchy_wholememory_impl : public wholememory_impl {
 #endif
     } else {
       int world_rank = -1, local_size = -1;
-      wholememory_communicator_get_size(&world_rank, global_comm);
+      wholememory_communicator_get_rank(&world_rank, global_comm);
       wholememory_communicator_get_local_size(&local_size, global_comm);
       wholememory_split_communicator(
         &cross_comm_, global_comm, world_rank % local_size, world_rank / local_size);
@@ -2038,7 +2038,7 @@ wholememory_error_code_t create_wholememory(wholememory_handle_t* wholememory_ha
 #endif
       } else {
         int world_rank = -1, local_size = -1;
-        wholememory_communicator_get_size(&world_rank, comm);
+        wholememory_communicator_get_rank(&world_rank, comm);
         wholememory_communicator_get_local_size(&local_size, comm);
         wholememory_split_communicator(
           &local_comm, comm, world_rank / local_size, world_rank % local_size);
