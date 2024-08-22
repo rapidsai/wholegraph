@@ -32,6 +32,7 @@ wholememory_error_code_t bucket_and_reorder_ids_for_hierarchy_func(
   size_t embedding_entry_count_per_rank,
   wholememory_comm_t wm_global_comm,
   wholememory_comm_t wm_local_comm,
+  int bucket_cross_or_local,  // 0: cross, 1: local
   wm_thrust_allocator* p_thrust_allocator,
   wholememory_env_func_t* p_env_fns,
   cudaStream_t stream);

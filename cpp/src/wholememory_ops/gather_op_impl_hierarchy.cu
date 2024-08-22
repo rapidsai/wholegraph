@@ -38,6 +38,7 @@ static wholememory_error_code_t wholememory_cross_gather(
   wholememory_array_description_t indice_desc,
   void* output,
   wholememory_matrix_description_t output_desc,
+  int64_t* host_bucket_id_count_ptr,
   size_t embedding_entry_count_per_rank,
   wholememory_comm_t wm_local_comm,
   wholememory_comm_t wm_cross_comm,
@@ -48,27 +49,15 @@ static wholememory_error_code_t wholememory_cross_gather(
 {
   int cross_size;
   WHOLEMEMORY_RETURN_ON_FAIL(wholememory_communicator_get_size(&cross_size, wm_cross_comm));
-  // bucket ids
-  std::vector<int64_t> host_bucket_id_count(cross_size, 0);
   std::vector<int64_t> host_bucket_id_offset(cross_size);
   std::vector<int64_t> host_recv_id_count(cross_size, 0);
   std::vector<int64_t> host_recv_id_offset(cross_size);
-  bucket_local_ids_func(indices,
-                        indice_desc,
-                        host_bucket_id_count.data(),
-                        embedding_entry_count_per_rank,
-                        wm_local_comm,
-                        wm_cross_comm,
-                        p_thrust_allocator,
-                        p_env_fns,
-                        stream);
-  WM_CUDA_CHECK(cudaStreamSynchronize(stream));
   // exchange node count
   wm_cross_comm->host_alltoall(
-    host_bucket_id_count.data(), host_recv_id_count.data(), 1, WHOLEMEMORY_DT_INT64);
+    host_bucket_id_count_ptr, host_recv_id_count.data(), 1, WHOLEMEMORY_DT_INT64);
   host_bucket_id_offset[0] = 0;
   for (int i = 1; i < cross_size; i++)
-    host_bucket_id_offset[i] = host_bucket_id_offset[i - 1] + host_bucket_id_count[i - 1];
+    host_bucket_id_offset[i] = host_bucket_id_offset[i - 1] + host_bucket_id_count_ptr[i - 1];
   wm_cross_comm->sync_stream();
   // exchange indices
   int64_t total_recv_count = 0;
@@ -81,7 +70,7 @@ static wholememory_error_code_t wholememory_cross_gather(
     dev_recv_bucket_indices_handle.device_malloc(total_recv_count, indice_desc.dtype);
   wm_cross_comm->alltoallv(indices,
                            dev_recv_bucket_indices_ptr,
-                           reinterpret_cast<const size_t*>(host_bucket_id_count.data()),
+                           reinterpret_cast<const size_t*>(host_bucket_id_count_ptr),
                            reinterpret_cast<const size_t*>(host_bucket_id_offset.data()),
                            reinterpret_cast<const size_t*>(host_recv_id_count.data()),
                            reinterpret_cast<const size_t*>(host_recv_id_offset.data()),
@@ -117,7 +106,7 @@ static wholememory_error_code_t wholememory_cross_gather(
     wholememory_desc.sizes[1] * wholememory_dtype_get_element_size(output_desc.dtype);
   WHOLEMEMORY_RETURN_ON_FAIL(exchange_embeddings_nccl_func(dev_local_gather_buffer_ptr,
                                                            host_recv_id_count.data(),
-                                                           host_bucket_id_count.data(),
+                                                           host_bucket_id_count_ptr,
                                                            output,
                                                            output_embedding_size,
                                                            wm_cross_comm,
@@ -141,6 +130,8 @@ wholememory_error_code_t wholememory_gather_hierarchy(
         wholememory_desc.storage_offset + wholememory_desc.sizes[1] > wholememory_desc.stride) {
       return WHOLEMEMORY_INVALID_INPUT;
     }
+
+    bool sort_unique_indices = true;
 
     wm_thrust_allocator thrust_allocator(p_env_fns);
 
@@ -168,7 +159,7 @@ wholememory_error_code_t wholememory_gather_hierarchy(
     WHOLEMEMORY_RETURN_ON_FAIL(
       wholememory_get_local_communicator(&wm_local_comm, wholememory_handle));
     // WHOLEMEMORY_RETURN_ON_FAIL(wholememory_split_communicator(
-    //   &wm_local_comm, wm_global_comm, world_rank / local_size, world_rank % local_size));
+    // &wm_local_comm, wm_global_comm, world_rank / local_size, world_rank % local_size));
     WHOLEMEMORY_RETURN_ON_FAIL(wholememory_communicator_get_size(&local_size, wm_local_comm));
     WHOLEMEMORY_RETURN_ON_FAIL(wholememory_communicator_get_rank(&local_rank, wm_local_comm));
 
@@ -177,7 +168,7 @@ wholememory_error_code_t wholememory_gather_hierarchy(
     WHOLEMEMORY_RETURN_ON_FAIL(
       wholememory_get_cross_communicator(&wm_cross_comm, wholememory_handle));
     // WHOLEMEMORY_RETURN_ON_FAIL(wholememory_split_communicator(
-    //   &wm_cross_comm, wm_global_comm, world_rank % local_size, world_rank / local_size));
+    // &wm_cross_comm, wm_global_comm, world_rank % local_size, world_rank / local_size));
     WHOLEMEMORY_RETURN_ON_FAIL(wholememory_communicator_get_size(&cross_size, wm_cross_comm));
     WHOLEMEMORY_CHECK_NOTHROW(world_size == local_size * cross_size);
 
@@ -203,6 +194,7 @@ wholememory_error_code_t wholememory_gather_hierarchy(
                                                 embedding_entry_count_per_rank,
                                                 wm_global_comm,
                                                 wm_local_comm,
+                                                0,
                                                 &thrust_allocator,
                                                 p_env_fns,
                                                 stream));
@@ -235,31 +227,65 @@ wholememory_error_code_t wholememory_gather_hierarchy(
                              stream);
     wm_local_comm->sync_stream(stream);
     WM_CUDA_CHECK(cudaGetLastError());
-    // sort unique recv indices
-    temp_memory_handle sort_unique_indices_handle(p_env_fns);
-    wholememory_array_description_t sort_unique_indice_desc;
-    temp_memory_handle dev_sort_unique_ids_map_handle(p_env_fns);
-    sort_unique_ids_for_hierarchy_func(dev_recv_bucket_indices_ptr,
-                                       recv_bucket_indices_desc,
-                                       &sort_unique_indices_handle,
-                                       &sort_unique_indice_desc,
-                                       &dev_sort_unique_ids_map_handle,
-                                       &thrust_allocator,
-                                       p_env_fns,
-                                       stream);
+    // sort unique / bucket recv indices
+    temp_memory_handle cross_gather_indices_handle(p_env_fns);
+    wholememory_array_description_t cross_gather_indices_desc;
+    temp_memory_handle dev_cross_gather_id_map_handle(p_env_fns);
+    std::vector<int64_t> host_cross_bucket_id_count(cross_size, 0);
+    if (sort_unique_indices) {
+      sort_unique_ids_for_hierarchy_func(dev_recv_bucket_indices_ptr,
+                                         recv_bucket_indices_desc,
+                                         &cross_gather_indices_handle,
+                                         &cross_gather_indices_desc,
+                                         &dev_cross_gather_id_map_handle,
+                                         &thrust_allocator,
+                                         p_env_fns,
+                                         stream);
+      bucket_local_ids_func(cross_gather_indices_handle.pointer(),
+                            cross_gather_indices_desc,
+                            host_cross_bucket_id_count.data(),
+                            embedding_entry_count_per_rank,
+                            wm_local_comm,
+                            wm_cross_comm,
+                            &thrust_allocator,
+                            p_env_fns,
+                            stream);
+    } else {
+      void* cross_gather_indices_ptr = cross_gather_indices_handle.device_malloc(
+        recv_bucket_indices_desc.size, recv_bucket_indices_desc.dtype);
+      void* dev_cross_gather_id_map_ptr = dev_cross_gather_id_map_handle.device_malloc(
+        recv_bucket_indices_desc.size, recv_bucket_indices_desc.dtype);
+      cross_gather_indices_desc = recv_bucket_indices_desc;
+      WHOLEMEMORY_RETURN_ON_FAIL(
+        bucket_and_reorder_ids_for_hierarchy_func(dev_recv_bucket_indices_ptr,
+                                                  recv_bucket_indices_desc,
+                                                  cross_gather_indices_ptr,
+                                                  dev_cross_gather_id_map_ptr,
+                                                  host_cross_bucket_id_count.data(),
+                                                  embedding_entry_count_per_rank,
+                                                  wm_global_comm,
+                                                  wm_local_comm,
+                                                  1,
+                                                  &thrust_allocator,
+                                                  p_env_fns,
+                                                  stream));
+    }
+    WM_CUDA_CHECK(cudaStreamSynchronize(stream));
     // cross gather
     temp_memory_handle dev_cross_gather_buffer_handle(p_env_fns);
     void* dev_cross_gather_buffer_ptr = dev_cross_gather_buffer_handle.device_malloc(
-      wholememory_desc.sizes[1] * sort_unique_indice_desc.size, output_desc.dtype);
-    int64_t cross_gather_buffer_size[2] = {sort_unique_indice_desc.size, wholememory_desc.sizes[1]};
+      wholememory_desc.sizes[1] * cross_gather_indices_desc.size, output_desc.dtype);
+    int64_t cross_gather_buffer_size[2]                       = {cross_gather_indices_desc.size,
+                                                                 wholememory_desc.sizes[1]};
     wholememory_matrix_description_t cross_gather_buffer_desc = wholememory_create_matrix_desc(
       cross_gather_buffer_size, wholememory_desc.sizes[1], 0, output_desc.dtype);
     wholememory_cross_gather(wholememory_handle,
                              wholememory_desc,
-                             sort_unique_indices_handle.pointer(),
-                             sort_unique_indice_desc,
+                             cross_gather_indices_handle.pointer(),
+                             cross_gather_indices_desc,
                              dev_cross_gather_buffer_ptr,
                              cross_gather_buffer_desc,
+                             host_cross_bucket_id_count.data(),
                              embedding_entry_count_per_rank,
                              wm_local_comm,
                              wm_cross_comm,
@@ -267,7 +293,7 @@ wholememory_error_code_t wholememory_gather_hierarchy(
                              p_env_fns,
                              stream,
                              gather_sms);
-    // sort-unique reorder
+    // cross gather reorder
     temp_memory_handle dev_embedding_map_buffer_handle(p_env_fns);
     void* dev_embedding_map_buffer_ptr = dev_embedding_map_buffer_handle.device_malloc(
       wholememory_desc.sizes[1] * total_recv_count, output_desc.dtype);
@@ -278,7 +304,7 @@ wholememory_error_code_t wholememory_gather_hierarchy(
       wholememory_create_continuous_global_reference(dev_cross_gather_buffer_ptr);
     WHOLEMEMORY_RETURN_ON_FAIL(gather_func(cross_gather_fake_gref,
                                            cross_gather_buffer_desc,
-                                           dev_sort_unique_ids_map_handle.pointer(),
+                                           dev_cross_gather_id_map_handle.pointer(),
                                            recv_bucket_indices_desc,
                                            dev_embedding_map_buffer_ptr,
                                            embedding_map_buffer_desc,
