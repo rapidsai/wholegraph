@@ -30,7 +30,7 @@ dependencies:
 - nbsphinx
 - nccl
 - ninja
-- numpy>=1.23,<2.0a0
+- numpy>=1.23,<3.0a0
 - numpydoc
 - nvcc_linux-64=11.8
 - pre-commit
