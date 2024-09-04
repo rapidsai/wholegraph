@@ -38,7 +38,7 @@ dependencies:
 - pytest
 - pytest-forked
 - pytest-xdist
-- python>=3.10,<3.12
+- python>=3.10,<3.13
 - pytorch-cuda=11.8
 - pytorch=2.0.0
 - rapids-build-backend>=0.3.0,<0.4.0.dev0
