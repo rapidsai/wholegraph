@@ -295,7 +295,7 @@ wholememory_error_code_t wholememory_get_local_communicator(
 /**
  * Get underlying Wholememory Cross Communicator for "Hierarchy" memory type from WholeMemory Handle
  * One comminicator includes all rank with a same local id from different nodes
- * @param comm : returned Local WholeMemory Communicator
+ * @param comm : returned Cross WholeMemory Communicator
  * @param wholememory_handle : WholeMemory Handle
  * @return : wholememory_error_code_t
  */
@@ -347,20 +347,6 @@ wholememory_error_code_t wholememory_get_local_memory(void** local_ptr,
                                                       size_t* local_size,
                                                       size_t* local_offset,
                                                       wholememory_handle_t wholememory_handle);
-
-/**
- * Get local node memory from WholeMemory Handle, all gpus of the rank has direct access to the
- * memory. Note that this is only available for WHOLEMEMORY_MT_HIERARCHY memory type.
- * @param local_ptr : returned local node memory pointer
- * @param local_size : returned local node memory size
- * @param local_offset : returned local node memory offset from WholeMemory
- * @param wholememory_handle : WholeMemory Handle
- * @return : wholememory_error_code_t
- */
-wholememory_error_code_t wholememory_get_local_node_memory(void** local_ptr,
-                                                           size_t* local_size,
-                                                           size_t* local_offset,
-                                                           wholememory_handle_t wholememory_handle);
 
 /**
  * Get local memory size from WholeMemory Handle of current rank

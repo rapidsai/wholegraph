@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2024, NVIDIA CORPORATION.
+ * Copyright (c) 2024, NVIDIA CORPORATION.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -39,7 +39,6 @@ static wholememory_error_code_t wholememory_cross_gather(
   void* output,
   wholememory_matrix_description_t output_desc,
   int64_t* host_bucket_id_count_ptr,
-  size_t embedding_entry_count_per_rank,
   wholememory_comm_t wm_local_comm,
   wholememory_comm_t wm_cross_comm,
   wm_thrust_allocator* p_thrust_allocator,
@@ -130,23 +129,9 @@ wholememory_error_code_t wholememory_gather_hierarchy(
         wholememory_desc.storage_offset + wholememory_desc.sizes[1] > wholememory_desc.stride) {
       return WHOLEMEMORY_INVALID_INPUT;
     }
-
     bool sort_unique_indices = true;
 
     wm_thrust_allocator thrust_allocator(p_env_fns);
-
-    size_t embedding_size_per_rank;
-    WHOLEMEMORY_RETURN_ON_FAIL(
-      wholememory_get_partition_plan(&embedding_size_per_rank, wholememory_handle));
-    size_t element_size         = wholememory_dtype_get_element_size(wholememory_desc.dtype);
-    size_t embedding_entry_size = element_size * wholememory_desc.stride;
-    WHOLEMEMORY_EXPECTS_NOTHROW(
-      embedding_size_per_rank % embedding_entry_size == 0,
-      "embedding_size_per_rank=%ld is not multiple of embedding_entry_size=%ldx%ld",
-      embedding_size_per_rank,
-      element_size,
-      wholememory_desc.stride);
-    size_t embedding_entry_count_per_rank = embedding_size_per_rank / embedding_entry_size;
 
     wholememory_comm_t wm_global_comm;
     int world_size, world_rank;
@@ -158,8 +143,6 @@ wholememory_error_code_t wholememory_gather_hierarchy(
     int local_size, local_rank;
     WHOLEMEMORY_RETURN_ON_FAIL(
       wholememory_get_local_communicator(&wm_local_comm, wholememory_handle));
-    // WHOLEMEMORY_RETURN_ON_FAIL(wholememory_split_communicator(
-    // &wm_local_comm, wm_global_comm, world_rank / local_size, world_rank % local_size));
     WHOLEMEMORY_RETURN_ON_FAIL(wholememory_communicator_get_size(&local_size, wm_local_comm));
     WHOLEMEMORY_RETURN_ON_FAIL(wholememory_communicator_get_rank(&local_rank, wm_local_comm));
 
@@ -167,10 +150,34 @@ wholememory_error_code_t wholememory_gather_hierarchy(
     int cross_size;
     WHOLEMEMORY_RETURN_ON_FAIL(
       wholememory_get_cross_communicator(&wm_cross_comm, wholememory_handle));
-    // WHOLEMEMORY_RETURN_ON_FAIL(wholememory_split_communicator(
-    // &wm_cross_comm, wm_global_comm, world_rank % local_size, world_rank / local_size));
     WHOLEMEMORY_RETURN_ON_FAIL(wholememory_communicator_get_size(&cross_size, wm_cross_comm));
     WHOLEMEMORY_CHECK_NOTHROW(world_size == local_size * cross_size);
+
+    size_t element_size         = wholememory_dtype_get_element_size(wholememory_desc.dtype);
+    size_t embedding_entry_size = element_size * wholememory_desc.stride;
+    temp_memory_handle dev_embedding_entry_offsets_handle(p_env_fns);
+    size_t* dev_embedding_entry_offsets_ptr = static_cast<size_t*>(
+      dev_embedding_entry_offsets_handle.device_malloc(world_size + 1, WHOLEMEMORY_DT_INT64));
+    std::vector<size_t> host_embedding_entry_offsets(world_size + 1);
+    WHOLEMEMORY_RETURN_ON_FAIL(wholememory_get_rank_partition_offsets(
+      host_embedding_entry_offsets.data(), wholememory_handle));
+    for (int i = 0; i < world_size + 1; i++) {
+      size_t offset = host_embedding_entry_offsets[i];
+      WHOLEMEMORY_EXPECTS_NOTHROW(
+        offset % embedding_entry_size == 0,
+        "embedding memory offset of rank%d=%ld is not multiple of embedding_entry_size=%ldx%ld",
+        i,
+        offset,
+        element_size,
+        wholememory_desc.stride);
+      host_embedding_entry_offsets[i] /= embedding_entry_size;
+    }
+
+    WM_CUDA_CHECK(cudaMemcpyAsync(dev_embedding_entry_offsets_ptr,
+                                  host_embedding_entry_offsets.data(),
+                                  (world_size + 1) * sizeof(size_t),
+                                  cudaMemcpyHostToDevice,
+                                  stream));
 
     temp_memory_handle dev_bucket_indices_handle(p_env_fns);
     void* dev_bucket_indices_ptr =
@@ -191,7 +198,7 @@ wholememory_error_code_t wholememory_gather_hierarchy(
                                                 dev_bucket_indices_ptr,
                                                 dev_bucket_ids_map_ptr,
                                                 host_bucket_id_count.data(),
-                                                embedding_entry_count_per_rank,
+                                                dev_embedding_entry_offsets_ptr,
                                                 wm_global_comm,
                                                 wm_local_comm,
                                                 0,
@@ -244,7 +251,7 @@ wholememory_error_code_t wholememory_gather_hierarchy(
       bucket_local_ids_func(cross_gather_indices_handle.pointer(),
                             cross_gather_indices_desc,
                             host_cross_bucket_id_count.data(),
-                            embedding_entry_count_per_rank,
+                            dev_embedding_entry_offsets_ptr,
                             wm_local_comm,
                             wm_cross_comm,
                             &thrust_allocator,
@@ -262,7 +269,7 @@ wholememory_error_code_t wholememory_gather_hierarchy(
                                                   cross_gather_indices_ptr,
                                                   dev_cross_gather_id_map_ptr,
                                                   host_cross_bucket_id_count.data(),
-                                                  embedding_entry_count_per_rank,
+                                                  dev_embedding_entry_offsets_ptr,
                                                   wm_global_comm,
                                                   wm_local_comm,
                                                   1,
@@ -286,7 +293,6 @@ wholememory_error_code_t wholememory_gather_hierarchy(
                              dev_cross_gather_buffer_ptr,
                              cross_gather_buffer_desc,
                              host_cross_bucket_id_count.data(),
-                             embedding_entry_count_per_rank,
                              wm_local_comm,
                              wm_cross_comm,
                              &thrust_allocator,

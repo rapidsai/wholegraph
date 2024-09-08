@@ -33,24 +33,50 @@
 
 namespace wholememory_ops {
 
+template <typename IndexT>
+__device__ __forceinline__ int dest_rank(IndexT entry_idx,
+                                         const size_t* embedding_entry_offsets,
+                                         int world_size)
+{
+  size_t total_entry_count        = embedding_entry_offsets[world_size];
+  size_t estimated_entry_per_rank = total_entry_count / world_size;
+  int estimated_rank              = max(world_size - 1, int(entry_idx / estimated_entry_per_rank));
+  if (embedding_entry_offsets[estimated_rank] > entry_idx) {
+    for (int i = estimated_rank - 1; i >= 0; i--) {
+      if (embedding_entry_offsets[i] <= entry_idx) { return i; }
+    }
+  } else {
+    for (int i = estimated_rank + 1; i <= world_size; i++) {
+      if (embedding_entry_offsets[i] > entry_idx) { return i - 1; }
+    }
+  }
+  return 0;
+}
+
 template <typename IndexT, int BUCKET_CROSS_OR_LOCAL = 0>
 __global__ void bucket_ids_for_hierarchy_kernel(const IndexT* indices,
                                                 size_t indice_count,
                                                 int64_t* dev_rank_id_count_ptr,
-                                                size_t embedding_entry_count_per_rank,
+                                                const size_t* embedding_entry_offsets,
                                                 int local_size,
+                                                int world_size,
                                                 int nbucket)
 {
-  extern __shared__ int rank_count_shared[];
+  extern __shared__ char shared_mem[];
+  size_t* embedding_entry_offsets_shared = reinterpret_cast<size_t*>(shared_mem);
+  int* rank_count_shared = reinterpret_cast<int*>(shared_mem + sizeof(size_t) * (world_size + 1));
   for (int idx = threadIdx.x; idx < nbucket; idx += blockDim.x) {
     rank_count_shared[idx] = 0;
+  }
+  for (int idx = threadIdx.x; idx < world_size + 1; idx += blockDim.x) {
+    embedding_entry_offsets_shared[idx] = embedding_entry_offsets[idx];
   }
   __syncthreads();
   for (int idx = threadIdx.x + blockIdx.x * blockDim.x; idx < indice_count;
        idx += blockDim.x * gridDim.x) {
     IndexT node_idx = indices[idx];
     if (node_idx < 0) continue;
-    int rank   = node_idx / embedding_entry_count_per_rank;
+    int rank   = dest_rank(node_idx, embedding_entry_offsets_shared, world_size);
     int bucket = 0;
     if (BUCKET_CROSS_OR_LOCAL == 0)
       bucket = rank % local_size;
@@ -73,7 +99,7 @@ template <typename IndexT>
 void bucket_ids_for_hierarchy_temp_func(const void* indices,
                                         wholememory_array_description_t indice_desc,
                                         int64_t* dev_rank_id_count_ptr,
-                                        size_t embedding_entry_count_per_rank,
+                                        const size_t* dev_embedding_entry_offsets,
                                         int local_size,
                                         int cross_size,
                                         int bucket_cross_or_local,
@@ -85,29 +111,35 @@ void bucket_ids_for_hierarchy_temp_func(const void* indices,
   block_count               = std::min(block_count, sm_count * 4);
   const IndexT* indices_ptr = static_cast<const IndexT*>(indices);
   indices_ptr += indice_desc.storage_offset;
-
+  int world_size = local_size * cross_size;
   if (bucket_cross_or_local == 0) {
     int bucket_size = local_size;
     cudaMemsetAsync(dev_rank_id_count_ptr, 0, sizeof(int64_t) * bucket_size, stream);
     bucket_ids_for_hierarchy_kernel<IndexT, 0>
-      <<<block_count, BLOCK_SIZE, sizeof(int) * bucket_size, stream>>>(
-        indices_ptr,
-        indice_desc.size,
-        dev_rank_id_count_ptr,
-        embedding_entry_count_per_rank,
-        local_size,
-        bucket_size);
+      <<<block_count,
+         BLOCK_SIZE,
+         sizeof(size_t) * (world_size + 1) + sizeof(int) * bucket_size,
+         stream>>>(indices_ptr,
+                   indice_desc.size,
+                   dev_rank_id_count_ptr,
+                   dev_embedding_entry_offsets,
+                   local_size,
+                   world_size,
+                   bucket_size);
   } else {
     int bucket_size = cross_size;
     cudaMemsetAsync(dev_rank_id_count_ptr, 0, sizeof(int64_t) * bucket_size, stream);
     bucket_ids_for_hierarchy_kernel<IndexT, 1>
-      <<<block_count, BLOCK_SIZE, sizeof(int) * bucket_size, stream>>>(
-        indices_ptr,
-        indice_desc.size,
-        dev_rank_id_count_ptr,
-        embedding_entry_count_per_rank,
-        local_size,
-        bucket_size);
+      <<<block_count,
+         BLOCK_SIZE,
+         sizeof(size_t) * (world_size + 1) + sizeof(int) * bucket_size,
+         stream>>>(indices_ptr,
+                   indice_desc.size,
+                   dev_rank_id_count_ptr,
+                   dev_embedding_entry_offsets,
+                   local_size,
+                   world_size,
+                   bucket_size);
   }
 }
 
@@ -119,23 +151,31 @@ __global__ void reorder_ids_for_hierarchy_kernel(const IndexT* indices,
                                                  IndexT* dev_bucket_indices,
                                                  IndexT* dev_indice_map,
                                                  const int64_t* dev_rank_id_offset_ptr,
-                                                 size_t embedding_entry_count_per_rank,
+                                                 const size_t* embedding_entry_offsets,
                                                  int local_size,
+                                                 int world_size,
                                                  int nbucket,
                                                  int64_t* dev_bucket_atomic_add_ptr)
 {
   constexpr size_t shared_mem_size = 24576;
   __shared__ char shared_mem[shared_mem_size];
-  int* block_bucket_count_shared      = reinterpret_cast<int*>(shared_mem);
-  int* block_bucket_atomic_add_shared = reinterpret_cast<int*>(shared_mem) + nbucket;
+  size_t* embedding_entry_offsets_shared = reinterpret_cast<size_t*>(shared_mem);
+  char* shared_mem_for_bucket            = shared_mem + sizeof(size_t) * (world_size + 1);
+  int* block_bucket_count_shared         = reinterpret_cast<int*>(shared_mem_for_bucket);
+  int* block_bucket_atomic_add_shared    = reinterpret_cast<int*>(shared_mem_for_bucket) + nbucket;
   IndexT* block_bucket_offset_shared =
-    reinterpret_cast<IndexT*>(shared_mem + 2 * sizeof(int) * nbucket);
+    reinterpret_cast<IndexT*>(shared_mem_for_bucket + 2 * sizeof(int) * nbucket);
   IndexT* global_bucket_offset_shared = block_bucket_offset_shared + nbucket;
-  size_t buffer_size =
-    (shared_mem_size - nbucket * 2 * (sizeof(IndexT) + sizeof(int))) / sizeof(IndexT) / 2;
+  size_t buffer_size                  = (shared_mem_size - sizeof(size_t) * (world_size + 1) -
+                        nbucket * 2 * (sizeof(IndexT) + sizeof(int))) /
+                       sizeof(IndexT) / 2;
   buffer_size = (buffer_size / blockDim.x) * blockDim.x;
   assert(buffer_size > 0);
 
+  for (int idx = threadIdx.x; idx < world_size + 1; idx += blockDim.x) {
+    embedding_entry_offsets_shared[idx] = embedding_entry_offsets[idx];
+  }
+  __syncthreads();
   IndexT* buffer_load  = global_bucket_offset_shared + nbucket;
   IndexT* buffer_store = buffer_load + buffer_size;
 
@@ -156,7 +196,7 @@ __global__ void reorder_ids_for_hierarchy_kernel(const IndexT* indices,
 
       buffer_load[i] = indice;
       int bucket_idx = 0;
-      int rank       = indice / embedding_entry_count_per_rank;
+      int rank       = dest_rank(indice, embedding_entry_offsets_shared, world_size);
       if (BUCKET_CROSS_OR_LOCAL == 0) {
         bucket_idx = rank % local_size;
       } else {
@@ -188,7 +228,7 @@ __global__ void reorder_ids_for_hierarchy_kernel(const IndexT* indices,
       IndexT load_idx = i + load_offset;
       if (load_idx >= indice_count) break;
       int bucket_idx = 0;
-      int rank       = indice / embedding_entry_count_per_rank;
+      int rank       = dest_rank(indice, embedding_entry_offsets_shared, world_size);
       if (BUCKET_CROSS_OR_LOCAL == 0) {
         bucket_idx = rank % local_size;
       } else {
@@ -223,7 +263,7 @@ void reorder_ids_for_hierarchy_temp_func(const void* indices,
                                          void* dev_bucket_indices,
                                          void* dev_indice_map,
                                          const int64_t* dev_rank_id_count_ptr,
-                                         size_t embedding_entry_count_per_rank,
+                                         const size_t* dev_embedding_entry_offsets,
                                          int local_size,
                                          int cross_size,
                                          int bucket_cross_or_local,
@@ -241,6 +281,7 @@ void reorder_ids_for_hierarchy_temp_func(const void* indices,
   } else {
     nbucket = cross_size;
   }
+  int world_size = local_size * cross_size;
   temp_memory_handle dev_rank_id_offset_handle(p_env_fns);
   int64_t* dev_rank_id_offset_ptr =
     static_cast<int64_t*>(dev_rank_id_offset_handle.device_malloc(nbucket, WHOLEMEMORY_DT_INT64));
@@ -276,8 +317,9 @@ void reorder_ids_for_hierarchy_temp_func(const void* indices,
                                                static_cast<IndexT*>(dev_bucket_indices),
                                                static_cast<IndexT*>(dev_indice_map),
                                                dev_rank_id_offset_ptr,
-                                               embedding_entry_count_per_rank,
+                                               dev_embedding_entry_offsets,
                                                local_size,
+                                               world_size,
                                                nbucket,
                                                dev_bucket_atomic_add_ptr);
   else
@@ -287,8 +329,9 @@ void reorder_ids_for_hierarchy_temp_func(const void* indices,
                                                static_cast<IndexT*>(dev_bucket_indices),
                                                static_cast<IndexT*>(dev_indice_map),
                                                dev_rank_id_offset_ptr,
-                                               embedding_entry_count_per_rank,
+                                               dev_embedding_entry_offsets,
                                                local_size,
+                                               world_size,
                                                nbucket,
                                                dev_bucket_atomic_add_ptr);
   ;
@@ -302,7 +345,7 @@ wholememory_error_code_t bucket_and_reorder_ids_for_hierarchy_func(
   void* dev_bucket_indices,
   void* dev_indice_map,
   int64_t* host_bucket_id_count,
-  size_t embedding_entry_count_per_rank,
+  size_t* dev_embedding_entry_offsets,
   wholememory_comm_t wm_global_comm,
   wholememory_comm_t wm_local_comm,
   int bucket_cross_or_local,
@@ -338,7 +381,7 @@ wholememory_error_code_t bucket_and_reorder_ids_for_hierarchy_func(
                       indices,
                       indice_desc,
                       dev_rank_id_count_ptr,
-                      embedding_entry_count_per_rank,
+                      dev_embedding_entry_offsets,
                       local_size,
                       cross_size,
                       bucket_cross_or_local,
@@ -361,7 +404,7 @@ wholememory_error_code_t bucket_and_reorder_ids_for_hierarchy_func(
                       dev_bucket_indices,
                       dev_indice_map,
                       dev_rank_id_count_ptr,
-                      embedding_entry_count_per_rank,
+                      dev_embedding_entry_offsets,
                       local_size,
                       cross_size,
                       bucket_cross_or_local,
@@ -384,7 +427,7 @@ wholememory_error_code_t bucket_and_reorder_ids_for_hierarchy_func(
 wholememory_error_code_t bucket_local_ids_func(void* indices,
                                                wholememory_array_description_t indice_desc,
                                                int64_t* host_bucket_id_count,
-                                               size_t embedding_entry_count_per_rank,
+                                               size_t* dev_embedding_entry_offsets,
                                                wholememory_comm_t wm_local_comm,
                                                wholememory_comm_t wm_cross_comm,
                                                wm_thrust_allocator* p_thrust_allocator,
@@ -409,7 +452,7 @@ wholememory_error_code_t bucket_local_ids_func(void* indices,
                       indices,
                       indice_desc,
                       dev_rank_id_count_ptr,
-                      embedding_entry_count_per_rank,
+                      dev_embedding_entry_offsets,
                       local_size,
                       cross_size,
                       1,

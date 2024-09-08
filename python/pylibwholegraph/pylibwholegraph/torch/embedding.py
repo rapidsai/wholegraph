@@ -426,7 +426,7 @@ def create_embedding(
     if embedding_entry_partition is not None and round_robin_size != 0:
         print("round_robin_size is ignored because embedding_entry_partition is specified")
         round_robin_size = 0
-    if memory_type == 'hierarchy': # todo: modified
+    if memory_type == 'hierarchy':  # todo: modified
         comm_backend = comm.distributed_backend
         if comm_backend == 'nvshmem':
             raise AssertionError

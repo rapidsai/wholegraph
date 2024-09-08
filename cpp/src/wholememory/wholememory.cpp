@@ -185,15 +185,6 @@ wholememory_error_code_t wholememory_get_local_memory(void** local_ptr,
     local_ptr, local_size, local_offset, wholememory_handle);
 }
 
-wholememory_error_code_t wholememory_get_local_node_memory(void** local_ptr,
-                                                           size_t* local_size,
-                                                           size_t* local_offset,
-                                                           wholememory_handle_t wholememory_handle)
-{
-  return wholememory::get_local_node_memory_from_handle(
-    local_ptr, local_size, local_offset, wholememory_handle);
-}
-
 wholememory_error_code_t wholememory_get_rank_memory(void** rank_memory_ptr,
                                                      size_t* rank_memory_size,
                                                      size_t* rank_memory_offset,

@@ -29,7 +29,7 @@ wholememory_error_code_t bucket_and_reorder_ids_for_hierarchy_func(
   void* dev_bucket_indices,
   void* dev_indice_map,
   int64_t* host_bucket_id_count,
-  size_t embedding_entry_count_per_rank,
+  size_t* dev_embedding_entry_offsets,
   wholememory_comm_t wm_global_comm,
   wholememory_comm_t wm_local_comm,
   int bucket_cross_or_local,  // 0: cross, 1: local
@@ -40,7 +40,7 @@ wholememory_error_code_t bucket_and_reorder_ids_for_hierarchy_func(
 wholememory_error_code_t bucket_local_ids_func(void* indices,
                                                wholememory_array_description_t indice_desc,
                                                int64_t* host_bucket_id_count,
-                                               size_t embedding_entry_count_per_rank,
+                                               size_t* dev_embedding_entry_offsets,
                                                wholememory_comm_t wm_local_comm,
                                                wholememory_comm_t wm_cross_comm,
                                                wm_thrust_allocator* p_thrust_allocator,

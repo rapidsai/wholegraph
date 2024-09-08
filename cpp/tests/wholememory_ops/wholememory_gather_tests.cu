@@ -300,9 +300,11 @@ INSTANTIATE_TEST_SUITE_P(
     WholeMemoryGatherTestParam().set_memory_type(WHOLEMEMORY_MT_CONTINUOUS),
     WholeMemoryGatherTestParam().set_memory_type(WHOLEMEMORY_MT_CHUNKED),
     WholeMemoryGatherTestParam().set_memory_type(WHOLEMEMORY_MT_DISTRIBUTED),
+    WholeMemoryGatherTestParam().set_memory_type(WHOLEMEMORY_MT_HIERARCHY),
     WholeMemoryGatherTestParam().set_memory_type(WHOLEMEMORY_MT_CONTINUOUS).set_indices_count(0),
     WholeMemoryGatherTestParam().set_memory_type(WHOLEMEMORY_MT_CHUNKED).set_indices_count(0),
     WholeMemoryGatherTestParam().set_memory_type(WHOLEMEMORY_MT_DISTRIBUTED).set_indices_count(0),
+    WholeMemoryGatherTestParam().set_memory_type(WHOLEMEMORY_MT_HIERARCHY).set_indices_count(0),
     WholeMemoryGatherTestParam()
       .set_memory_type(WHOLEMEMORY_MT_CONTINUOUS)
       .set_memory_location(WHOLEMEMORY_ML_HOST),
@@ -312,10 +314,18 @@ INSTANTIATE_TEST_SUITE_P(
     WholeMemoryGatherTestParam()
       .set_memory_type(WHOLEMEMORY_MT_DISTRIBUTED)
       .set_memory_location(WHOLEMEMORY_ML_HOST),
+    WholeMemoryGatherTestParam()
+      .set_memory_type(WHOLEMEMORY_MT_HIERARCHY)
+      .set_memory_location(WHOLEMEMORY_ML_HOST),
     WholeMemoryGatherTestParam().set_memory_type(WHOLEMEMORY_MT_CHUNKED).use_random_partition(),
     WholeMemoryGatherTestParam().set_memory_type(WHOLEMEMORY_MT_DISTRIBUTED).use_random_partition(),
+    WholeMemoryGatherTestParam().set_memory_type(WHOLEMEMORY_MT_HIERARCHY).use_random_partition(),
     WholeMemoryGatherTestParam()
       .set_memory_type(WHOLEMEMORY_MT_DISTRIBUTED)
+      .set_memory_location(WHOLEMEMORY_ML_HOST)
+      .use_random_partition(),
+    WholeMemoryGatherTestParam()
+      .set_memory_type(WHOLEMEMORY_MT_HIERARCHY)
       .set_memory_location(WHOLEMEMORY_ML_HOST)
       .use_random_partition(),
     WholeMemoryGatherTestParam()
@@ -353,18 +363,27 @@ INSTANTIATE_TEST_SUITE_P(
       .set_embedding_dim(11)
       .set_embedding_stride(12)
       .set_indices_count(100005),
+    WholeMemoryGatherTestParam()
+      .set_memory_type(WHOLEMEMORY_MT_HIERARCHY)
+      .set_embedding_dim(11)
+      .set_embedding_stride(12)
+      .set_indices_count(100005),
     WholeMemoryGatherTestParam().set_memory_type(WHOLEMEMORY_MT_CONTINUOUS).set_embedding_dim(128),
     WholeMemoryGatherTestParam().set_memory_type(WHOLEMEMORY_MT_CHUNKED).set_embedding_dim(128),
     WholeMemoryGatherTestParam().set_memory_type(WHOLEMEMORY_MT_DISTRIBUTED).set_embedding_dim(128),
+    WholeMemoryGatherTestParam().set_memory_type(WHOLEMEMORY_MT_HIERARCHY).set_embedding_dim(128),
     WholeMemoryGatherTestParam().set_memory_type(WHOLEMEMORY_MT_CONTINUOUS).set_embedding_dim(127),
     WholeMemoryGatherTestParam().set_memory_type(WHOLEMEMORY_MT_CHUNKED).set_embedding_dim(127),
     WholeMemoryGatherTestParam().set_memory_type(WHOLEMEMORY_MT_DISTRIBUTED).set_embedding_dim(127),
+    WholeMemoryGatherTestParam().set_memory_type(WHOLEMEMORY_MT_HIERARCHY).set_embedding_dim(127),
     WholeMemoryGatherTestParam().set_memory_type(WHOLEMEMORY_MT_CONTINUOUS).set_embedding_dim(129),
     WholeMemoryGatherTestParam().set_memory_type(WHOLEMEMORY_MT_CHUNKED).set_embedding_dim(129),
     WholeMemoryGatherTestParam().set_memory_type(WHOLEMEMORY_MT_DISTRIBUTED).set_embedding_dim(129),
+    WholeMemoryGatherTestParam().set_memory_type(WHOLEMEMORY_MT_HIERARCHY).set_embedding_dim(129),
     WholeMemoryGatherTestParam().set_memory_type(WHOLEMEMORY_MT_CONTINUOUS).set_embedding_dim(513),
     WholeMemoryGatherTestParam().set_memory_type(WHOLEMEMORY_MT_CHUNKED).set_embedding_dim(513),
     WholeMemoryGatherTestParam().set_memory_type(WHOLEMEMORY_MT_DISTRIBUTED).set_embedding_dim(513),
+    WholeMemoryGatherTestParam().set_memory_type(WHOLEMEMORY_MT_HIERARCHY).set_embedding_dim(513),
     WholeMemoryGatherTestParam()
       .set_memory_type(WHOLEMEMORY_MT_CONTINUOUS)
       .set_embedding_type(WHOLEMEMORY_DT_HALF),
@@ -382,6 +401,9 @@ INSTANTIATE_TEST_SUITE_P(
       .set_output_type(WHOLEMEMORY_DT_HALF),
     WholeMemoryGatherTestParam()
       .set_memory_type(WHOLEMEMORY_MT_DISTRIBUTED)
+      .set_output_type(WHOLEMEMORY_DT_HALF),
+    WholeMemoryGatherTestParam()
+      .set_memory_type(WHOLEMEMORY_MT_HIERARCHY)
       .set_output_type(WHOLEMEMORY_DT_HALF),
     WholeMemoryGatherTestParam()
       .set_memory_type(WHOLEMEMORY_MT_CONTINUOUS)
@@ -393,6 +415,10 @@ INSTANTIATE_TEST_SUITE_P(
       .set_output_type(WHOLEMEMORY_DT_HALF),
     WholeMemoryGatherTestParam()
       .set_memory_type(WHOLEMEMORY_MT_DISTRIBUTED)
+      .set_embedding_type(WHOLEMEMORY_DT_HALF)
+      .set_output_type(WHOLEMEMORY_DT_HALF),
+    WholeMemoryGatherTestParam()
+      .set_memory_type(WHOLEMEMORY_MT_HIERARCHY)
       .set_embedding_type(WHOLEMEMORY_DT_HALF)
       .set_output_type(WHOLEMEMORY_DT_HALF),
     WholeMemoryGatherTestParam()
@@ -403,6 +429,9 @@ INSTANTIATE_TEST_SUITE_P(
       .set_indices_type(WHOLEMEMORY_DT_INT64),
     WholeMemoryGatherTestParam()
       .set_memory_type(WHOLEMEMORY_MT_DISTRIBUTED)
+      .set_indices_type(WHOLEMEMORY_DT_INT64),
+    WholeMemoryGatherTestParam()
+      .set_memory_type(WHOLEMEMORY_MT_HIERARCHY)
       .set_indices_type(WHOLEMEMORY_DT_INT64),
     WholeMemoryGatherTestParam()
       .set_memory_type(WHOLEMEMORY_MT_CONTINUOUS)
@@ -411,9 +440,11 @@ INSTANTIATE_TEST_SUITE_P(
     WholeMemoryGatherTestParam()
       .set_memory_type(WHOLEMEMORY_MT_DISTRIBUTED)
       .set_embedding_stride(33),
+    WholeMemoryGatherTestParam().set_memory_type(WHOLEMEMORY_MT_HIERARCHY).set_embedding_stride(33),
     WholeMemoryGatherTestParam().set_memory_type(WHOLEMEMORY_MT_CONTINUOUS).set_output_stride(33),
     WholeMemoryGatherTestParam().set_memory_type(WHOLEMEMORY_MT_CHUNKED).set_output_stride(33),
     WholeMemoryGatherTestParam().set_memory_type(WHOLEMEMORY_MT_DISTRIBUTED).set_output_stride(33),
+    WholeMemoryGatherTestParam().set_memory_type(WHOLEMEMORY_MT_HIERARCHY).set_output_stride(33),
     WholeMemoryGatherTestParam()
       .set_memory_type(WHOLEMEMORY_MT_CONTINUOUS)
       .set_embedding_type(WHOLEMEMORY_DT_HALF)
@@ -424,6 +455,10 @@ INSTANTIATE_TEST_SUITE_P(
       .set_embedding_stride(33),
     WholeMemoryGatherTestParam()
       .set_memory_type(WHOLEMEMORY_MT_DISTRIBUTED)
+      .set_embedding_type(WHOLEMEMORY_DT_HALF)
+      .set_embedding_stride(33),
+    WholeMemoryGatherTestParam()
+      .set_memory_type(WHOLEMEMORY_MT_HIERARCHY)
       .set_embedding_type(WHOLEMEMORY_DT_HALF)
       .set_embedding_stride(33),
     WholeMemoryGatherTestParam().set_memory_type(WHOLEMEMORY_MT_DISTRIBUTED)
