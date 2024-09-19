@@ -16,7 +16,7 @@
 
 cmake_minimum_required(VERSION 3.26.4 FATAL_ERROR)
 
-set(RAPIDS_VERSION "24.10")
+set(RAPIDS_VERSION "24.12")
 set(WHOLEGRAPH_VERSION "${RAPIDS_VERSION}.00")
 
 include(FetchContent)
