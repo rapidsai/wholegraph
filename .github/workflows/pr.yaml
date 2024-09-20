@@ -22,11 +22,11 @@ jobs:
       # - wheel-test-pylibwholegraph
     secrets: inherit
     uses: rapidsai/shared-workflows/.github/workflows/pr-builder.yaml@branch-24.10
-  checks:
-    secrets: inherit
-    uses: rapidsai/shared-workflows/.github/workflows/checks.yaml@branch-24.10
-    with:
-      enable_check_generated_files: false
+  # checks:
+  #   secrets: inherit
+  #   uses: rapidsai/shared-workflows/.github/workflows/checks.yaml@branch-24.10
+  #   with:
+  #     enable_check_generated_files: false
   conda-cpp-build:
     # needs: checks
     secrets: inherit

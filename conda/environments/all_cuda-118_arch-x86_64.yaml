@@ -28,7 +28,7 @@ dependencies:
 - librmm==24.10.*,>=0.0.0a0
 - nanobind>=0.2.0
 - nbsphinx
-- nccl
+- nccl>=2.18.1.1
 - ninja
 - numpy>=1.23,<3.0a0
 - numpydoc

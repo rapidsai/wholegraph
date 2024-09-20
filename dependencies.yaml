@@ -87,7 +87,7 @@ dependencies:
           - libraft-headers==24.10.*,>=0.0.0a0
           - librmm==24.10.*,>=0.0.0a0
           - nanobind>=0.2.0
-          - nccl
+          - &nccl nccl>=2.18.1.1
     specific:
       - output_types: conda
         matrices:
@@ -216,14 +216,14 @@ dependencies:
     common:
       - output_types: [conda]
         packages:
-          - nccl
+          - *nccl
   test_python:
     common:
       - output_types: [conda]
         packages:
           - c-compiler
           - cxx-compiler
-          - nccl
+          - *nccl
       - output_types: [conda, requirements]
         packages:
           - ninja
