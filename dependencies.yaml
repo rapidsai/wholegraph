@@ -87,7 +87,7 @@ dependencies:
           - libraft-headers==24.10.*,>=0.0.0a0
           - librmm==24.10.*,>=0.0.0a0
           - nanobind>=0.2.0
-          - nccl
+          - &nccl nccl>=2.18.1.1
     specific:
       - output_types: conda
         matrices:
@@ -216,14 +216,14 @@ dependencies:
     common:
       - output_types: [conda]
         packages:
-          - nccl
+          - *nccl
   test_python:
     common:
       - output_types: [conda]
         packages:
           - c-compiler
           - cxx-compiler
-          - nccl
+          - *nccl
       - output_types: [conda, requirements]
         packages:
           - ninja
@@ -285,13 +285,13 @@ dependencies:
               # If conda-forge supports the new cuda-* packages for CUDA 11.8
               # at some point, then we can fully support/properly specify
               # this environment.
-              - pytorch=2.0.0
+              - &pytorch pytorch>=2.0,<2.4.0a0
               - pytorch-cuda=11.8
           - matrix:
               arch: aarch64
               cuda: "11.8"
             packages:
-              - pytorch=2.0.0
+              - *pytorch
               - pytorch-cuda=11.8
           - matrix:
             packages:
@@ -318,7 +318,7 @@ dependencies:
     common:
       - output_types: [conda]
         packages:
-          - pytorch=2.0.0
+          - *pytorch
           - cpuonly
   clang_tools:
     common:
