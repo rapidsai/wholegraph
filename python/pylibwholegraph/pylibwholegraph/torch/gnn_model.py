@@ -162,6 +162,7 @@ def create_sub_graph(
             ),
             num_src_nodes=target_gid.size(0),
             num_dst_nodes=target_gid_1.size(0),
+            node_count_check=False,
         )
         return block
     elif framework_name == "cugraph":
