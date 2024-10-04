@@ -37,15 +37,11 @@ jobs:
           - '!README.md'
           - '!python/**'
           - '!scripts/checks/**'
-          # TODO: Remove this before merging
-          - '!.github/workflows/**'
         test_python:
           - '**'
           - '!.pre-commit-config.yaml'
           - '!README.md'
           - '!scripts/checks/**'
-          # TODO: Remove this before merging
-          - '!.github/workflows/**'
   checks:
     secrets: inherit
     uses: rapidsai/shared-workflows/.github/workflows/checks.yaml@branch-24.12
