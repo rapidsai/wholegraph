@@ -8,7 +8,7 @@ cd "$(dirname "$(realpath "${BASH_SOURCE[0]}")")"/../
 
 . /opt/conda/etc/profile.d/conda.sh
 
-RAPIDS_VERSION_MAJOR_MINOR="$(rapids-version-major-minor)"
+RAPIDS_VERSION="$(rapids-version)"
 
 ARCH=$(arch)
 EXITCODE=0
@@ -50,7 +50,7 @@ rapids-mamba-retry install \
   --channel "${CPP_CHANNEL}" \
   --channel "${PYTHON_CHANNEL}" \
   'mkl<2024.1.0' \
-  "pylibwholegraph=${RAPIDS_VERSION_MAJOR_MINOR}"
+  "pylibwholegraph=${RAPIDS_VERSION}"
 
 rapids-logger "Check GPU usage"
 nvidia-smi
