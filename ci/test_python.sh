@@ -50,7 +50,7 @@ rapids-mamba-retry install \
   --channel "${CPP_CHANNEL}" \
   --channel "${PYTHON_CHANNEL}" \
   'mkl<2024.1.0' \
-  "pylibwholegraph=${RAPIDS_MAJOR_MINOR_VERSION}"
+  "pylibwholegraph=${RAPIDS_VERSION_MAJOR_MINOR}"
 
 rapids-logger "Check GPU usage"
 nvidia-smi

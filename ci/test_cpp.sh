@@ -31,8 +31,8 @@ rapids-print-env
 
 rapids-mamba-retry install \
   --channel "${CPP_CHANNEL}" \
-  "libwholegraph=${RAPIDS_MAJOR_MINOR_VERSION}" \
-  "libwholegraph-tests=${RAPIDS_MAJOR_MINOR_VERSION}"
+  "libwholegraph=${RAPIDS_VERSION_MAJOR_MINOR}" \
+  "libwholegraph-tests=${RAPIDS_VERSION_MAJOR_MINOR}"
 
 rapids-logger "Check GPU usage"
 nvidia-smi
