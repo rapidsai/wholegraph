@@ -127,6 +127,7 @@ struct EmbeddingTestParams {
               WHOLEMEMORY_SUCCESS);
     return cache_policy;
   }
+  int get_rank_partition_method() const { return rank_partition_method; }
   EmbeddingTestParams& non_cache()
   {
     cache_type = 0;
@@ -147,6 +148,11 @@ struct EmbeddingTestParams {
     cache_group_count = count;
     return *this;
   }
+  EmbeddingTestParams& use_random_partition()
+  {
+    rank_partition_method = 1;
+    return *this;
+  }
   wholememory_array_description_t indice_description;
   wholememory_matrix_description_t embedding_description;
   wholememory_matrix_description_t output_description;
@@ -155,8 +161,9 @@ struct EmbeddingTestParams {
   wholememory_memory_type_t cache_memory_type         = WHOLEMEMORY_MT_CHUNKED;
   wholememory_memory_location_t cache_memory_location = WHOLEMEMORY_ML_DEVICE;
   float cache_ratio                                   = 0.2;
-  int cache_type        = 0;  // 0: no cache, 1: device cache, 2: local cache
-  int cache_group_count = 1;
+  int cache_type            = 0;  // 0: no cache, 1: device cache, 2: local cache
+  int cache_group_count     = 1;
+  int rank_partition_method = 0;  // 0-default, 1-random
 };
 
 class WholeMemoryEmbeddingParameterTests : public ::testing::TestWithParam<EmbeddingTestParams> {};
@@ -238,13 +245,18 @@ TEST_P(WholeMemoryEmbeddingParameterTests, EmbeddingGatherTest)
     wholememory_tensor_description_t embedding_tensor_description;
     wholememory_copy_matrix_desc_to_tensor(&embedding_tensor_description,
                                            &params.embedding_description);
-
+    std::vector<size_t> rank_partition(world_size);
+    wholememory_ops::testing::host_random_partition(
+      rank_partition.data(), embedding_tensor_description.sizes[0], world_size);
+    size_t* rank_partition_ptr = nullptr;
+    if (params.get_rank_partition_method() == 1) { rank_partition_ptr = rank_partition.data(); }
     EXPECT_EQ(wholememory_create_embedding(&wm_embedding,
                                            &embedding_tensor_description,
                                            wm_comm,
                                            params.memory_type,
                                            params.memory_location,
-                                           cache_policy),
+                                           cache_policy,
+                                           rank_partition_ptr),
               WHOLEMEMORY_SUCCESS);
 
     wholememory_tensor_t embedding_tensor =
@@ -353,6 +365,19 @@ INSTANTIATE_TEST_SUITE_P(
 #if 1
     EmbeddingTestParams().non_cache(),
     EmbeddingTestParams().non_cache().set_memory_location(WHOLEMEMORY_ML_DEVICE),
+    EmbeddingTestParams()
+      .non_cache()
+      .set_memory_location(WHOLEMEMORY_ML_DEVICE)
+      .use_random_partition(),
+    EmbeddingTestParams()
+      .non_cache()
+      .set_memory_type(WHOLEMEMORY_MT_DISTRIBUTED)
+      .use_random_partition(),
+    EmbeddingTestParams()
+      .non_cache()
+      .set_memory_location(WHOLEMEMORY_ML_DEVICE)
+      .set_memory_type(WHOLEMEMORY_MT_DISTRIBUTED)
+      .use_random_partition(),
     EmbeddingTestParams().device_cache(),
     EmbeddingTestParams().device_cache().set_cache_memory_type(WHOLEMEMORY_MT_DISTRIBUTED),
     EmbeddingTestParams().local_cache(),

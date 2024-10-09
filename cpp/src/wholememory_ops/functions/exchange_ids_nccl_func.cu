@@ -161,7 +161,7 @@ wholememory_error_code_t bucket_and_exchange_ids_func(
   int64_t* host_rank_id_count_ptr,
   temp_memory_handle* dev_recv_indices_buffer_handle,
   int64_t* dev_raw_indice_ptr,
-  size_t embedding_entry_count_per_rank,
+  size_t* embedding_entry_offsets,
   wholememory_comm_t wm_comm,
   wm_thrust_allocator* p_thrust_allocator,
   wholememory_env_func_t* p_env_fns,
@@ -178,7 +178,7 @@ wholememory_error_code_t bucket_and_exchange_ids_func(
   WHOLEMEMORY_RETURN_ON_FAIL(bucket_ids_for_ranks(indices,
                                                   indice_desc,
                                                   dev_rank_id_count_ptr,
-                                                  embedding_entry_count_per_rank,
+                                                  embedding_entry_offsets,
                                                   world_size,
                                                   get_device_prop(-1),
                                                   stream));

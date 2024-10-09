@@ -12,6 +12,7 @@
 # limitations under the License.
 
 import torch
+import numpy as np
 import pylibwholegraph.binding.wholememory_binding as wmb
 from pylibwholegraph.torch.dlpack_utils import torch_import_from_dlpack
 from packaging import version
@@ -129,21 +130,11 @@ def copy_host_1D_tensor_to_wholememory(
         torch_import_from_dlpack, wmb.WholeMemoryMemoryLocation.MlDevice, world_rank
     )
     assert local_tensor_cuda.dim() == 1
-    wm_array_size = wm_array.shape[0]
-
-    local_start_ref = min(
-        wmb.determine_partition_plan(wm_array_size, world_size) * world_rank,
-        wm_array_size,
-    )
-    local_end = min(
-        wmb.determine_partition_plan(wm_array_size, world_size) * (world_rank + 1),
-        wm_array_size,
-    )
-    local_count = local_end - local_start
-
+    local_count = wm_array.get_local_entry_count()
+    local_start_ref = wm_array.get_local_entry_start()
     assert local_start == local_start_ref
     assert local_tensor_cuda.shape[0] == local_count
-    local_tensor_cuda.copy_(host_tensor[local_start:local_end])
+    local_tensor_cuda.copy_(host_tensor[local_start : local_start + local_count])
     wm_comm.barrier()
 
 
@@ -196,3 +187,13 @@ def int_to_wholememory_type(value: int):
         return wmb.WholeMemoryMemoryType.MtDistributed
     else:
         raise ValueError("invalid int_to_wholememory_type value")
+
+
+def random_partition(total_entry_count: int, world_size: int) -> np.array:
+    np.random.seed(42)
+    random_array = np.random.uniform(90, 100, size=world_size)
+    random_sum = np.sum(random_array)
+    partition = ((random_array / random_sum) * total_entry_count).astype(np.uintp)
+    diff = total_entry_count - np.sum(partition)
+    partition[0] += diff
+    return partition

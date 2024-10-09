@@ -122,22 +122,23 @@ __global__ void gather_func_with_nvshmem_sort_idxs_kernel(
   const int max_blocks_for_local,
   const int intra_node_ranks,
   const int node_rank,
-  size_t embedding_entry_per_rank,
+  size_t* embedding_entry_offsets,
   EmbeddingT* __restrict__ temp_output,
   wholememory_matrix_description_t output_desc,
   const int threads_per_group)
 {
-  const int64_t local_index_lowerbound = node_rank * intra_node_ranks * embedding_entry_per_rank;
+  const int64_t local_index_lowerbound = embedding_entry_offsets[node_rank * intra_node_ranks];
   const int64_t local_index_upperbound =
-    (node_rank + 1) * intra_node_ranks * embedding_entry_per_rank;
+    embedding_entry_offsets[(node_rank + 1) * intra_node_ranks];
   const int64_t local_index_start  = LowerBound(sorted_index, indice_count, local_index_lowerbound);
   const int64_t local_index_length = UpperBound(
     sorted_index + local_index_start, indice_count - local_index_start, local_index_upperbound - 1);
-
   int embedding_size       = embedding_desc.sizes[1];
   int64_t embedding_stride = embedding_desc.stride;
   int64_t output_stride    = output_desc.stride;
+  extern __shared__ char shmem[];
   nvshmem_device_reference<EmbeddingT> embedding_nvshmem_device_ref{embeding_nvshmem_ref};
+  embedding_nvshmem_device_ref.mov_offsets_to_shmem(shmem);
   if (blockIdx.x >= max_blocks_for_local) {
     const int64_t thread_id = (blockIdx.x - max_blocks_for_local) * blockDim.x + threadIdx.x;
     for (int64_t row_id = thread_id; row_id < indice_count - local_index_length;
@@ -313,7 +314,7 @@ void nvshmem_gather_temp_get_mem_sort_idx_func(wholememory_comm_t wm_comm,
                                                void* output,
                                                void* temp_output,
                                                wholememory_matrix_description_t output_desc,
-                                               size_t embedding_entry_count_per_rank,
+                                               size_t* embedding_entry_offsets,
                                                wholememory_env_func_t* p_env_fns,
                                                cudaStream_t stream,
                                                int gather_sms)
@@ -336,7 +337,6 @@ void nvshmem_gather_temp_get_mem_sort_idx_func(wholememory_comm_t wm_comm,
                      wm_comm,
                      &thrust_allocator,
                      stream);
-
   int intra_node_rank_num = wm_comm->intra_node_rank_num;
   int node_id             = wm_comm->world_rank / wm_comm->intra_node_rank_num;
 
@@ -357,7 +357,7 @@ void nvshmem_gather_temp_get_mem_sort_idx_func(wholememory_comm_t wm_comm,
                                    const int,
                                    const int,
                                    const int,
-                                   size_t,
+                                   size_t*,
                                    EmbeddingT*,
                                    wholememory_matrix_description_t,
                                    const int) = nullptr;
@@ -416,19 +416,21 @@ void nvshmem_gather_temp_get_mem_sort_idx_func(wholememory_comm_t wm_comm,
     block_threshold = 1;
     if (num_blocks == 1) num_blocks = 2;
   }
-
-  gather_nvshmem_kernel_fn<<<num_blocks, block_size, 0, stream>>>(embeding_nvshmem_ptr,
-                                                                  embedding_desc,
-                                                                  sorted_index,
-                                                                  dev_raw_indice_ptr,
-                                                                  indice_count,
-                                                                  block_threshold,
-                                                                  intra_node_rank_num,
-                                                                  node_id,
-                                                                  embedding_entry_count_per_rank,
-                                                                  ret_data,
-                                                                  temp_output_desc,
-                                                                  num_threads_per_feature);
+  size_t shared_mem_size =
+    embeding_nvshmem_ptr.same_chunk ? 0 : ((embeding_nvshmem_ptr.world_size + 1) * sizeof(size_t));
+  gather_nvshmem_kernel_fn<<<num_blocks, block_size, shared_mem_size, stream>>>(
+    embeding_nvshmem_ptr,
+    embedding_desc,
+    sorted_index,
+    dev_raw_indice_ptr,
+    indice_count,
+    block_threshold,
+    intra_node_rank_num,
+    node_id,
+    embedding_entry_offsets,
+    ret_data,
+    temp_output_desc,
+    num_threads_per_feature);
   if (!use_ibgda_flag) {
     nvshmemx_quiet_on_stream(stream);  // wait transfer
   }
@@ -467,12 +469,12 @@ __global__ void scatter_func_with_nvshmem_sort_idxs_kernel(
   const int max_blocks_for_local,
   const int intra_node_ranks,
   const int node_rank,
-  size_t embedding_entry_per_rank,
+  size_t* embedding_entry_offsets,
   const int threads_per_group)
 {
-  const int64_t local_index_lowerbound = node_rank * intra_node_ranks * embedding_entry_per_rank;
+  const int64_t local_index_lowerbound = embedding_entry_offsets[node_rank * intra_node_ranks];
   const int64_t local_index_upperbound =
-    (node_rank + 1) * intra_node_ranks * embedding_entry_per_rank;
+    embedding_entry_offsets[(node_rank + 1) * intra_node_ranks];
   const int64_t local_index_start  = LowerBound(sorted_index, indice_count, local_index_lowerbound);
   const int64_t local_index_length = UpperBound(
     sorted_index + local_index_start, indice_count - local_index_start, local_index_upperbound - 1);
@@ -480,7 +482,9 @@ __global__ void scatter_func_with_nvshmem_sort_idxs_kernel(
   int embedding_size       = embedding_desc.sizes[1];
   int64_t embedding_stride = embedding_desc.stride;
   int64_t input_stride     = temp_input_desc.stride;
+  extern __shared__ char shmem[];
   nvshmem_device_reference<EmbeddingT> embedding_nvshmem_device_ref{embeding_nvshmem_ref};
+  embedding_nvshmem_device_ref.mov_offsets_to_shmem(shmem);
   if (blockIdx.x >= max_blocks_for_local) {
     const int64_t thread_id = (blockIdx.x - max_blocks_for_local) * blockDim.x + threadIdx.x;
     for (int64_t row_id = thread_id; row_id < indice_count - local_index_length;
@@ -554,7 +558,7 @@ void nvshmem_scatter_temp_put_mem_sort_idx_func(wholememory_comm_t wm_comm,
                                                 int64_t indice_count,
                                                 wholememory_nvshmem_ref_t embeding_nvshmem_ptr,
                                                 wholememory_matrix_description_t embedding_desc,
-                                                size_t embedding_entry_count_per_rank,
+                                                size_t* embedding_entry_offsets,
                                                 wholememory_env_func_t* p_env_fns,
                                                 cudaStream_t stream,
                                                 int scatter_sms)
@@ -620,7 +624,7 @@ void nvshmem_scatter_temp_put_mem_sort_idx_func(wholememory_comm_t wm_comm,
                                     const int,
                                     const int,
                                     const int,
-                                    size_t,
+                                    size_t*,
                                     const int) = nullptr;
 
   switch (alignment) {
@@ -679,19 +683,21 @@ void nvshmem_scatter_temp_put_mem_sort_idx_func(wholememory_comm_t wm_comm,
     if (num_blocks == 1) num_blocks = 2;
   }
 
-  scatter_nvshmem_kernel_fn<<<num_blocks, block_size, 0, stream>>>(temp_input_data,
-                                                                   temp_input_desc,
-                                                                   embeding_nvshmem_ptr,
-                                                                   embedding_desc,
-                                                                   sorted_index,
-                                                                   dev_raw_indice_ptr,
-                                                                   indice_count,
-                                                                   block_threshold,
-                                                                   intra_node_rank_num,
-                                                                   node_id,
-                                                                   embedding_entry_count_per_rank,
-
-                                                                   num_threads_per_feature);
+  size_t shared_mem_size =
+    embeding_nvshmem_ptr.same_chunk ? 0 : ((embeding_nvshmem_ptr.world_size + 1) * sizeof(size_t));
+  scatter_nvshmem_kernel_fn<<<num_blocks, block_size, shared_mem_size, stream>>>(
+    temp_input_data,
+    temp_input_desc,
+    embeding_nvshmem_ptr,
+    embedding_desc,
+    sorted_index,
+    dev_raw_indice_ptr,
+    indice_count,
+    block_threshold,
+    intra_node_rank_num,
+    node_id,
+    embedding_entry_offsets,
+    num_threads_per_feature);
   if (!use_ibgda_flag) {
     nvshmemx_quiet_on_stream(stream);  // wait transfer
   }

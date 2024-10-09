@@ -1,4 +1,4 @@
-# Copyright (c) 2019-2023, NVIDIA CORPORATION.
+# Copyright (c) 2019-2024, NVIDIA CORPORATION.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -86,7 +86,7 @@ def add_distributed_launch_options(parser: ArgumentParser):
         "--launch-agent",
         dest="launch_agent",
         default="mpi",
-        help="launch agent used, mpi, pytorch or spawn",
+        help="launch agent used, mpi, horovodrun, pytorch or spawn",
     )
     # command line flags
     parser.add_argument(
@@ -215,6 +215,38 @@ def distributed_launch_mpi(args, main_func):
     main_func()
 
 
+def distributed_launch_horovodrun(args, main_func):
+    # Horovod is used to launch the job and set up the distributed environment, not to run
+    # framework-specific distributed training code.
+    #
+    # Using horovod.tensorflow for launching Kubeflow MPIJobs with Horovodrun.
+    # horovod.torch is not used because it is not compatible with certain versions of PyTorch.
+    import horovod.tensorflow as hvd
+
+    hvd.init()
+
+    global distributed_config
+    distributed_config.rank = hvd.rank()
+    distributed_config.world_size = hvd.size()
+    distributed_config.local_rank = hvd.local_rank()
+    distributed_config.local_size = hvd.local_size()
+    distributed_config.master_addr = get_value_from_option_and_env(
+        args.master_addr, args.launch_env_name_master_addr, "", "localhost"
+    )
+    distributed_config.master_port = int(
+        get_value_from_option_and_env(
+            args.master_port, args.launch_env_name_master_port, -1, 12335
+        )
+    )
+
+    os.environ["RANK"] = str(distributed_config.rank)
+    os.environ["WORLD_SIZE"] = str(distributed_config.world_size)
+    os.environ["MASTER_ADDR"] = distributed_config.master_addr
+    os.environ["MASTER_PORT"] = str(distributed_config.master_port)
+
+    main_func()
+
+
 def distributed_launch_pytorch(
     args,
     main_func,
@@ -310,6 +342,7 @@ def distributed_launch_spawn(args, main_func):
 def distributed_launch(args, main_func):
     assert (
         args.launch_agent == "mpi"
+        or args.launch_agent == "horovodrun"
         or args.launch_agent == "pytorch"
         or args.launch_agent == "spawn"
     )
@@ -318,6 +351,11 @@ def distributed_launch(args, main_func):
         # when using MPI, command is like:
         # mpirun python [train_script.py]
         distributed_launch_mpi(args, main_func)
+    elif args.launch_agent == "horovodrun":
+        # use horovodrun to launch multiprocess
+        # when using horovodrun, command is like:
+        # horovodrun python [train_script.py] --launch_agent=horovodrun
+        distributed_launch_horovodrun(args, main_func)
     elif args.launch_agent == "pytorch":
         # use pytorch DDP to launch multiprocess
         # when using pytorch DDP, assume two nodes with 8 GPU each, command is like:
