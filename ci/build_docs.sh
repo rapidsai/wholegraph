@@ -39,4 +39,4 @@ popd
 
 rapids-logger "Output temp dir: ${RAPIDS_DOCS_DIR}"
 
-RAPIDS_VERSION_NUMBER="$(rapids-verion-major-minor)" rapids-upload-docs
+RAPIDS_VERSION_NUMBER="$(rapids-version-major-minor)" rapids-upload-docs
