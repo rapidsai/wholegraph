@@ -964,6 +964,9 @@ wholememory_error_code_t wholememory_create_embedding(
   int embedding_world_size                        = 1;
   WHOLEMEMORY_RETURN_ON_FAIL(wholememory_communicator_get_size(&embedding_world_size, comm));
   if (cache_policy != nullptr) {
+    if (memory_type == WHOLEMEMORY_MT_HIERARCHY) {
+      WHOLEMEMORY_ERROR("Cache is not supported now in hierarchy memory type.");
+    }
     if (cache_policy->cache_comm == comm) {
       if (cache_policy->cache_memory_location != WHOLEMEMORY_ML_DEVICE) {
         WHOLEMEMORY_ERROR(

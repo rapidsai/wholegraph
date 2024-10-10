@@ -33,7 +33,7 @@ def add_training_options(argparser: ArgumentParser):
         "--embedding-memory-type",
         dest="embedding_memory_type",
         default="chunked",
-        help="Embedding memory type, should be: continuous, chunked or distributed",
+        help="Embedding memory type, should be: continuous, chunked, distributed, hierarchy",
     )
     argparser.add_argument(
         "--cache-type",

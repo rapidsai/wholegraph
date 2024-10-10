@@ -145,6 +145,7 @@ def create_builtin_cache_policy(
         embedding_memory_type != "continuous"
         and embedding_memory_type != "chunked"
         and embedding_memory_type != "distributed"
+        and embedding_memory_type != "hierarchy"
     ):
         raise ValueError(f"embedding_memory_type={embedding_memory_type} is not valid")
 
@@ -425,6 +426,16 @@ def create_embedding(
     if embedding_entry_partition is not None and round_robin_size != 0:
         print("round_robin_size is ignored because embedding_entry_partition is specified")
         round_robin_size = 0
+    if memory_type == 'hierarchy':  # todo: modified
+        comm_backend = comm.distributed_backend
+        if comm_backend == 'nvshmem':
+            raise AssertionError
+        ("Hierarchy embedding is not supported yet when using NVSHMEM.")
+        if cache_policy is not None:
+            raise AssertionError
+        ("Hierarchy embedding is not supported yet when using cache.")
+        comm_backend = 'nccl'
+
     wm_embedding = WholeMemoryEmbedding(
         wmb.create_embedding(
             tensor_desc,

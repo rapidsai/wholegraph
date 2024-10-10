@@ -75,6 +75,13 @@ wholememory_error_code_t wholememory_communicator_get_size(int* size, wholememor
 {
   return wholememory::communicator_get_size(size, comm);
 }
+
+wholememory_error_code_t wholememory_communicator_get_local_size(int* local_size,
+                                                                 wholememory_comm_t comm)
+{
+  return wholememory::communicator_get_local_size(local_size, comm);
+}
+
 bool wholememory_communicator_is_bind_to_nvshmem(wholememory_comm_t comm)
 {
 #ifdef WITH_NVSHMEM_SUPPORT
@@ -128,6 +135,18 @@ wholememory_error_code_t wholememory_get_communicator(wholememory_comm_t* comm,
                                                       wholememory_handle_t wholememory_handle)
 {
   return wholememory::get_communicator_from_handle(comm, wholememory_handle);
+}
+
+wholememory_error_code_t wholememory_get_local_communicator(wholememory_comm_t* comm,
+                                                            wholememory_handle_t wholememory_handle)
+{
+  return wholememory::get_local_communicator_from_handle(comm, wholememory_handle);
+}
+
+wholememory_error_code_t wholememory_get_cross_communicator(wholememory_comm_t* comm,
+                                                            wholememory_handle_t wholememory_handle)
+{
+  return wholememory::get_cross_communicator_from_handle(comm, wholememory_handle);
 }
 
 wholememory_memory_type_t wholememory_get_memory_type(wholememory_handle_t wholememory_handle)

@@ -291,6 +291,9 @@ wholememory_error_code_t communicator_get_rank(int* rank, wholememory_comm_t com
 
 wholememory_error_code_t communicator_get_size(int* size, wholememory_comm_t comm) noexcept;
 
+wholememory_error_code_t communicator_get_local_size(int* local_size,
+                                                     wholememory_comm_t comm) noexcept;
+
 wholememory_error_code_t communicator_get_clique_info(clique_info_t* clique_info,
                                                       wholememory_comm_t comm) noexcept;
 

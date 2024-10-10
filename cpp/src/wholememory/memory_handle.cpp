@@ -106,7 +106,7 @@ class wholememory_impl {
     return gref;
   }
   virtual bool contains_pointer(const void* ptr) const = 0;
-  void get_local_memory(void** local_ptr, size_t* local_size, size_t* local_offset) const
+  virtual void get_local_memory(void** local_ptr, size_t* local_size, size_t* local_offset) const
   {
     if (local_ptr != nullptr) *local_ptr = local_partition_memory_pointer_;
     if (local_size != nullptr) *local_size = get_local_size();
@@ -128,7 +128,7 @@ class wholememory_impl {
     *rank_memory_offset = 0;
     return false;
   }
-  [[nodiscard]] size_t get_partition_stride() const
+  [[nodiscard]] virtual size_t get_partition_stride() const
   {
     return rank_partition_strategy_.partition_mem_stride;
   }
@@ -326,7 +326,7 @@ class distributed_wholememory_impl : public wholememory_impl {
                        data_granularity,
                        rank_entry_partition)
   {
-    WHOLEMEMORY_CHECK(type_ == WHOLEMEMORY_MT_DISTRIBUTED);
+    WHOLEMEMORY_CHECK(type_ == WHOLEMEMORY_MT_DISTRIBUTED || type_ == WHOLEMEMORY_MT_HIERARCHY);
   }
   void create_memory() override
   {
@@ -647,6 +647,12 @@ class continuous_device_wholememory_impl : public wholememory_impl {
                        data_granularity,
                        rank_entry_partition)
   {
+    // printf(
+    //   "while in continuous device wholememory creation, the memory_type (%d) and memory_location
+    //   "
+    //   "(%d).\n",
+    //   (int)memory_type,
+    //   (int)memory_location);
     WHOLEMEMORY_CHECK(type_ == WHOLEMEMORY_MT_CONTINUOUS);
   }
   void create_memory() override
@@ -1747,6 +1753,43 @@ struct wholememory_create_param {
   size_t min_granularity;
 };
 
+class hierarchy_wholememory_impl : public distributed_wholememory_impl {
+ public:
+  hierarchy_wholememory_impl(wholememory_handle_t wholememory_handle,
+                             size_t total_size,
+                             wholememory_comm_t global_comm,
+                             wholememory_comm_t local_comm,
+                             wholememory_memory_type_t memory_type,
+                             wholememory_memory_location_t memory_location,
+                             size_t data_granularity,
+                             size_t* rank_entry_partition)
+    : distributed_wholememory_impl(wholememory_handle,
+                                   total_size,
+                                   global_comm,
+                                   memory_type,
+                                   memory_location,
+                                   data_granularity,
+                                   rank_entry_partition)
+  {
+    WHOLEMEMORY_CHECK(memory_type == WHOLEMEMORY_MT_HIERARCHY);
+    local_comm_    = local_comm;
+    int world_rank = -1, world_size = -1, local_size = -1;
+    wholememory_communicator_get_rank(&world_rank, global_comm);
+    wholememory_communicator_get_size(&world_size, global_comm);
+    wholememory_communicator_get_size(&local_size, local_comm);
+    WHOLEMEMORY_CHECK(world_size % local_size == 0);
+    wholememory_split_communicator(
+      &cross_comm_, global_comm, world_rank % local_size, world_rank / local_size);
+  }
+
+  [[nodiscard]] wholememory_comm_t get_local_comm() const { return local_comm_; }
+  [[nodiscard]] wholememory_comm_t get_cross_comm() const { return cross_comm_; }
+
+ protected:
+  wholememory_comm_t local_comm_;
+  wholememory_comm_t cross_comm_;
+};
+
 wholememory_error_code_t create_wholememory(wholememory_handle_t* wholememory_handle_ptr,
                                             size_t total_size,
                                             wholememory_comm_t comm,
@@ -1853,6 +1896,21 @@ wholememory_error_code_t create_wholememory(wholememory_handle_t* wholememory_ha
                                                                         data_granularity,
                                                                         rank_entry_partition);
       }
+    } else if (memory_type == WHOLEMEMORY_MT_HIERARCHY) {
+      wholememory_comm_t local_comm;
+      int world_rank = -1, local_size = -1;
+      wholememory_communicator_get_rank(&world_rank, comm);
+      wholememory_communicator_get_local_size(&local_size, comm);
+      wholememory_split_communicator(
+        &local_comm, comm, world_rank / local_size, world_rank % local_size);
+      whole_memory_handle->impl = new hierarchy_wholememory_impl(whole_memory_handle,
+                                                                 total_size,
+                                                                 comm,
+                                                                 local_comm,
+                                                                 memory_type,
+                                                                 memory_location,
+                                                                 data_granularity,
+                                                                 rank_entry_partition);
     } else {
       WHOLEMEMORY_FATAL("Unsupported memory_type (%d) and memory_location (%d).",
                         (int)memory_type,
@@ -1925,6 +1983,36 @@ wholememory_error_code_t get_communicator_from_handle(
     return WHOLEMEMORY_INVALID_INPUT;
   }
   *comm = wholememory_handle->impl->get_comm();
+  return WHOLEMEMORY_SUCCESS;
+}
+
+wholememory_error_code_t get_local_communicator_from_handle(
+  wholememory_comm_t* comm, wholememory_handle_t wholememory_handle) noexcept
+{
+  if (wholememory_handle == nullptr || wholememory_handle->impl == nullptr) {
+    return WHOLEMEMORY_INVALID_INPUT;
+  }
+  if (get_memory_type(wholememory_handle) != WHOLEMEMORY_MT_HIERARCHY) {
+    return WHOLEMEMORY_NOT_SUPPORTED;
+  }
+  hierarchy_wholememory_impl* hierarchy_impl =
+    dynamic_cast<hierarchy_wholememory_impl*>(wholememory_handle->impl);
+  *comm = hierarchy_impl->get_local_comm();
+  return WHOLEMEMORY_SUCCESS;
+}
+
+wholememory_error_code_t get_cross_communicator_from_handle(
+  wholememory_comm_t* comm, wholememory_handle_t wholememory_handle) noexcept
+{
+  if (wholememory_handle == nullptr || wholememory_handle->impl == nullptr) {
+    return WHOLEMEMORY_INVALID_INPUT;
+  }
+  if (get_memory_type(wholememory_handle) != WHOLEMEMORY_MT_HIERARCHY) {
+    return WHOLEMEMORY_NOT_SUPPORTED;
+  }
+  hierarchy_wholememory_impl* hierarchy_impl =
+    dynamic_cast<hierarchy_wholememory_impl*>(wholememory_handle->impl);
+  *comm = hierarchy_impl->get_cross_comm();
   return WHOLEMEMORY_SUCCESS;
 }
 

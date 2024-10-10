@@ -63,6 +63,7 @@ enum wholememory_memory_type_t {
   WHOLEMEMORY_MT_CONTINUOUS,  /*!< Memory from all ranks are mapped in continuous address space */
   WHOLEMEMORY_MT_CHUNKED,     /*!< Memory from all ranks are mapped in chunked address space */
   WHOLEMEMORY_MT_DISTRIBUTED, /*!< Memory from other ranks are not mapped. */
+  WHOLEMEMORY_MT_HIERARCHY,   /*!< Memory from other ranks are mapped in hierarchy address space */
 };
 
 /**
@@ -206,6 +207,23 @@ wholememory_error_code_t wholememory_communicator_get_rank(int* rank, wholememor
  */
 wholememory_error_code_t wholememory_communicator_get_size(int* size, wholememory_comm_t comm);
 
+/**
+ * Get the local rank size of current process in the WholeMemory Communicator
+ * @param local_size : returned local rank size
+ * @param comm : WholeMemory Communicator
+ * @return : wholememory_error_code_t
+ */
+
+wholememory_error_code_t wholememory_communicator_get_local_size(int* local_size,
+                                                                 wholememory_comm_t comm);
+
+/**
+ * Get the clique info of WholeMemory Communicator
+ * @param clique_info : returned clique info
+ * @param comm : WholeMemory Communicator
+ * @return : wholememory_error_code_t
+ */
+
 wholememory_error_code_t wholememory_communicator_get_clique_info(clique_info_t* clique_info,
                                                                   wholememory_comm_t comm);
 
@@ -264,6 +282,25 @@ wholememory_error_code_t wholememory_free(wholememory_handle_t wholememory_handl
  */
 wholememory_error_code_t wholememory_get_communicator(wholememory_comm_t* comm,
                                                       wholememory_handle_t wholememory_handle);
+
+/**
+ * Get underlying Wholememory Local Communicator for "Hierarchy" memory type from WholeMemory Handle
+ * @param comm : returned Local WholeMemory Communicator
+ * @param wholememory_handle : WholeMemory Handle
+ * @return : wholememory_error_code_t
+ */
+wholememory_error_code_t wholememory_get_local_communicator(
+  wholememory_comm_t* comm, wholememory_handle_t wholememory_handle);
+
+/**
+ * Get underlying Wholememory Cross Communicator for "Hierarchy" memory type from WholeMemory Handle
+ * One comminicator includes all rank with a same local id from different nodes
+ * @param comm : returned Cross WholeMemory Communicator
+ * @param wholememory_handle : WholeMemory Handle
+ * @return : wholememory_error_code_t
+ */
+wholememory_error_code_t wholememory_get_cross_communicator(
+  wholememory_comm_t* comm, wholememory_handle_t wholememory_handle);
 
 /**
  * Get WholeMemory Type
