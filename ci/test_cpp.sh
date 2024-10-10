@@ -8,6 +8,8 @@ cd "$(dirname "$(realpath "${BASH_SOURCE[0]}")")"/../
 
 . /opt/conda/etc/profile.d/conda.sh
 
+RAPIDS_VERSION="$(rapids-version)"
+
 rapids-logger "Generate C++ testing dependencies"
 rapids-dependency-file-generator \
   --output conda \
@@ -27,11 +29,10 @@ mkdir -p "${RAPIDS_TESTS_DIR}"
 
 rapids-print-env
 
-PACKAGES="libwholegraph libwholegraph-tests"
-
 rapids-mamba-retry install \
   --channel "${CPP_CHANNEL}" \
-  "${PACKAGES}"
+  "libwholegraph=${RAPIDS_VERSION}" \
+  "libwholegraph-tests=${RAPIDS_VERSION}"
 
 rapids-logger "Check GPU usage"
 nvidia-smi

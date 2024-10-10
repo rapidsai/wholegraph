@@ -8,6 +8,8 @@ cd "$(dirname "$(realpath "${BASH_SOURCE[0]}")")"/../
 
 . /opt/conda/etc/profile.d/conda.sh
 
+RAPIDS_VERSION="$(rapids-version)"
+
 ARCH=$(arch)
 EXITCODE=0
 
@@ -44,13 +46,11 @@ mkdir -p "${RAPIDS_TESTS_DIR}" "${RAPIDS_COVERAGE_DIR}"
 
 rapids-print-env
 
-PACKAGES="pylibwholegraph"
-
 rapids-mamba-retry install \
   --channel "${CPP_CHANNEL}" \
   --channel "${PYTHON_CHANNEL}" \
   'mkl<2024.1.0' \
-  "${PACKAGES}"
+  "pylibwholegraph=${RAPIDS_VERSION}"
 
 rapids-logger "Check GPU usage"
 nvidia-smi

@@ -6,6 +6,8 @@ set -euo pipefail
 rapids-logger "Create test conda environment"
 . /opt/conda/etc/profile.d/conda.sh
 
+RAPIDS_VERSION="$(rapids-version)"
+
 rapids-dependency-file-generator \
   --output conda \
   --file-key docs \
@@ -22,12 +24,11 @@ rapids-print-env
 rapids-logger "Downloading artifacts from previous jobs"
 
 CPP_CHANNEL=$(rapids-download-conda-from-s3 cpp)
-export RAPIDS_VERSION_NUMBER="24.12"
 export RAPIDS_DOCS_DIR="$(mktemp -d)"
 
 rapids-mamba-retry install \
   --channel "${CPP_CHANNEL}" \
-  libwholegraph
+  "libwholegraph=${RAPIDS_VERSION}"
 
 rapids-logger "Build Doxygen docs"
 pushd cpp
@@ -38,4 +39,4 @@ popd
 
 rapids-logger "Output temp dir: ${RAPIDS_DOCS_DIR}"
 
-rapids-upload-docs
+RAPIDS_VERSION_NUMBER="$(rapids-version-major-minor)" rapids-upload-docs

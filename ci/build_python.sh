@@ -13,8 +13,6 @@ export CMAKE_GENERATOR=Ninja
 
 rapids-print-env
 
-PACKAGES="libwholegraph"
-
 CPP_CHANNEL=$(rapids-download-conda-from-s3 cpp)
 
 rapids-generate-version > ./VERSION
