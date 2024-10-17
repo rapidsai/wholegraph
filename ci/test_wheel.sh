@@ -22,7 +22,7 @@ fi
 python -m pip install \
   -v \
   --index-url "${INDEX_URL}" \
-  "$(echo ./dist/pylibwholegraph*.whl)[test]" \
+  "$(echo ./dist/pylibwholegraph_${RAPIDS_PY_CUDA_SUFFIX}*.whl)[test]" \
   'torch>=2.0,<2.4.0a0'
 
 RAPIDS_TESTS_DIR=${RAPIDS_TESTS_DIR:-"${PWD}/test-results"}
