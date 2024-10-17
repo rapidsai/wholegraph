@@ -21,7 +21,7 @@ fi
 # echo to expand wildcard before adding `[extra]` requires for pip
 python -m pip install \
   -v \
-  --index-url "${INDEX_URL}" \
+  --extra-index-url "${INDEX_URL}" \
   "$(echo ./dist/pylibwholegraph_${RAPIDS_PY_CUDA_SUFFIX}*.whl)[test]" \
   'torch>=2.0,<2.4.0a0'
 
