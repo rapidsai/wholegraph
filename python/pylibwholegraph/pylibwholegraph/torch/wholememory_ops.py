@@ -39,8 +39,10 @@ def wholememory_gather_forward_functor(
     assert indices_tensor.dtype == torch.int32 or indices_tensor.dtype == torch.int64
     if torch_output_dtype is None:
         torch_output_dtype = wholememory_dtype_to_torch_dtype(wholememory_tensor.dtype)
+
+    embedding_dim = wholememory_tensor.shape[1] if wholememory_tensor.dim() == 2 else 1
     output_tensor = torch.empty(
-        [indices_tensor.shape[0], wholememory_tensor.shape[1]],
+        [indices_tensor.shape[0], embedding_dim],
         device="cuda",
         dtype=torch_output_dtype,
         requires_grad=requires_grad,
@@ -52,7 +54,7 @@ def wholememory_gather_forward_functor(
         get_wholegraph_env_fns(),
         get_stream(),
     )
-    return output_tensor
+    return output_tensor.view(-1) if wholememory_tensor.dim() == 1 else output_tensor
 
 
 def wholememory_scatter_functor(

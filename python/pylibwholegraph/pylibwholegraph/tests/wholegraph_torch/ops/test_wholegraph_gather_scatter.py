@@ -24,6 +24,8 @@ import pylibwholegraph.torch.wholememory_ops as wm_ops
 
 
 def gen_int_embedding(indice_tensor, embedding_dim, output_type):
+    if embedding_dim == 0:
+        embedding_dim = 1 # unsqueeze to 2D tensor for input embeddings (2D is required for scatter op)
     indice_count = indice_tensor.shape[0]
     indice_part = (
         indice_tensor.type(torch.int).reshape(indice_count, 1).repeat(1, embedding_dim)
@@ -54,9 +56,14 @@ def scatter_gather_test_cast(
         "Rank=%d testing scatter gather with embedding_count=%d, embedding_dim=%d, indice_count=%d, dt=%s, mt=%s, ml=%s"
         % (world_rank, embedding_count, embedding_dim, indice_count, dt, mt, ml)
     )
-    wm_embedding = wmb.create_wholememory_matrix(
-        dt, embedding_count, embedding_dim, -1, wm_comm, mt, ml, entry_partition
-    )
+    if embedding_dim == 0:
+        wm_embedding = wmb.create_wholememory_array(
+            dt, embedding_count, wm_comm, mt, ml, entry_partition
+        )
+    else:
+        wm_embedding = wmb.create_wholememory_matrix(
+            dt, embedding_count, embedding_dim, -1, wm_comm, mt, ml, entry_partition
+        )
 
     scatter_indice = torch.arange(
         world_rank, embedding_count, world_size, dtype=torch.int64
@@ -91,9 +98,13 @@ def scatter_gather_test_cast(
     local_ref_start = wm_embedding.get_local_entry_start()
     local_ref_count = wm_embedding.get_local_entry_count()
     assert local_start == local_ref_start
-    assert local_tensor_cuda.dim() == 2
+    assert local_tensor_cuda.dim() == 2 if embedding_dim > 0 else 1
     assert local_tensor_cuda.shape[0] == local_ref_count
-    assert local_tensor_cuda.shape[1] == embedding_dim
+    if local_tensor_cuda.dim() == 2:
+        assert local_tensor_cuda.shape[1] == embedding_dim
+    else:
+        # unsqueeze to 2D for comparison
+        local_tensor_cuda = local_tensor_cuda.unsqueeze(1)
 
     local_tensor = local_tensor_cuda.cpu()
     local_indices = torch.arange(local_ref_start, local_ref_start + local_ref_count, dtype=torch.int64)
@@ -114,6 +125,9 @@ def scatter_gather_test_cast(
         )
     embedding_after_gather = embedding_after_gather_cuda.cpu()
     ref_embedding_gather = gen_int_embedding(gather_indice, embedding_dim, torch.float)
+    if embedding_after_gather.dim() == 1:
+        # unsqueeze to 2D for comparison
+        embedding_after_gather = embedding_after_gather.unsqueeze(1)
     # print('\ngather_indice=%s\nembedding_after_gather=%s\nref_embedding_gather=%s' % (
     #    gather_indice, embedding_after_gather, ref_embedding_gather))
     assert torch.allclose(embedding_after_gather, ref_embedding_gather)
@@ -134,7 +148,6 @@ def routine_func(world_rank: int, world_size: int):
     wm_comm = wm_comm.wmb_comm
 
     embedding_count = 1024 * 256 * world_size + 3
-    embedding_dim = 256
     indice_count = 100001
     dt = wmb.WholeMemoryDataType.DtFloat
     entry_partition = random_partition(embedding_count, world_size)
@@ -150,11 +163,12 @@ def routine_func(world_rank: int, world_size: int):
             wmb.WholeMemoryMemoryLocation.MlHost,
             wmb.WholeMemoryMemoryLocation.MlDevice,
         ]:
-            if wm_comm.support_type_location(mt, ml):
-                scatter_gather_test_cast(
-                    wm_comm, dt, mt, ml, embedding_count, embedding_dim, indice_count, True, entry_partition
-                )
-                # scatter_gather_test_cast(wm_comm, dt, mt, ml, embedding_count, embedding_dim, indice_count, False)
+            for embedding_dim in [0, 256]: # 0 is for 1D tensor
+                if wm_comm.support_type_location(mt, ml):
+                    scatter_gather_test_cast(
+                        wm_comm, dt, mt, ml, embedding_count, embedding_dim, indice_count, True, entry_partition
+                    )
+                    # scatter_gather_test_cast(wm_comm, dt, mt, ml, embedding_count, embedding_dim, indice_count, False)
     wmb.finalize()
 
 
