@@ -20,15 +20,15 @@ fi
 
 # echo to expand wildcard before adding `[extra]` requires for pip
 python -m pip install \
-  "$(echo ./dist/pylibwholegraph*.whl)[test]"
-
+  -v \
+  --index-url "${INDEX_URL}" \
+  "$(echo ./dist/pylibwholegraph*.whl)[test]" \
+  'torch>=2.0,<2.4.0a0'
 
 RAPIDS_TESTS_DIR=${RAPIDS_TESTS_DIR:-"${PWD}/test-results"}
 RAPIDS_COVERAGE_DIR=${RAPIDS_COVERAGE_DIR:-"${PWD}/coverage-results"}
 mkdir -p "${RAPIDS_TESTS_DIR}" "${RAPIDS_COVERAGE_DIR}"
 
-rapids-logger "Installing PyTorch"
-rapids-retry python -m pip install --pre torch --index-url ${INDEX_URL}
 rapids-logger "pytest pylibwholegraph"
 cd python/pylibwholegraph/pylibwholegraph/tests
 python -m pytest \
