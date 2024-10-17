@@ -27,7 +27,6 @@ from libcpp cimport bool
 from cpython cimport Py_buffer
 from cpython cimport array
 import array
-import numpy as np
 from cpython.ref cimport PyObject, Py_INCREF, Py_DECREF
 from cpython.object cimport Py_TYPE, PyObject_CallObject
 from cpython.tuple cimport *
