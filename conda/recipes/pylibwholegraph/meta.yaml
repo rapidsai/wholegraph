@@ -71,6 +71,7 @@ requirements:
     - cudatoolkit
     {% endif %}
     - libwholegraph ={{ version }}
+    - numpy>=1.23,<3.0a0
     - python
 
 about:
