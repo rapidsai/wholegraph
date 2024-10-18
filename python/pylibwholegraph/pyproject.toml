@@ -43,7 +43,6 @@ dependencies = [
 
 [project.optional-dependencies]
 test = [
-    "numpy>=1.23,<3.0a0",
     "pytest",
     "pytest-forked",
     "pytest-xdist",

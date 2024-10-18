@@ -24,6 +24,7 @@ python -m pip install \
   "$(echo ./dist/pylibwholegraph_${RAPIDS_PY_CUDA_SUFFIX}*.whl)[test]"
 
 # install torch separately, to be sure we get a CUDA build
+rapids-logger "Installing PyTorch"
 python -m pip install \
   --index-url "${INDEX_URL}" \
   -v \
