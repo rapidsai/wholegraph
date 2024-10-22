@@ -21,13 +21,8 @@ fi
 # echo to expand wildcard before adding `[extra]` requires for pip
 python -m pip install \
   -v \
-  "$(echo ./dist/pylibwholegraph_${RAPIDS_PY_CUDA_SUFFIX}*.whl)[test]"
-
-# install torch separately, to be sure we get a CUDA build
-rapids-logger "Installing PyTorch"
-python -m pip install \
-  --index-url "${INDEX_URL}" \
-  -v \
+  --extra-index-url "${INDEX_URL}" \
+  "$(echo ./dist/pylibwholegraph_${RAPIDS_PY_CUDA_SUFFIX}*.whl)[test]" \
   'torch>=2.0,<2.4.0a0'
 
 RAPIDS_TESTS_DIR=${RAPIDS_TESTS_DIR:-"${PWD}/test-results"}
