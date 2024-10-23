@@ -64,6 +64,21 @@ files:
       key: requires
     includes:
       - python_build_wheel
+  py_run_pylibwholegraph:
+    output: pyproject
+    pyproject_dir: python/pylibwholegraph
+    extras:
+      table: project
+    includes:
+      - run
+  py_test_pylibwholegraph:
+    output: pyproject
+    pyproject_dir: python/pylibwholegraph
+    extras:
+      table: project.optional-dependencies
+      key: test
+    includes:
+      - test_python
 channels:
   - rapidsai
   - rapidsai-nightly
@@ -210,8 +225,9 @@ dependencies:
               - python>=3.10,<3.13
   run:
     common:
-      - output_types: [conda, requirements]
-        packages: []
+      - output_types: [conda, pyproject, requirements]
+        packages:
+          - numpy>=1.23,<3.0a0
   test_cpp:
     common:
       - output_types: [conda]
@@ -224,10 +240,9 @@ dependencies:
           - c-compiler
           - cxx-compiler
           - *nccl
-      - output_types: [conda, requirements]
-        packages:
           - ninja
-          - numpy>=1.23,<3.0a0
+      - output_types: [conda, pyproject, requirements]
+        packages:
           - pytest
           - pytest-forked
           - pytest-xdist
