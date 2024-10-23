@@ -63,7 +63,7 @@ class WholeMemoryTensor(object):
                *,
                force_dtype: Union[torch.dtype, None] = None):
         assert indice.dim() == 1
-        embedding_dim = self.shape[1]
+        embedding_dim = self.shape[1] if self.dim() == 2 else 1
         embedding_count = indice.shape[0]
         current_cuda_device = "cuda:%d" % (torch.cuda.current_device(),)
         output_dtype = (
@@ -80,15 +80,19 @@ class WholeMemoryTensor(object):
                                   wrap_torch_tensor(output_tensor),
                                   get_wholegraph_env_fns(),
                                   get_stream())
-        return output_tensor
+        return output_tensor.view(-1) if self.dim() == 1 else output_tensor
 
     def scatter(self,
                 input_tensor: torch.Tensor,
                 indice: torch.Tensor):
         assert indice.dim() == 1
-        assert input_tensor.dim() == 2
+        assert input_tensor.dim() == self.dim()
         assert indice.shape[0] == input_tensor.shape[0]
-        assert input_tensor.shape[1] == self.shape[1]
+        if self.dim() == 2:
+            assert input_tensor.shape[1] == self.shape[1]
+        else:
+            # unsqueeze input to 2D tensor here because wmb_tensor is unsqueezed within scatter_op
+            input_tensor = input_tensor.unsqueeze(1)
         wmb.wholememory_scatter_op(wrap_torch_tensor(input_tensor),
                                    wrap_torch_tensor(indice),
                                    self.wmb_tensor,
